@@ -1,0 +1,8 @@
+User SE mapping:
+ジャンプの着地 -> land
+電撃 -> electric
+トゲ、針 -> spike
+ヒビ割れ、崩れる -> floorbreak + dropfloor
+重いもの、岩、柱 -> crusher + blockfall
+重い物飛ばす -> wallmove
+弓矢を放つ -> arrow (bank registered; current Stage1-5 has no arrow projectile event)

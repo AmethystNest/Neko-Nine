@@ -1,0 +1,6 @@
+volumes={'index.html': {'death': '0.100', 'land': '0.110'}, 'stage2.html': {'death': '0.100', 'land': '0.110'}, 'stage3.html': {'death': '0.100', 'land': '0.110'}, 'stage4.html': {'death': '0.100', 'land': '0.110'}, 'stage5.html': {'death': '0.100', 'land': '0.110'}}
+payload_equal={2: True, 3: True, 4: True, 5: True}
+blocked={1: [], 2: [], 3: [], 4: [], 5: []}
+syntax=[('index.html', 0), ('stage2.html', 0), ('stage3.html', 0), ('stage4.html', 0), ('stage5.html', 0)]
+stage3_arrow_calls=1
+trapdoor_play_calls={n:calls[n].count('trapdoor') for n in calls}
