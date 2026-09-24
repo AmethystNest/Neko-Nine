@@ -154,7 +154,7 @@ function showStory(lines,card,then){
   el.replaceChildren();
   const box=document.createElement('div');
   el.appendChild(box);
-  const skip=document.createElement('div'); skip.className='skip'; skip.textContent='TAP ▶'; el.appendChild(skip);
+  const skip=document.createElement('div'); skip.className='skip'; skip.textContent=(IS_TOUCH()?'TAP':'CLICK')+' ▶'; el.appendChild(skip);
   el.classList.add('show');
   storyStage=0;
   const nodes=lines.map(t=>{ const d=document.createElement('div'); d.className='line'; d.textContent=t; box.appendChild(d); return d; });
@@ -440,7 +440,14 @@ function applySettings(o){
   $('volMusic').value=o.music; $('volSe').value=o.se;
   $('volMusicV').textContent=o.music; $('volSeV').textContent=o.se;
 }
-function sheet(id,on){ const el=$(id); el.classList.toggle('show',on); el.setAttribute('aria-hidden',on?'false':'true'); }
+function sheet(id,on){
+  const el=$(id); const was=el.classList.contains('show');
+  el.classList.toggle('show',on); el.setAttribute('aria-hidden',on?'false':'true');
+  // keep keyboard focus inside the open sheet, and drop it on close so Enter/Space
+  // cannot re-press the menu button that opened it
+  if(on) el.querySelector('button').focus({preventScroll:true});
+  else if(was && document.activeElement && document.activeElement.blur) document.activeElement.blur();
+}
 function pauseGame(){
   if(S.paused || !(S.mode==='play'||S.mode==='dying')) return;
   S.paused=true; input.left=input.right=input.jump=false; input.press=false;
@@ -450,7 +457,7 @@ function pauseGame(){
 }
 function resumeGame(){
   if(!S.paused) return;
-  S.paused=false; sheet('pause',false); sheet('settings',false);
+  S.paused=false; sheet('pause',false); sheet('settings',false); sheet('help',false);
   pacer.reset(performance.now());
   if(AU.ctx && AU.ready) AU.ctx.resume();
 }
@@ -459,8 +466,11 @@ $('btnResume').addEventListener('click',resumeGame);
 $('btnPauseSettings').addEventListener('click',()=>{ sheet('settings',true); });
 $('btnSettings').addEventListener('click',e=>{ e.stopPropagation(); AU.unlock(); sheet('settings',true); });
 $('btnSettingsClose').addEventListener('click',()=>sheet('settings',false));
+$('btnPauseHelp').addEventListener('click',()=>{ sheet('help',true); });
+$('btnHelp').addEventListener('click',e=>{ e.stopPropagation(); AU.unlock(); sheet('help',true); });
+$('btnHelpClose').addEventListener('click',()=>sheet('help',false));
 $('btnQuit').addEventListener('click',()=>{
-  S.paused=false; sheet('pause',false); sheet('settings',false);
+  S.paused=false; sheet('pause',false); sheet('settings',false); sheet('help',false);
   S.respawnAt=0; S.clearAt=0;
   if(AU.ctx && AU.ready) AU.ctx.resume();
   toTitle();
@@ -481,13 +491,27 @@ function bindHold(id,key){
   const up=e=>{ e.preventDefault(); input[key]=false; b.classList.remove('active'); };
   b.addEventListener('pointerup',up); b.addEventListener('pointercancel',up); b.addEventListener('lostpointercapture',up);
 }
+// Touch devices get on-screen buttons and the landscape lock; PCs play with the keyboard.
+// A touch on a hybrid laptop switches the buttons on as well.
+if(matchMedia('(pointer:coarse)').matches) document.body.classList.add('touch');
+addEventListener('pointerdown',e=>{ if(e.pointerType==='touch' && !IS_TOUCH()){ document.body.classList.add('touch'); syncTapWords(); } },{capture:true,passive:true});
+function IS_TOUCH(){ return document.body.classList.contains('touch'); }
+function syncTapWords(){
+  const w=IS_TOUCH()?'TAP':'CLICK';
+  document.querySelector('#splash .sp2').textContent=w+' TO BEGIN';
+  document.querySelector('#credits .back').textContent=w+' TO TITLE';
+}
+syncTapWords();
 bindHold('left','left'); bindHold('right','right'); bindHold('jump','jump');
 addEventListener('keydown',e=>{
   if(e.repeat && (e.code==='Space'||e.key==='ArrowUp')) { e.preventDefault(); return; }
   if(e.key==='ArrowLeft'||e.key==='a') input.left=true;
   if(e.key==='ArrowRight'||e.key==='d') input.right=true;
   if(e.code==='Space'||e.key==='ArrowUp'||e.key==='w'||e.key==='z'){ if(!input.jump) input.press=true; input.jump=true; e.preventDefault(); }
-  if(e.key==='Escape'||e.key==='p'){ if(S.paused) resumeGame(); else pauseGame(); return; }
+  // a help/settings sheet opened from the title: Esc closes it, other keys are ignored
+  const sub=['help','settings'].find(id=>$(id).classList.contains('show'));
+  if(sub && !S.paused){ if(e.key==='Escape') sheet(sub,false); return; }
+  if(e.key==='Escape'||e.key==='p'){ if(sub){ sheet(sub,false); return; } if(S.paused) resumeGame(); else pauseGame(); return; }
   if(S.paused){ if(e.key==='Enter') resumeGame(); return; }
   if(e.key==='Enter'||e.code==='Space'){
     if(S.mode==='splash'){ $('splash').dispatchEvent(new PointerEvent('pointerup')); }
@@ -525,7 +549,7 @@ function loop(now){
   const steps=pacer.frame(now);
   const dt=Math.min(0.05,(now-last)/1000); last=now;
   const w=S.world;
-  const portrait=window.innerHeight>window.innerWidth;
+  const portrait=IS_TOUCH() && window.innerHeight>window.innerWidth;
   if(portrait){ input.left=input.right=input.jump=false; input.press=false; }
   const active=(S.mode==='play'||S.mode==='dying') && !portrait && !S.paused;
   if(active){

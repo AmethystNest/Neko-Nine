@@ -23,7 +23,7 @@ canvas{position:fixed;inset:0;width:100vw;height:100dvh;display:block;touch-acti
 button{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 
 /* ---- HUD (unchanged look from v188) ---- */
-#msg{position:fixed;top:max(10px,env(safe-area-inset-top));right:max(60px,calc(env(safe-area-inset-right) + 60px));
+#msg{position:fixed;top:max(10px,env(safe-area-inset-top));right:max(118px,calc(env(safe-area-inset-right) + 118px));
   padding:6px 10px;border-radius:999px;background:#0008;color:#fff;font-size:12px;font-weight:700;white-space:nowrap;pointer-events:none;z-index:20}
 #lifeHud{position:fixed;top:max(8px,env(safe-area-inset-top));left:max(8px,env(safe-area-inset-left));z-index:20;
   padding:5px 7px;border-radius:10px;background:rgba(0,0,0,.42);pointer-events:none;backdrop-filter:blur(4px)}
@@ -146,7 +146,9 @@ body.nohud .controls button{pointer-events:none}
 #rotate .t1{font:700 18px/1.5 var(--serif);letter-spacing:.12em}
 #rotate .t2{font:500 13px/1.7 var(--serif);letter-spacing:.06em;color:#b5acd8}
 @keyframes turn{0%,20%{transform:rotate(0)}50%,80%{transform:rotate(-90deg)}100%{transform:rotate(0)}}
-@media (orientation:portrait){#rotate{display:flex}}
+@media (orientation:portrait){body.touch #rotate{display:flex}}
+/* on-screen buttons only on touch devices */
+body:not(.touch) .controls{display:none}
 
 /* ---- pause / settings ---- */
 #pauseBtn{position:fixed;top:max(10px,env(safe-area-inset-top));right:max(64px,calc(env(safe-area-inset-right) + 64px));width:46px;height:46px;
@@ -162,6 +164,12 @@ body.nohud #pauseBtn{opacity:0;pointer-events:none}
 .sheet button.item:focus-visible,.sheet button.item:hover{color:#9fdcff}
 .sheet label{display:grid;grid-template-columns:5.5em 1fr 2.6em;align-items:center;gap:10px;font:600 14px/1 var(--serif);letter-spacing:.08em}
 .sheet input[type=range]{width:100%;accent-color:#7f9dff}
+.sheet .help{display:grid;grid-template-columns:auto 1fr;gap:9px 18px;margin:2px 0 4px;font:600 14px/1.45 var(--serif);letter-spacing:.06em}
+.sheet .help dt{color:#b5acd8;white-space:nowrap}
+.sheet .help dd{margin:0}
+.sheet kbd{display:inline-block;min-width:1.5em;padding:1px 6px;border:1px solid #4a4580;border-bottom-width:2px;border-radius:5px;background:#221f40;font:600 12px/1.5 system-ui;text-align:center;color:#efe9ff}
+.sheet .help .note{grid-column:1/-1;color:#b5acd8;font-size:12.5px}
+body.touch .help.pc,body:not(.touch) .help.tp{display:none}
 .sheet .val{font:600 12px/1 system-ui;text-align:right;color:#b5acd8;font-variant-numeric:tabular-nums}
 
 /* ---- toast ---- */
@@ -242,6 +250,7 @@ body.nohud #pauseBtn{opacity:0;pointer-events:none}
       <button id="btnStart" class="primary" type="button">はじめる</button>
       <button id="btnContinue" class="primary" type="button" hidden>つづきから</button>
       <button id="btnNew" type="button" hidden>はじめから</button>
+      <button id="btnHelp" type="button">操作方法</button>
       <button id="btnSettings" type="button">設定</button>
     </div>
     <div class="titleClear">♡ ALL CLEAR</div>
@@ -250,6 +259,7 @@ body.nohud #pauseBtn{opacity:0;pointer-events:none}
 <div id="pause" class="sheet" aria-hidden="true"><div class="box">
   <h2>Pause</h2>
   <button class="item" id="btnResume" type="button">つづける</button>
+  <button class="item" id="btnPauseHelp" type="button">操作方法</button>
   <button class="item" id="btnPauseSettings" type="button">設定</button>
   <button class="item" id="btnQuit" type="button">タイトルへもどる</button>
 </div></div>
@@ -258,6 +268,23 @@ body.nohud #pauseBtn{opacity:0;pointer-events:none}
   <label for="volMusic">BGM<input id="volMusic" type="range" min="0" max="100" step="5"><span class="val" id="volMusicV"></span></label>
   <label for="volSe">効果音<input id="volSe" type="range" min="0" max="100" step="5"><span class="val" id="volSeV"></span></label>
   <button class="item" id="btnSettingsClose" type="button">とじる</button>
+</div></div>
+<div id="help" class="sheet" aria-hidden="true"><div class="box">
+  <h2>Controls</h2>
+  <dl class="help pc">
+    <dt>移動</dt><dd><kbd>←</kbd> <kbd>→</kbd> ／ <kbd>A</kbd> <kbd>D</kbd></dd>
+    <dt>ジャンプ</dt><dd><kbd>Space</kbd> ／ <kbd>↑</kbd> <kbd>W</kbd> <kbd>Z</kbd></dd>
+    <dt>一時停止</dt><dd><kbd>Esc</kbd> ／ <kbd>P</kbd></dd>
+    <dt>決定</dt><dd><kbd>Enter</kbd> ／ クリック</dd>
+    <dd class="note">ジャンプは長く押すほど高く跳べます。</dd>
+  </dl>
+  <dl class="help tp">
+    <dt>移動</dt><dd>画面左下の ◀ ▶</dd>
+    <dt>ジャンプ</dt><dd>画面右下の JUMP</dd>
+    <dt>一時停止</dt><dd>右上の ❚❚</dd>
+    <dd class="note">ジャンプは長く押すほど高く跳べます。</dd>
+  </dl>
+  <button class="item" id="btnHelpClose" type="button">とじる</button>
 </div></div>
 <div id="rotate" role="alert"><div class="phone"></div><div class="t1">横画面にしてください</div><div class="t2">Neko Nine はスマートフォンの横画面、またはPCで遊べます。</div></div>
 <div id="splash"><div class="sp1">Neko Nine</div><div class="sp2">TAP TO BEGIN</div><div class="sp3">♪ 音が出ます</div></div>
