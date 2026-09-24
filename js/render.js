@@ -638,6 +638,43 @@ P.Light.prototype.draw=function(g,w,T){
 };
 
 // ---------------------------------------------------------------------------
+// Mercy hints: faint outlines of traps that already took two lives.
+// ---------------------------------------------------------------------------
+P.TrapFloor.prototype.hintRect=function(){ return this.st==='idle'?{x:this.x,y:this.y-4,w:this.w,h:14}:null; };
+P.DropFloor.prototype.hintRect=function(){ return this.st==='idle'?{x:this.x,y:this.y0-4,w:this.w,h:14}:null; };
+P.ShiftPit.prototype.hintRect=function(){ return this.done?null:{x:this.p0+this.minShift,y:G-4,w:this.maxShift-this.minShift+this.pw,h:14}; };
+P.Crusher.prototype.hintRect=function(){ return this.st==='idle'&&!this.period?{x:this.x,y:this.ceil,w:this.w,h:this.floor-this.ceil}:null; };
+P.FallBlock.prototype.hintRect=function(){ return this.st==='idle'?{x:this.x,y:Math.max(this.y0,40),w:this.w,h:this.landY-Math.max(this.y0,40)}:null; };
+P.Spikes.prototype.hintRect=function(){ if(this.st!=='idle') return null; return this.dirn==='up'?{x:this.x,y:this.y-this.maxH,w:this.w,h:this.maxH}:{x:this.x,y:this.y,w:this.w,h:this.maxH}; };
+P.Shot.prototype.hintRect=function(w){ return this.st==='idle'?{x:0,y:this.y-this.h/2,w:w.W,h:this.h,line:true}:null; };
+P.Laser.prototype.hintRect=function(){ return this.st==='idle'?{x:this.x-8,y:this.y0,w:16,h:this.y1-this.y0}:null; };
+P.Arc.prototype.hintRect=function(){ return this.st==='idle'?{x:this.x-this.w/2,y:G-this.maxH,w:this.w,h:this.maxH}:null; };
+P.Shutter.prototype.hintRect=function(){ return this.st==='idle'?{x:this.x,y:this.top,w:this.w,h:G-this.top}:null; };
+P.ChaseWall.prototype.hintRect=function(){ return this.st==='idle'?{x:this.minX,y:G-this.h,w:this.startX+this.w-this.minX,h:this.h}:null; };
+P.Bonk.prototype.hintRect=function(){ return this.s.hidden?{x:this.x,y:this.y,w:this.w,h:this.h}:null; };
+P.Lift.prototype.hintRect=function(){ return this.st==='idle'?{x:this.x,y:G-this.rise-40,w:this.w,h:this.rise+40}:null; };
+P.Lightning.prototype.hintRect=function(w){ return null; };
+function drawHint(g,r,t){
+  const a=0.35+0.25*Math.sin(t*3);
+  g.save();
+  g.fillStyle=`rgba(190,215,255,${a*0.18})`; g.fillRect(r.x,r.y,r.w,r.h);
+  g.strokeStyle=`rgba(210,230,255,${a+0.2})`; g.lineWidth=2; g.setLineDash([6,5]); g.lineDashOffset=-t*12;
+  g.strokeRect(r.x+1,r.y+1,r.w-2,r.h-2);
+  g.setLineDash([]);
+  g.fillStyle=`rgba(230,240,255,${a+0.3})`; g.font='bold 16px sans-serif'; g.textAlign='center'; g.textBaseline='bottom';
+  if(!r.line) g.fillText('!',r.x+r.w/2,r.y-3);
+  g.restore();
+}
+// Checkpoint: a small lantern of past lives.
+function drawCheckpoint(g,cp,t,im){
+  const x=cp.x, y=cp.y;
+  glow(g,x,y-30,cp.reached?90:60,'rgba(255,214,150,A)',cp.reached?0.45:0.25+0.1*Math.sin(t*2));
+  rect(g,'#3a3024',x-2,y-44,4,44);
+  rect(g,'#3a3024',x-9,y-58,18,4); rect(g,cp.reached?'rgba(255,214,150,.95)':'rgba(200,220,255,.8)',x-7,y-54,14,14); rect(g,'#3a3024',x-9,y-40,18,3);
+  if(im){ g.globalAlpha=0.35+0.1*Math.sin(t*1.7); const dw=im.width*1.2,dh=im.height*1.2; g.drawImage(im,x+6,y-dh,dw,dh); g.globalAlpha=1; }
+}
+
+// ---------------------------------------------------------------------------
 // Renderer object
 // ---------------------------------------------------------------------------
 const R={
@@ -699,6 +736,7 @@ const R={
         const col=ev.style==='pot'?'#b5582e':ev.style==='spark'?'#cfe4ff':'rgba(190,180,160,.8)';
         for(let i=0;i<(ev.style==='pot'?16:10);i++) this.part(ev.x+(Math.random()-0.5)*(ev.w||30),ev.y-2,(Math.random()-0.5)*220,-Math.random()*200,col,2+Math.random()*3,0.9);
         break; }
+      case 'checkpoint': for(let i=0;i<24;i++) this.part(ev.x+(Math.random()-0.5)*30,ev.y-40,(Math.random()-0.5)*120,-Math.random()*160,'rgba(255,220,160,.9)',2,1.0,120); break;
       case 'bonk': for(let i=0;i<6;i++) this.part(ev.x,ev.y,(Math.random()-0.5)*120,Math.random()*60,'#ffe9a8',2,0.5); break;
       case 'death': {
         const y=Math.min(ev.y,WH-10);
@@ -743,6 +781,8 @@ const R={
     this.dynBack(g,w,T);
     for(const e of w.ents) if(e.draw && !e.front) e.draw(g,w,T);
     if(w.goal) drawDoor(g,w.goal.x,w.goal.y||G,T.door,w.t,{glow:w.def.final||T.dark,leak:w.def.final});
+    if(ui.cp) drawCheckpoint(g,ui.cp,w.t,this.whiteOf(this.imgs.sit));
+    if(ui.known && ui.known.size){ for(const e of w.ents){ if(!ui.known.has(e.idx)||!e.hintRect) continue; const r=e.hintRect(w); if(r) drawHint(g,r,w.t); } }
     this.drawGhosts(g,w,dt);
     this.drawCat(g,w,ui);
     for(const e of w.ents) if(e.draw && e.front) e.draw(g,w,T);
@@ -813,8 +853,8 @@ const R={
       gh.t+=dt;
       const a=Math.min(0.22,gh.t*0.5);
       g.globalAlpha=a;
-      const dw=46, dh=dw*im.height/im.width;
-      g.drawImage(im,gh.x-dw/2,gh.y-dh+6+Math.sin(w.t*1.5+gh.x)*2,dw,dh);
+      const dw=im.width*1.3, dh=im.height*1.3;
+      g.drawImage(im,gh.x-dw/2,gh.y-dh+2+Math.sin(w.t*1.5+gh.x)*2,dw,dh);
     }
     g.globalAlpha=1;
   },
@@ -823,37 +863,31 @@ const R={
     if(!P.ground){ if(P.vy<-120) return im.jump.rise; if(Math.abs(P.vy)<=120) return im.jump.apex; return im.jump.fall; }
     if(P.land>0) return im.jump.land;
     if(Math.abs(P.vx)>8) return im.walk[P.frame];
-    return im.idle;
+    return (w.t%3.6)>3.45?im.idleBlink:im.idle;
   },
-  bottomOf(sp){
-    const im=this.imgs;
-    if(sp===im.idle||sp===im.jump.land) return 182;
-    if(sp===im.jump.rise) return 176; if(sp===im.jump.apex) return 169; if(sp===im.jump.fall) return 179;
-    const i=im.walk.indexOf(sp); return i>=0?[182,182,182,181][i]:182;
-  },
+  bottomOf(sp){ return sp.height; },
   drawCat(g,w,ui){
     const P=w.P;
     let sp=this.sprite(w);
-    const dw=74, dh=dw*sp.height/sp.width;
-    const pad=(sp.height-this.bottomOf(sp))*(dw/sp.width);
+    const SC=window.NEKO_SPRITES.SCALE, dw=sp.width*SC, dh=sp.height*SC, pad=0;
     if(P.dead){
       // the body flashes white and fades; a small soul rises
       const t=P.deadT;
       if(P.y<WH+20 && t<0.5){
-        g.save(); g.translate(Math.round(P.x),Math.round(P.y+pad)); if(P.facing>0) g.scale(-1,1);
+        g.save(); g.translate(Math.round(P.x),Math.round(P.y+pad)); if(P.facing<0) g.scale(-1,1);
         if(P.cause==='crush') g.scale(1.25,0.35);
         g.globalAlpha=1-t*2; g.drawImage(Math.floor(t*20)%2?this.whiteOf(sp):sp,-dw/2,-dh,dw,dh); g.restore(); g.globalAlpha=1;
       }
       const soul=this.whiteOf(this.imgs.idle);
       const sy=Math.min(P.y,WH-10)-30-t*80;
       g.globalAlpha=Math.max(0,0.75-t*0.7);
-      g.drawImage(soul,P.x-20+Math.sin(t*6)*4,sy-26,40,26);
+      g.drawImage(soul,P.x-soul.width*0.6+Math.sin(t*6)*4,sy-soul.height*1.2,soul.width*1.2,soul.height*1.2);
       g.globalAlpha=1;
       return;
     }
     g.save();
     g.translate(Math.round(P.x),Math.round(P.y+pad));
-    if(P.facing>0) g.scale(-1,1);
+    if(P.facing<0) g.scale(-1,1);
     g.drawImage(sp,Math.round(-dw/2),Math.round(-dh),Math.round(dw),Math.round(dh));
     g.restore();
   },
@@ -960,9 +994,9 @@ const R={
     g.lineCap='butt';
     // the cat
     const im=this.imgs;
-    const sp=st.catWalking?im.walk[Math.floor(st.t*10)%4]:im.idle;
-    const dw=74, dh=dw*sp.height/sp.width, pad=(sp.height-this.bottomOf(sp))*(dw/sp.width);
-    g.save(); g.translate(Math.round(st.catX),Math.round(G+pad)); g.scale(-1,1); g.drawImage(sp,-dw/2,-dh,dw,dh); g.restore();
+    const sp=st.catWalking?im.walk[Math.floor(st.t*10)%4]:(st.t%4>3.85?im.sitBlink:im.sit);
+    if(sp){ const SC=2.6, dw=sp.width*SC, dh=sp.height*SC;
+      g.save(); g.imageSmoothingEnabled=false; g.translate(Math.round(st.catX),G); g.drawImage(sp,-dw/2,-dh,dw,dh); g.restore(); }
     // warm light spreading
     if(L>0){ glow(g,500,G-60,520,'rgba(255,200,130,A)',0.3*L); }
     // soft lamp

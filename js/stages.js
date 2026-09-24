@@ -16,6 +16,7 @@ const STAGES=[
   name:'はじまりの廊下', theme:'hall',
   story:['君が帰ってこない夜が、三日つづいた。','だから今度は、ぼくが君を探しにいく。'],
   floors:[[0,300]],
+  checkpoint:{x:520},
   goal:{x:905},
   ents:F=>[
     // Hidden trapdoor: ordinary floor until stood on.
@@ -29,6 +30,7 @@ const STAGES=[
   name:'雨の路地', theme:'alley', rain:1,
   story:['外の世界は、つめたくて、うるさい。','君はいつも、こんな雨の中を帰ってきていたんだね。'],
   floors:[[0,350],[500,680],[820,1000]],
+  checkpoint:{x:590},
   goal:{x:905},
   ents:F=>[
     F.Deco({type:'window',x:304,y:150}),
@@ -42,6 +44,7 @@ const STAGES=[
   name:'錆びた工場', theme:'factory',
   story:['君は、疲れた顔で帰ってくる日が多かった。','それでも、ぼくを見ると少しだけ笑った。'],
   floors:[[0,600],[740,1000]],
+  checkpoint:{x:560},
   goal:{x:920},
   ents:F=>{
     const A=F.Crusher({x:330,w:90,h:150,tx:285,delay:0.2,fallSpeed:920,hold:0.55,riseSpeed:430});
@@ -49,7 +52,7 @@ const STAGES=[
       when:w=>w.P.x>=408 && A.st==='done'});
     return [A,B,
       // Fired at whoever stands still waiting for the second press.
-      F.Shot({from:'left',y:G-22,w:54,h:8,speed:720,delay:0.1,style:'arrow',when:()=>B.st==='hold'}),
+      F.Shot({from:'left',y:G-22,w:54,h:8,speed:720,delay:0.1,style:'arrow',when:w=>B.st==='hold'&&w.P.x<540}),
       F.DropFloor({x:600,w:140,delay:0.14,speed:520}),
       // The exit door fires back.
       F.Shot({from:'right',y:G-22,w:54,h:8,speed:900,delay:0.0,style:'arrow',tx:800})
@@ -61,6 +64,7 @@ const STAGES=[
   name:'地下水路', theme:'sewer',
   story:['最後に君の笑った顔を見たのは、','いつだっただろう。'],
   floors:[[0,432],[528,1000]],
+  checkpoint:{x:555},
   goal:{x:905},
   ents:F=>[
     F.Spikes({x:292,w:96,maxH:42,tx:280,delay:0.12,riseSpeed:300,hold:0.48,fallSpeed:220}),
@@ -74,6 +78,7 @@ const STAGES=[
   name:'白い研究所', theme:'lab',
   story:['「大丈夫」が、君の口ぐせだった。','ぜんぜん大丈夫じゃない声で。'],
   floors:[[0,1000]],
+  checkpoint:{x:505},
   goal:{x:905},
   ents:F=>[
     F.Laser({x:250,y0:90,y1:G,tx:150,warm:0.28,onT:0.72,offT:0.62}),
@@ -90,10 +95,11 @@ const STAGES=[
   name:'雨の屋上', theme:'roof', rain:2,
   story:['ずっと遠くに、','君の住む街の灯りが見えた。'],
   floors:[[0,360,420],[470,530,400],[590,640,400],[800,1000,430]],
+  checkpoint:{x:612,y:400},
   goal:{x:915,y:430},
   deathY:600,
   ents:F=>[
-    F.Lightning({tx:150,lock:0.5,strike:0.78,predict:true,width:34}),
+    F.Lightning({lock:0.5,strike:0.78,predict:true,width:34,when:w=>w.P.x>=150&&w.P.x<360}),
     F.DropFloor({x:530,w:60,y:400,thick:14,delay:0.04,gravity:1800,style:'glass',se:'floorbreak'}),
     F.Wind({x0:600,x1:840,v:-175,onT:1.3,offT:1.7,phase:0}),
     F.Shot({from:'right',y:430-20,w:34,h:18,speed:480,delay:0.25,style:'crow',se:'trap',warnSE:'warn',when:w=>w.P.ground&&w.P.x>=800})
@@ -104,6 +110,7 @@ const STAGES=[
   name:'終電の駅', theme:'station', width:1600,
   story:['君は毎晩、この駅から帰ってきた。','最終電車にも、君はいなかった。'],
   floors:[[0,1000],[1120,1600]],
+  checkpoint:{x:900},
   goal:{x:1520},
   ents:F=>[
     F.Block({x:300,y:G-84,w:46,h:84,style:'vending'}),
@@ -118,6 +125,7 @@ const STAGES=[
   story:['時間は、巻き戻らない。','命は、何度でも戻ってくるのに。'],
   spawn:{x:80,y:420},
   floors:[[0,760],[1040,1400]],
+  checkpoint:{x:648},
   goal:{x:1300},
   ents:F=>[
     F.Pendulum({px:245,py:90,len:290,amp:0.72,period:2.2,phase:0,r:20}),
@@ -137,13 +145,13 @@ const STAGES=[
   name:'暗闇', theme:'dark', width:2600,
   story:['君の心の中も、こんなに暗かったのかな。','ひとりで、ずっとここを歩いていたのかな。'],
   floors:[[0,420],[520,700],[800,1000],[1300,1720],[1800,1880],[1990,2600]],
+  checkpoint:{x:1330},
   goal:{x:2480},
   ents:F=>[
-    F.DarkChase({startX:-80,tx:170,speed:150,accel:14,maxSpeed:200,leash:560,boostX:2150,boostSpeed:212}),
-    F.DropFloor({x:700,w:100,delay:0.28,crack:true,gravity:1500,se:'floorbreak',style:'crumble'}),
-    F.Mover({x:1030,y:G-14,w:92,h:16,ax:'x',range:160,period:2.4,style:'plank'}),
+    F.DarkChase({startX:-80,tx:170,speed:120,accel:8,maxSpeed:170,leash:720,boostX:2150,boostSpeed:190}),
+    F.DropFloor({x:700,w:100,delay:0.45,crack:true,gravity:1500,se:'floorbreak',style:'crumble'}),
+    F.Mover({x:1030,y:G-14,w:120,h:16,ax:'x',range:140,period:2.2,style:'plank'}),
     F.FallBlock({x:1440,w:40,h:40,y0:-60,tx:1300,delay:0.08,gravity:2600,style:'rock',landSE:'blockfall',shadow:true}),
-    F.FallBlock({x:1590,w:40,h:40,y0:-60,tx:1452,delay:0.02,gravity:2600,style:'rock',landSE:'blockfall',shadow:true}),
     F.Light({x:1935,y:300,r:130,warm:true,lantern:true}),
     F.TrapFloor({x:1880,w:110,dir:'mid',delay:0.03,speed:900})
   ]
@@ -153,6 +161,7 @@ const STAGES=[
   name:'ただいま', theme:'home', width:1800,
   story:['見覚えのある廊下。','ドアの向こうに、君の気配がする。'],
   floors:[[0,470],[610,700],[820,1800]],
+  checkpoint:{x:850},
   goal:{x:1700,locked:false},
   final:true,
   ents:F=>[

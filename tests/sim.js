@@ -7,7 +7,7 @@ const {STAGES}=globalThis.NEKO_STORY;
 
 // script: array of steps {r,l,j,p,until(w)|t, name}
 function run(idx,script,opts={}){
-  const w=new World(STAGES[idx]);
+  const w=new World(STAGES[idx],opts.spawn?{spawn:opts.spawn}:undefined);
   const inp={left:false,right:false,jump:false,press:false};
   const dt=1/120;
   let si=0, st=0, T=0;

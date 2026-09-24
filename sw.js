@@ -1,7 +1,7 @@
 // Neko Nine service worker: network-first for pages/scripts so updates arrive,
 // cache fallback for offline play. Old caches are removed on activate.
-const CACHE='neko-nine-v2';
-const CORE=['./','./index.html','./manifest.webmanifest','./js/assets.js','./js/engine.js','./js/stages.js','./js/render.js','./js/main.js'];
+const CACHE='neko-nine-v3';
+const CORE=['./','./index.html','./manifest.webmanifest','./js/sprites.js','./js/audio.js','./js/title.js','./js/engine.js','./js/stages.js','./js/render.js','./js/main.js'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(
   caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())

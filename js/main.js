@@ -1,7 +1,7 @@
 // Neko Nine: game flow, input, audio, story, game over and ending.
 (function(){
 'use strict';
-const E=window.NEKO_ENGINE, R=window.NEKO_RENDER, A=window.NEKO_ASSETS;
+const E=window.NEKO_ENGINE, R=window.NEKO_RENDER;
 const {PROLOGUE,STAGES}=window.NEKO_STORY;
 const $=id=>document.getElementById(id);
 
@@ -11,8 +11,25 @@ const RESTART_FROM_STAGE1=false;
 const LIVES=9;
 const SAVE_KEY='nekonine.save.v2';
 
-const DEATH_QUOTES=["猫なのでセーフ。","生存には失敗しました。","命、落としました。","来世に任せた。","命ガチャ、次いきます。","新品の命ください。","一命で攻略情報を購入しました。","今のノーカンにならない？","まだ在庫ある。","思ったより命って減るな。","九つある前提で殺しにきてない？","猫じゃなかったら終わってた。","これ九回じゃ足りなくない？","命の使い方、これで合ってる？","残機って言うな。命だぞ。","このゲーム、猫に厳しくない？","仕様です。","これは演出です。","命、返品できます？","さっきまで生きてた。","今のは事故。","次はたぶん大丈夫。","セーブしたっけ？","リスポーン前提です。","転生。ヨシ。"];
-const LAST_LIFE_QUOTES=["あと、ひとつ。","これが最後の命。","……まだ、終われない。"];
+// Said by Nine right after losing a life. Light-hearted on purpose: the game is cruel, the cat is not.
+const DEATH_QUOTES=[
+  "猫なのでセーフ。","命、ひとつ落としました。","来世のぼく、あとはよろしく。","今のは練習。",
+  "九つあるって、そういう意味じゃない。","ぼくは悪くない。床が悪い。","知ってた。知らなかったけど。",
+  "次は、ちゃんと見る。","しっぽが引っかかった気がする。","にゃ。","痛くはない。ちょっとしか。",
+  "それは、ずるくない？","覚えた。たぶん。","今のノーカンにならない？","命、返品できます？",
+  "さっきまで生きてた。","猫じゃなかったら終わってた。","残機って言うな。命だぞ。",
+  "思ったより、命って減る。","毛づくろいしてから、もう一回。","ぼくのせいじゃない。……たぶん。",
+  "まっすぐ進むだけが、道じゃなかった。","見なかったことにして。"
+];
+// Lines tied to how many lives are left (after this death).
+const COUNT_QUOTES={
+  8:["ひとつめ。まだ平気。"],
+  6:["もう三つ。数えるのはやめよう。"],
+  4:["半分より、少なくなった。"],
+  3:["あと三つ。……急がなきゃ。"],
+  2:["あと、ふたつ。"],
+  1:["あと、ひとつ。","これが最後の命。","……まだ、終われない。"]
+};
 const RETRY_QUOTES=[
   "ぼくには九つある。\nそれでも君のひとつのほうが、ずっと大切だよ。",
   "うまく生きられなくてもいい。\n今日まで来たことは、なくならないから。",
@@ -25,10 +42,18 @@ const RETRY_QUOTES=[
   "先が見えないなら、今日はここまででもいい。\nまた歩ける日に続きをしよう。",
   "この先に何があるか、もう少しだけ一緒に見にいかない？",
   "ぼくの続きを見届けなくてもいい。\nでも、君の続きは見てほしいな。",
-  "クリアできなくてもいいよ。\n君が明日もいてくれたら、ぼくはうれしい。"
+  "クリアできなくてもいいよ。\n君が明日もいてくれたら、ぼくはうれしい。",
+  "九つ使い切っても、ぼくはまた歩けるよ。\n君が「もう一回」って言ってくれるなら。",
+  "転んだ場所は、ちゃんと覚えてる。\nだから次は、少しだけ遠くまで行ける。",
+  "急がなくていい。\nぼくはここで、待っていられるから。"
 ];
 function bag(list){ let b=[]; return ()=>{ if(!b.length){ b=list.slice(); for(let i=b.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [b[i],b[j]]=[b[j],b[i]]; } } return b.pop(); }; }
 const nextDeathQuote=bag(DEATH_QUOTES), nextRetryQuote=bag(RETRY_QUOTES);
+function deathQuoteFor(lives){
+  const c=COUNT_QUOTES[lives];
+  if(c && (lives<=3 || Math.random()<0.6)) return c[Math.floor(Math.random()*c.length)];
+  return nextDeathQuote();
+}
 const KANA_NUM=['ひとつ','ふたつ','みっつ','よっつ','いつつ','むっつ','ななつ','やっつ','ここのつ'];
 
 // ---------------------------------------------------------------------------
@@ -40,98 +65,7 @@ function writeSave(o){ try{ localStorage.setItem(SAVE_KEY,JSON.stringify(Object.
 // ---------------------------------------------------------------------------
 // Audio: WebAudio bank decoded from the original SE, HTMLAudio fallback.
 // ---------------------------------------------------------------------------
-const AU={
-  ctx:null, master:null, buf:{}, html:{}, ready:false,
-  init(){
-    try{ const C=window.AudioContext||window.webkitAudioContext; if(C){ this.ctx=new C(); this.master=this.ctx.createGain(); this.master.gain.value=1; this.master.connect(this.ctx.destination); } }catch(_){ this.ctx=null; }
-    for(const k in A.se){
-      if(this.ctx){
-        try{
-          const b64=A.se[k].split(',')[1], bin=atob(b64), u=new Uint8Array(bin.length);
-          for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i);
-          const p=this.ctx.decodeAudioData(u.buffer,b=>{ this.buf[k]=b; },()=>{});
-          if(p&&p.catch) p.catch(()=>{});
-        }catch(_){}
-      }
-    }
-  },
-  unlock(){
-    if(this.ctx){ try{ this.ctx.resume(); const s=this.ctx.createBufferSource(); s.buffer=this.ctx.createBuffer(1,1,22050); s.connect(this.master); s.start(0); }catch(_){} }
-    this.ready=true;
-  },
-  play(name,volMul){
-    const v=(A.seVolume[name]||0.1)*(volMul||1);
-    if(this.ctx && this.buf[name]){
-      try{ const s=this.ctx.createBufferSource(); s.buffer=this.buf[name]; const g=this.ctx.createGain(); g.gain.value=v; s.connect(g); g.connect(this.master); s.start(); }catch(_){}
-      return;
-    }
-    try{ let a=this.html[name]; if(!a){ a=this.html[name]=new Audio(A.se[name]); } a.volume=Math.min(1,v); a.currentTime=0; const p=a.play(); if(p&&p.catch) p.catch(()=>{}); }catch(_){}
-  },
-  noiseBuf(){
-    if(this._noise) return this._noise;
-    const c=this.ctx, n=c.sampleRate*2, b=c.createBuffer(1,n,c.sampleRate), d=b.getChannelData(0);
-    let last=0; for(let i=0;i<n;i++){ const w=Math.random()*2-1; last=(last+0.02*w)/1.02; d[i]=w*0.5+last*2; }
-    return this._noise=b;
-  },
-  setRain(level){
-    if(!this.ctx) return;
-    const c=this.ctx;
-    if(!this.rainNode){
-      const s=c.createBufferSource(); s.buffer=this.noiseBuf(); s.loop=true;
-      const hp=c.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=900;
-      const lp=c.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=6000;
-      const g=c.createGain(); g.gain.value=0;
-      s.connect(hp); hp.connect(lp); lp.connect(g); g.connect(this.master); s.start();
-      this.rainNode=g;
-    }
-    this.rainNode.gain.setTargetAtTime(level*0.035,c.currentTime,0.6);
-  },
-  whoosh(len,vol,freq){
-    if(!this.ctx) return;
-    const c=this.ctx, s=c.createBufferSource(); s.buffer=this.noiseBuf();
-    const f=c.createBiquadFilter(); f.type='bandpass'; f.frequency.value=freq||500; f.Q.value=0.8;
-    const g=c.createGain(); const t=c.currentTime;
-    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol||0.08,t+len*0.3); g.gain.linearRampToValueAtTime(0,t+len);
-    s.connect(f); f.connect(g); g.connect(this.master); s.start(t,Math.random()); s.stop(t+len+0.05);
-  },
-  thunder(){ this.whoosh(1.8,0.12,120); },
-  // A small music box for the ending (original melody).
-  musicBox(){
-    if(!this.ctx) return;
-    const c=this.ctx, t0=c.currentTime+0.3;
-    const N={C4:261.6,D4:293.7,E4:329.6,F4:349.2,G4:392,A4:440,B4:493.9,C5:523.3,D5:587.3,E5:659.3,F5:698.5,G5:784,A5:880};
-    const mel=[
-      ['E5',1],['G5',1],['C5',2],['D5',1],['E5',1],['D5',2],
-      ['C5',1],['A4',1],['G4',2],['A4',1],['C5',1],['D5',2],
-      ['E5',1],['G5',1],['A5',2],['G5',1],['E5',1],['D5',2],
-      ['C5',1],['D5',1],['E5',1],['D5',1],['C5',4],
-      ['E5',1],['G5',1],['C5',2],['D5',1],['E5',1],['G5',2],
-      ['A5',1],['G5',1],['E5',2],['D5',1],['E5',1],['C5',4]
-    ];
-    const bass=['C4','A4','F4','G4','C4','A4','F4','C4','C4','A4','F4','G4','F4','G4','C4','C4'];
-    const beat=0.42;
-    const rev=c.createConvolver();
-    const len=c.sampleRate*2.2, ir=c.createBuffer(2,len,c.sampleRate);
-    for(let ch=0;ch<2;ch++){ const d=ir.getChannelData(ch); for(let i=0;i<len;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3); }
-    rev.buffer=ir;
-    const wet=c.createGain(); wet.gain.value=0.35; rev.connect(wet); wet.connect(this.master);
-    const out=c.createGain(); out.gain.value=0.9; out.connect(this.master); out.connect(rev);
-    const note=(f,t,dur,vol)=>{
-      for(const [mul,type,v] of [[1,'sine',1],[2,'sine',0.25],[3,'triangle',0.08]]){
-        const o=c.createOscillator(); o.type=type; o.frequency.value=f*mul;
-        const g=c.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol*v,t+0.008); g.gain.exponentialRampToValueAtTime(0.0008,t+dur);
-        o.connect(g); g.connect(out); o.start(t); o.stop(t+dur+0.05);
-      }
-    };
-    let t=t0;
-    for(let rep=0;rep<2;rep++){
-      for(const [n,b] of mel){ note(N[n],t,Math.max(1.2,b*beat*1.8),0.07); t+=b*beat; }
-    }
-    let tb=t0;
-    for(let rep=0;rep<2;rep++) for(const n of bass){ note(N[n]/2,tb,2.2,0.035); tb+=beat*4*mel.reduce((a,m)=>a+m[1],0)/4/bass.length; }
-    this.musicEnd=t;
-  }
-};
+const AU=window.NEKO_AUDIO;
 
 // ---------------------------------------------------------------------------
 // State
@@ -142,7 +76,7 @@ const S={
   respawnAt:0, clearAt:0, playTime:0
 };
 const input={left:false,right:false,jump:false,press:false};
-let imgs=null;
+let imgs=null, ICON='';
 
 // ---------------------------------------------------------------------------
 // HUD
@@ -151,8 +85,8 @@ function updateLifeUI(lost){
   const cats=$('lifeCats'), hud=$('lifeHud');
   cats.replaceChildren();
   for(let i=0;i<S.lives+(lost?1:0);i++){
-    const img=document.createElement('img'); img.className='lifeCat'; img.alt=''; img.draggable=false; img.src=A.sprites.idle;
-    if(lost && i===S.lives) img.classList.add('lost');
+    const img=document.createElement('img'); img.className='lifeCat'; img.alt=''; img.draggable=false; img.src=ICON;
+    if(lost && i===S.lives){ img.classList.add('lost'); img.addEventListener('animationend',()=>img.remove(),{once:true}); }
     cats.appendChild(img);
   }
   hud.setAttribute('aria-label','残機 '+S.lives);
@@ -207,27 +141,49 @@ function enterStage(i,withStory){
   setHud(false);
   AU.setRain(0);
   const def=STAGES[i];
-  const go=()=>startStage(i);
+  const go=()=>startStage(i,!!withStory);
   const card={no:'STAGE '+(i+1),name:def.name};
   if(withStory==='prologue') showStory(PROLOGUE,null,()=>setTimeout(()=>showStory(def.story,card,go),700));
   else if(withStory) showStory(def.story,card,go);
   else showStory([],card,go);
 }
-function startStage(i){
+// Mercy: after a few lost lives in one stage, a checkpoint appears; traps that
+// killed you twice start showing a faint outline before they trigger.
+const CP_AFTER=3, HINT_AFTER=2;
+const M={deaths:0,known:new Map(),cpOn:false,cpReached:false};
+function spawnOpts(){
+  const cp=STAGES[S.stage].checkpoint;
+  return (M.cpReached&&cp)?{spawn:{x:cp.x,y:cp.y===undefined?E.G:cp.y}}:undefined;
+}
+function syncMercyUI(){
+  const cp=STAGES[S.stage].checkpoint;
+  S.ui.cp=M.cpOn&&cp?{x:cp.x,y:cp.y===undefined?E.G:cp.y,reached:M.cpReached}:null;
+  const k=new Set(); for(const [i,n] of M.known) if(n>=HINT_AFTER) k.add(i);
+  S.ui.known=k;
+}
+function startStage(i,fresh){
+  if(fresh!==false && (fresh || S.stage!==i)){ M.deaths=0; M.known=new Map(); M.cpOn=false; M.cpReached=false; }
   S.stage=i;
-  S.world=new E.World(STAGES[i]);
+  S.world=new E.World(STAGES[i],spawnOpts());
   R.ghosts=[]; R.parts=[];
   S.ui.snapCam=true; S.ui.deathQuote=''; input.press=false;
   $('msg').textContent='STAGE '+(i+1);
   updateLifeUI();
   setHud(true);
+  syncMercyUI();
   AU.setRain(STAGES[i].rain||0);
+  AU.music(STAGES[i].music||STAGES[i].theme);
   writeSave({stage:i,deaths:S.deaths});
   S.mode='play';
 }
 function onDeath(ev){
   S.lives=Math.max(0,S.lives-1);
   S.deaths++;
+  M.deaths++;
+  if(ev.killer>=0) M.known.set(ev.killer,(M.known.get(ev.killer)||0)+1);
+  const newlyCp=!M.cpOn && M.deaths>=CP_AFTER && STAGES[S.stage].checkpoint;
+  if(newlyCp) M.cpOn=true;
+  syncMercyUI();
   writeSave({deaths:S.deaths});
   updateLifeUI(true);
   if(S.lives<=0){
@@ -235,13 +191,31 @@ function onDeath(ev){
     S.mode='dying';
     setTimeout(showGameOver,900);
   }else{
-    S.ui.deathQuote=S.lives===1?LAST_LIFE_QUOTES[Math.floor(Math.random()*LAST_LIFE_QUOTES.length)]:nextDeathQuote();
+    S.ui.deathQuote=deathQuoteFor(S.lives);
     S.respawnAt=performance.now()+1050;
+    if(newlyCp) setTimeout(()=>toast('失くした命が、道しるべを残していった。'),1100);
   }
 }
 function respawn(){
-  S.world.reset();
+  S.world=new E.World(STAGES[S.stage],spawnOpts());
+  AU.play('meow',0.45);
   S.ui.deathQuote='';
+  S.ui.snapCam=!!M.cpReached;
+  input.press=false;
+}
+function checkMercy(){
+  const cp=S.ui.cp, P=S.world.P;
+  if(cp && !cp.reached && !P.dead && P.ground && P.x>=cp.x-6){
+    M.cpReached=true; syncMercyUI();
+    AU.play('checkpoint');
+    R.onEvent({type:'checkpoint',x:cp.x,y:cp.y},S.world);
+    toast('ここから、また歩ける。');
+  }
+}
+let toastT=0;
+function toast(text){
+  const el=$('toast'); el.textContent=text; el.classList.add('on');
+  clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('on'),2600);
 }
 function onClear(){
   S.clearAt=performance.now()+1700;
@@ -255,12 +229,12 @@ function showGameOver(){
   S.mode='gameover';
   setHud(false);
   AU.setRain(0);
-  AU.play('gameover');
+  AU.play('gameover'); AU.stopMusic(2.5);
   const over=$('gameOverScreen'), quote=over.querySelector('.gameOverQuote'), icons=[...over.querySelectorAll('.gameOverLives img')];
   goTimers.forEach(clearTimeout); goTimers=[];
   quote.textContent='';
-  icons.forEach(el=>{ el.src=A.sprites.idle; el.classList.remove('vanish'); });
-  over.querySelector('.retryNote').textContent=RESTART_FROM_STAGE1?'STAGE 1 から':'STAGE '+(S.stage+1)+' から';
+  icons.forEach(el=>{ el.src=ICON; el.classList.remove('vanish'); });
+  over.querySelector('.retryNote').textContent=RESTART_FROM_STAGE1?'STAGE 1 から':('STAGE '+(S.stage+1)+(M.cpReached?' の道しるべから':' から'));
   over.classList.remove('retryMoment');
   over.classList.add('show','lifeCount'); over.setAttribute('aria-hidden','false');
   $('retryBtn').disabled=false;
@@ -284,7 +258,8 @@ $('retryBtn').addEventListener('click',e=>{
     over.classList.remove('show','lifeCount','retryMoment'); over.setAttribute('aria-hidden','true');
     msg.classList.remove('show'); msg.setAttribute('aria-hidden','true');
     S.lives=LIVES;
-    enterStage(RESTART_FROM_STAGE1?0:S.stage,false);
+    if(RESTART_FROM_STAGE1){ S.stage=0; }
+    enterStage(S.stage,false);
   },3900));
 });
 
@@ -341,7 +316,7 @@ function advanceLine(){
 function showCredits(){
   $('endingText').className='';
   const c=$('credits'); const lv=c.querySelector('.lives'); lv.replaceChildren();
-  for(let i=0;i<LIVES;i++){ const im=document.createElement('img'); im.src=A.sprites.idle; if(i>=S.lives) im.classList.add('used'); lv.appendChild(im); }
+  for(let i=0;i<LIVES;i++){ const im=document.createElement('img'); im.src=ICON; if(i>=S.lives) im.classList.add('used'); lv.appendChild(im); }
   const m=Math.floor(S.playTime/60), s=Math.floor(S.playTime%60);
   c.querySelector('.stats').innerHTML=`死んだ回数　${S.deaths}<br>残った命　${S.lives} / ${LIVES}<br>プレイ時間　${m}:${String(s).padStart(2,'0')}`;
   c.classList.add('show');
@@ -360,10 +335,15 @@ function toTitle(){
   setHud(false);
   const t=$('titleScreen');
   const sv=loadSave();
-  t.classList.toggle('hasSave',sv.stage>0);
+  const has=sv.stage>0;
+  $('btnStart').hidden=has; $('btnContinue').hidden=!has; $('btnNew').hidden=!has;
+  $('btnContinue').innerHTML='つづきから<small>STAGE '+((sv.stage||0)+1)+'</small>';
   t.classList.toggle('cleared',!!sv.cleared);
-  $('btnContinue').textContent=`つづきから  STAGE ${ (sv.stage||0)+1 }`;
-  t.style.display=''; requestAnimationFrame(()=>t.classList.remove('hide'));
+  window.NEKO_TITLE.cleared=!!sv.cleared;
+  t.style.display='';
+  t.classList.remove('play'); void t.offsetWidth;
+  requestAnimationFrame(()=>{ t.classList.remove('hide'); t.classList.add('play'); });
+  if(AU.ready){ AU.music('title'); AU.setRain(0.45); }
 }
 function beginGame(fromStage){
   const sv=loadSave();
@@ -385,9 +365,19 @@ function titleTap(e,fromStage){
   requestFs();
   beginGame(fromStage);
 }
-$('titleScreen').addEventListener('pointerup',e=>{ if($('titleScreen').classList.contains('hasSave')) return; titleTap(e,0); });
-$('btnContinue').addEventListener('pointerup',e=>titleTap(e,loadSave().stage||0));
-$('btnNew').addEventListener('pointerup',e=>{ writeSave({stage:0,deaths:0}); titleTap(e,0); });
+$('btnStart').addEventListener('click',e=>{ writeSave({stage:0,deaths:0}); titleTap(e,0); });
+$('btnContinue').addEventListener('click',e=>titleTap(e,loadSave().stage||0));
+$('btnNew').addEventListener('click',e=>{ writeSave({stage:0,deaths:0}); titleTap(e,0); });
+// Splash: the first tap unlocks sound, so the title can greet you with music.
+$('splash').addEventListener('pointerup',e=>{
+  e.preventDefault();
+  if(S.mode!=='splash') return;
+  AU.unlock();
+  requestFs();
+  $('splash').classList.add('hide');
+  AU.music('title'); AU.setRain(0.45);
+  toTitle();
+});
 
 // ---------------------------------------------------------------------------
 // Input
@@ -405,7 +395,8 @@ addEventListener('keydown',e=>{
   if(e.key==='ArrowRight'||e.key==='d') input.right=true;
   if(e.code==='Space'||e.key==='ArrowUp'||e.key==='w'||e.key==='z'){ if(!input.jump) input.press=true; input.jump=true; e.preventDefault(); }
   if(e.key==='Enter'||e.code==='Space'){
-    if(S.mode==='title'){ const sv=loadSave(); AU.unlock(); AU.play('start'); beginGame(sv.stage>0?sv.stage:0); }
+    if(S.mode==='splash'){ $('splash').dispatchEvent(new PointerEvent('pointerup')); }
+    else if(S.mode==='title'){ const sv=loadSave(); AU.unlock(); AU.play('start'); beginGame(sv.stage>0?sv.stage:0); }
     else if(S.mode==='story'&&storyDone) storyDone();
     else if(S.mode==='credits'){ $('credits').classList.remove('show'); toTitle(); }
   }
@@ -441,6 +432,7 @@ function loop(now){
       }
       w.events.length=0;
     }
+    if(S.mode==='play') checkMercy();
     if(S.respawnAt && now>=S.respawnAt){ S.respawnAt=0; respawn(); }
     if(S.clearAt && now>=S.clearAt){
       S.clearAt=0;
@@ -453,6 +445,7 @@ function loop(now){
       R.frame(w,S.ui,dt);
       R.overlay(w,S.ui,now);
     }
+    if($('titleScreen').style.display!=='none' && window.NEKO_TITLE.cv) window.NEKO_TITLE.frame(dt);
     if(S.mode==='ending'||S.mode==='credits'){
       endingStep(dt);
       R.ending(END,dt);
@@ -476,7 +469,7 @@ function loop(now){
     upd();
   },true);
   document.addEventListener('fullscreenchange',upd); document.addEventListener('webkitfullscreenchange',upd);
-  const refresh=()=>{ document.documentElement.style.setProperty('--app-vh',innerHeight+'px'); window.scrollTo(0,0); R.cv&&R.resize(); };
+  const refresh=()=>{ document.documentElement.style.setProperty('--app-vh',innerHeight+'px'); window.scrollTo(0,0); R.cv&&R.resize(); window.NEKO_TITLE.cv&&window.NEKO_TITLE.resize(); };
   addEventListener('resize',refresh,{passive:true});
   addEventListener('orientationchange',()=>{ setTimeout(refresh,120); setTimeout(refresh,420); },{passive:true});
   if(window.visualViewport) visualViewport.addEventListener('resize',refresh,{passive:true});
@@ -487,19 +480,18 @@ function loop(now){
 // ---------------------------------------------------------------------------
 const load=src=>new Promise(res=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>res(im); im.src=src; });
 (async()=>{
-  $('titleCat').src=A.sprites.idle;
-  AU.init();
-  imgs={
-    idle:await load(A.sprites.idle),
-    walk:await Promise.all(A.sprites.walk.map(load)),
-    jump:{rise:await load(A.sprites.jump.rise),apex:await load(A.sprites.jump.apex),fall:await load(A.sprites.jump.fall),land:await load(A.sprites.jump.land)}
-  };
+    AU.init();
+  imgs=window.NEKO_SPRITES.build();
+  ICON=imgs.icon;
+
   R.init($('game'),imgs);
-  toTitle();
+  window.NEKO_TITLE.init($('titleCv'),imgs);
+  S.mode='splash';
   // Debug / test hook: ?stage=N starts directly at stage N.
   const q=new URLSearchParams(location.search);
-  if(q.has('stage')){ const n=Math.max(1,Math.min(STAGES.length,+q.get('stage')||1))-1; $('titleScreen').classList.add('hide'); $('titleScreen').style.display='none'; startStage(n); }
-  if(q.has('ending')){ $('titleScreen').classList.add('hide'); $('titleScreen').style.display='none'; S.deaths=+q.get('ending')||37; S.lives=3; startEnding(); }
+  if(q.has('title')){ $('splash').classList.add('hide'); toTitle(); }
+  if(q.has('stage')){ $('splash').classList.add('hide'); const n=Math.max(1,Math.min(STAGES.length,+q.get('stage')||1))-1; $('titleScreen').classList.add('hide'); $('titleScreen').style.display='none'; startStage(n); }
+  if(q.has('ending')){ $('splash').classList.add('hide'); $('titleScreen').classList.add('hide'); $('titleScreen').style.display='none'; S.deaths=+q.get('ending')||37; S.lives=3; startEnding(); }
   window.__neko={S,input,R,END,startStage,startEnding};
   requestAnimationFrame(loop);
 })();

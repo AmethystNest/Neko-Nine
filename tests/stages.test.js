@@ -1,4 +1,4 @@
-const {run,X,XL,GR}=require('./sim.js');
+const {run,X,XL,GR,STAGES}=require('./sim.js');
 const R={r:1}, L={l:1};
 const walk=(until)=>({r:1,until});
 const jumpR=(hold=0.5)=>[{r:1,j:1,p:1,t:hold},{r:1,until:GR}];
@@ -69,7 +69,7 @@ const cases={
 9:[
   ['naive walk',            'dead', [walk(X(2000))]],
   ['solution',              'clear',[walk(X(405)),...jumpR(0.6),walk(X(690)),...jumpR(0.6),walk(X(985)),{until:w=>w.ents[2].s.x<1045},{r:1,j:1,p:1,t:0.3},{r:1,until:GR},walk(X(1100)),
-                                     {until:w=>w.ents[2].s.x>1170},{r:1,j:1,p:1,until:X(1318)},{j:1,until:GR},{until:GR},wait(0.45),walk(X(1453)),wait(0.35),walk(X(1705)),...jumpR(0.6),walk(X(1860)),...jumpR(0.6),walk(X(2000))]],
+                                     {until:w=>w.ents[2].s.x>1160},{r:1,j:1,p:1,until:X(1318)},{j:1,until:GR},{until:GR},wait(0.45),walk(X(1453)),wait(0.35),walk(X(1705)),...jumpR(0.6),walk(X(1860)),...jumpR(0.6),walk(X(2000))]],
 ],
 10:[
   ['stage1 habit jump',     'dead', [walk(X(285)),...jumpR(0.6),walk(X(2000))]],
@@ -89,6 +89,16 @@ for(const k of Object.keys(cases)){
     console.log(`${ok?'OK  ':'FAIL'} S${k} ${name.padEnd(28)} -> ${r.res}${r.cause?' ('+r.cause+' x='+r.x+' y='+r.y+' step='+r.step+')':''} t=${r.t}`);
     if(!ok && process.env.TRACE) console.log(r.log.join('\n'));
   }
+}
+// Mercy checkpoints must be safe places to stand after respawning.
+for(let k=1;k<=10;k++){
+  if(only && k!==only) continue;
+  const def=STAGES[k-1];
+  const cp=def.checkpoint; if(!cp) { console.log('FAIL S'+k+' has no checkpoint'); fail++; continue; }
+  const r=run(k-1,[{t:k===9?1.2:3}],{spawn:{x:cp.x,y:cp.y===undefined?420:cp.y},maxT:k===9?1.2:3});
+  const ok=r.res!=='dead';
+  if(!ok) fail++;
+  console.log(`${ok?'OK  ':'FAIL'} S${k} checkpoint x=${cp.x} safe to stand   -> ${r.res}${r.cause?' ('+r.cause+')':''}`);
 }
 console.log(fail?`${fail} FAILED`:'ALL PASS');
 process.exit(fail?1:0);

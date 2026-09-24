@@ -38,8 +38,9 @@ function hurtHit(P,h){
 // World
 // ---------------------------------------------------------------------------
 class World{
-  constructor(def){
+  constructor(def,opts){
     this.def=def;
+    this.opts=opts||{};
     this.events=[];
     this.reset();
   }
@@ -52,7 +53,7 @@ class World{
     this.cleared=false;
     this.clearT=0;
     this.flags={};
-    const sp=d.spawn||{x:110,y:G};
+    const sp=this.opts.spawn||d.spawn||{x:110,y:G};
     this.P={x:sp.x,y:sp.y,vx:0,vy:0,facing:1,ground:true,ref:null,
       dead:false,deadT:0,cause:'',frame:0,anim:0,land:0,
       jumpT:0,jumpX:sp.x,coyote:0,jbuf:0,air:0,squash:0};
@@ -62,7 +63,7 @@ class World{
       this.statics.push({x:f[0],y:top,w:f[1]-f[0],h:WH+400-top,kind:'floor',style:f[3]||'floor'});
     }
     this.ents=d.ents?d.ents(F,this):[];
-    for(const e of this.ents) e.init && e.init(this);
+    this.ents.forEach((e,i)=>{ e.idx=i; e.init && e.init(this); for(const s of e.solids) s.owner=e; });
     this.S=this.collect();
     for(const s of this.S){ s.px=s.x; s.py=s.y; s.dx=0; s.dy=0; }
     this.goal=d.goal?Object.assign({w:42,h:82},d.goal):null;
@@ -76,17 +77,19 @@ class World{
     const out=this.statics.slice();
     for(const e of this.ents){
       if(!e.solids) continue;
-      for(const s of e.solids) if(s.on!==false) out.push(s);
+      for(const s of e.solids){ s.owner=e; if(s.on!==false) out.push(s); }
     }
     return out;
   }
-  kill(cause){
+  kill(cause,killer){
     const P=this.P;
     if(P.dead||this.cleared) return;
+    if(!killer && cause==='fall' && P.lastRef && P.lastRef.owner) killer=P.lastRef.owner;
+    this.killer=killer&&killer.idx!==undefined?killer.idx:-1;
     P.dead=true; P.deadT=0; P.cause=cause||'trap';
     P.vx=0; P.vy=0; P.ground=false; P.ref=null;
     this.se('death');
-    this.emit('death',{cause:P.cause,x:P.x,y:P.y});
+    this.emit('death',{cause:P.cause,x:P.x,y:P.y,killer:this.killer});
   }
   probe(){
     const P=this.P;
@@ -162,7 +165,7 @@ class World{
         if(l<r) P.x-=l; else P.x+=r;
       }
       const other=this.anyOverlap(s,1.2);
-      if(other){ this.kill('crush'); this.emit('squash',{}); this.shake(9); return; }
+      if(other){ this.kill('crush',s.owner); this.emit('squash',{}); this.shake(9); return; }
     }
 
     // --- input ---
@@ -258,10 +261,11 @@ class World{
       const hs=e.hazards(this);
       if(!hs) continue;
       for(const h of hs){
-        if(hurtHit(P,h)){ this.kill(e.cause||e.kind||'trap'); if(e.onKill) e.onKill(this); return; }
+        if(hurtHit(P,h)){ this.kill(e.cause||e.kind||'trap',e); if(e.onKill) e.onKill(this); return; }
       }
     }
 
+    if(P.ground && P.ref) P.lastRef=P.ref;
     if(P.y>WH+30){ this.kill('fall'); return; }
 
     // --- goal ---
