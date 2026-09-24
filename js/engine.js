@@ -787,7 +787,7 @@ class Pendulum extends Ent{
 
 // Railway crossing: trains pass through the zone (perpendicular to the screen).
 class Crossing extends Ent{
-  init(){ this.kind='train'; this.trainIdx=-1; this.active=false; this.pass=0; this.gk=0; this.alwaysUpdate=true; }
+  init(){ this.kind='train'; this.trainIdx=-1; this.active=false; this.pass=0; this.gk=0; this.alwaysUpdate=true; this.bellsDyn=[]; }
   update(w,dt){
     this.gk+=((this.bellOn&&this.st!=='done'?1:0)-this.gk)*Math.min(1,dt*5);
     if(this.st==='idle'){ if(this.triggered(w)){ this.st='bell'; this.tm=0; w.se('warn'); } }
@@ -796,16 +796,22 @@ class Crossing extends Ent{
       this.active=false;
       this.trainIdx=-1;
       const P=w.P, onTracks=!P.dead && P.x>=this.x0 && P.x<=this.x1;
+      let waiting=false;
       for(let i=0;i<this.trains.length;i++){
         const tr=this.trains[i];
-        // a train with 'enter' waits for the cat to step onto the tracks inside its window
-        if(tr.enter){ if(tr.at===undefined){ if(onTracks && this.tm>=tr.enter[0] && this.tm<tr.enter[1]) tr.at=this.tm+(tr.delay||0); else continue; } }
+        // a train with 'enter' waits for the cat to step onto the tracks (after 'enter' seconds);
+        // the bell rings again the moment it does
+        if(tr.enter!==undefined && tr.at===undefined){
+          if(onTracks && this.tm>=tr.enter){ tr.at=this.tm+(tr.delay||0); this.bellsDyn.push([this.tm,tr.at+tr.dur+0.3]); w.se('warn'); }
+          else { waiting=true; continue; }
+        }
         if(this.tm>=tr.at && this.tm<tr.at+tr.dur){ this.active=true; this.trainIdx=i; this.pass=(this.tm-tr.at)/tr.dur; if(!tr.fired){ tr.fired=true; w.se('wallmove'); w.shake(6);} }
       }
-      const bells=this.bells||[[0,this.gateUp]];
+      const bells=(this.bells||[[0,this.gateUp]]).concat(this.bellsDyn);
       this.bellOn=bells.some(b=>this.tm>=b[0]&&this.tm<b[1]);
       if(Math.floor(this.tm*2.6)!==this.ring && this.bellOn && Math.abs(w.P.x-(this.x0+this.x1)/2)<500){ this.ring=Math.floor(this.tm*2.6); w.se('warn'); }
-      if(this.tm>=bells[bells.length-1][1] && !this.active) this.st='done';
+      const end=Math.max(...bells.map(b=>b[1]));
+      if(!waiting && this.tm>=end && !this.active) this.st='done';
     }
   }
   hazards(){
