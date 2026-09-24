@@ -55,11 +55,11 @@ const cases={
 7:[
   ['naive walk+jump obstacle','dead',[walk(X(270)),...jumpR(0.6),walk(X(2000))]],
   ['wait one train only',   'dead', [walk(X(270)),...jumpR(0.6),walk(X(570)),{until:w=>w.ents[1].tm>1.9},walk(X(2000))]],
-  ['full jump over pit',    'dead', [walk(X(270)),...jumpR(0.6),walk(X(570)),{until:w=>w.ents[1].st==='done'},walk(X(975)),...jumpR(0.6),walk(X(2000))]],
-  ['solution',              'clear',[walk(X(270)),...jumpR(0.6),walk(X(570)),{until:w=>w.ents[1].st==='done'},walk(X(990)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(1300)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(2000)),{l:1,until:XL(1520)}]],
+  ['full jump over pit',    'dead', [walk(X(270)),...jumpR(0.6),walk(X(555)),{until:w=>w.ents[1].st==='done'},walk(X(975)),...jumpR(0.6),walk(X(2000))]],
+  ['solution',              'clear',[walk(X(270)),...jumpR(0.6),walk(X(555)),{until:w=>w.ents[1].st==='done'},walk(X(990)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(1300)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(2000)),{l:1,until:XL(1520)}]],
   ['go when gates lift',    'dead', [walk(X(270)),...jumpR(0.6),walk(X(570)),{until:w=>w.ents[1].tm>3.3},walk(X(2000))]],
-  ['full jump off walkway', 'dead', [walk(X(270)),...jumpR(0.6),walk(X(570)),{until:w=>w.ents[1].st==='done'},walk(X(990)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(1300)),...jumpR(0.6),walk(X(2000))]],
-  ['ride the walkway',      'dead', [walk(X(270)),...jumpR(0.6),walk(X(570)),{until:w=>w.ents[1].st==='done'},walk(X(990)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(2000))]],
+  ['full jump off walkway', 'dead', [walk(X(270)),...jumpR(0.6),walk(X(555)),{until:w=>w.ents[1].st==='done'},walk(X(990)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(1300)),...jumpR(0.6),walk(X(2000))]],
+  ['ride the walkway',      'dead', [walk(X(270)),...jumpR(0.6),walk(X(555)),{until:w=>w.ents[1].st==='done'},walk(X(990)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(2000))]],
 ],
 8:[
   ['naive walk',            'dead', [walk(X(2000))]],

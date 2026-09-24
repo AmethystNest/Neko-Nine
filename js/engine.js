@@ -12,7 +12,7 @@ const CFG={
   speed:230, accel:1200, airAccel:720, friction:1380, airFriction:300,
   gravity:1450, jump:740, maxFall:800, cutGravity:1.4,
   halfW:9, bodyH:46,
-  hurtHalfW:6.5, hurtTop:40, hurtBottom:3,
+  hurtHalfW:6.5, hurtHead:13, hurtTop:40, hurtBottom:3,
   coyote:0.08, jumpBuffer:0.11,
   walkFPS:10
 };
@@ -25,7 +25,9 @@ function ovPlayer(P,s){
   return P.x-HW<s.x+s.w && P.x+HW>s.x && P.y-BH<s.y+s.h && P.y>s.y;
 }
 function hurtHit(P,h){
-  const l=P.x-CFG.hurtHalfW, r=P.x+CFG.hurtHalfW, t=P.y-CFG.hurtTop, b=P.y-CFG.hurtBottom;
+  // The head sticks out in front of the body, so the hurtbox reaches a bit further forward.
+  const f=P.facing>=0?1:-1;
+  const l=f>0?P.x-CFG.hurtHalfW:P.x-CFG.hurtHead, r=f>0?P.x+CFG.hurtHead:P.x+CFG.hurtHalfW, t=P.y-CFG.hurtTop, b=P.y-CFG.hurtBottom;
   if(h.r!==undefined){
     const cx=clamp(h.x,l,r), cy=clamp(h.y,t,b);
     const dx=h.x-cx, dy=h.y-cy;

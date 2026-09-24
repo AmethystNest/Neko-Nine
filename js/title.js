@@ -44,12 +44,12 @@ const T={
       c.x+=c.v*dt; if(c.x>1.3) c.x=-0.3;
       const cx=wx+c.x*ww, cy=wy+c.y*wh, r=c.r*wh;
       const gr=g.createRadialGradient(cx,cy,0,cx,cy,r);
-      gr.addColorStop(0,`rgba(${c.col},${c.a})`); gr.addColorStop(1,`rgba(${c.col},0)`);
+      gr.addColorStop(0,`rgba(${c.col},${c.a*(1-0.5*this.warm)})`); gr.addColorStop(1,`rgba(${c.col},0)`);
       g.fillStyle=gr; g.beginPath(); g.ellipse(cx,cy,r*1.7,r,0,0,TAU); g.fill();
     }
     // stars
     for(const st of this.stars){
-      const a=st.a*(0.55+0.45*Math.sin(this.t*st.s+st.p));
+      const a=Math.min(1,st.a*(1+0.35*this.warm)*(0.55+0.45*Math.sin(this.t*st.s+st.p)));
       const x=wx+st.x*ww, y=wy+st.y*wh;
       if(st.big){ this.glow(g,x,y,st.r*5,'rgba(255,250,235,A)',a*0.35); }
       g.fillStyle=`rgba(255,250,240,${a})`; g.fillRect(x-st.r/2,y-st.r/2,st.r,st.r);
@@ -63,9 +63,22 @@ const T={
     m.fillStyle='#fff4dc'; m.beginPath(); m.arc(ms/2,ms/2,mr,0,TAU); m.fill();
     m.globalCompositeOperation='destination-out'; m.beginPath(); m.arc(ms/2+mr*0.45,ms/2-mr*0.3,mr*0.92,0,TAU); m.fill(); m.globalCompositeOperation='source-over';
     g.drawImage(mc,mx-ms/2,my-ms/2);
+    // shooting star (after the rain has stopped)
+    if(this.cleared){
+      this.shoot=(this.shoot||{t:4,x:0.7,y:0.1});
+      this.shoot.t+=dt;
+      if(this.shoot.t>6){ this.shoot={t:0,x:0.45+Math.random()*0.45,y:0.05+Math.random()*0.25}; }
+      if(this.shoot.t<0.9){
+        const k=this.shoot.t/0.9, sx=wx+(this.shoot.x-k*0.35)*ww, sy2=wy+(this.shoot.y+k*0.18)*wh;
+        const gr=g.createLinearGradient(sx,sy2,sx+ww*0.12,sy2-wh*0.06);
+        gr.addColorStop(0,`rgba(255,250,235,${0.9*(1-k)})`); gr.addColorStop(1,'rgba(255,250,235,0)');
+        g.strokeStyle=gr; g.lineWidth=2; g.beginPath(); g.moveTo(sx,sy2); g.lineTo(sx+ww*0.12,sy2-wh*0.06); g.stroke();
+      }
+    }
     // rain outside
+    const raining=!this.cleared;
     g.strokeStyle='rgba(200,195,245,.22)'; g.lineWidth=1; g.beginPath();
-    for(const r of this.streaks){
+    if(raining) for(const r of this.streaks){
       r.y+=dt*1.25*r.s; if(r.y>1.05){ r.y=-0.05; r.x=Math.random(); }
       const x=wx+r.x*ww, y=wy+r.y*wh; g.moveTo(x,y); g.lineTo(x-2.5,y+15*r.s);
     }
@@ -73,7 +86,8 @@ const T={
     // drops on the glass
     for(let i=0;i<this.drops.length;i++){
       const d=this.drops[i];
-      if(d.stick>0) d.stick-=dt; else d.y+=d.v*dt*2;
+      if(!raining){ d.stick=1; if(i%4) continue; }
+      if(d.stick>0) d.stick-=raining?dt:0; else d.y+=d.v*dt*2;
       if(d.y>1.02){ this.drops[i]=this.newDrop(false); continue; }
       const x=wx+d.x*ww, y=wy+d.y*wh, r=d.r*ww;
       if(d.stick<=0){ g.strokeStyle='rgba(220,210,255,.08)'; g.lineWidth=r*0.9; g.beginPath(); g.moveTo(x,y); g.lineTo(x,y-r*7); g.stroke(); }
@@ -107,8 +121,10 @@ const T={
     // Nine on the sill, seen from behind, looking up at the moon
     if(this.cleared){
       // after the ending: you and Nine, together at the window
-      this.catBack(g,wx+ww*0.68,sy,wh*0.44);
-      this.ownerBack(g,wx+ww*0.4,sy+wh*0.08,wh*0.62);
+      const ox=wx+ww*0.5, oy=wy+wh*0.78;
+      const os=wh*0.78/220;
+      this.ownerBack(g,ox,oy,wh*0.78);
+      this.catBack(g,ox+60*os,oy-12*os,wh*0.28,true);
     }else{
       this.catBack(g,wx+ww*0.64,sy,wh*0.5);
     }
@@ -142,36 +158,54 @@ const T={
     g.drawImage(C,px,py); g.drawImage(B,px,py);
     g.restore();
   },
-  // You, seen from behind, sitting by the window with a hand on Nine's back.
+  // You, seen from behind: a wolf cut and an oversized hoodie, Nine on your shoulder.
   ownerBack(g,x,y,h){
-    const s=h/150, t=this.t;
-    const breathe=Math.sin(t*1.2)*0.6;
-    this.lit(g,x,y,s,'owner',[-60,-100,110,170],c=>{
+    const s=h/220, t=this.t;
+    const br=Math.sin(t*1.1)*0.8;
+    this.lit(g,x,y,s,'owner',[-110,-150,110,220],c=>{
+      // hoodie body, soft shoulders
       c.beginPath();
-      c.moveTo(-54,170); c.lineTo(-54,40);
-      c.bezierCurveTo(-54,2,-36,-18,-11,-24+breathe);
-      c.lineTo(11,-24+breathe);
-      c.bezierCurveTo(36,-18,54,2,54,40); c.lineTo(54,170); c.closePath(); c.fill();
-      c.fillRect(-9,-38,18,18);
-      c.save(); c.translate(1,-58+breathe); c.rotate(0.12);
-      c.beginPath(); c.ellipse(0,0,22,25,0,0,TAU); c.fill();
-      // hair: a soft bob
-      c.beginPath(); c.moveTo(-26,-6); c.bezierCurveTo(-28,-34,26,-38,27,-6); c.bezierCurveTo(28,10,24,22,18,26); c.lineTo(-18,26); c.bezierCurveTo(-25,20,-27,8,-26,-6); c.fill();
+      c.moveTo(-96,220); c.bezierCurveTo(-100,120,-96,40,-78,12+br);
+      c.bezierCurveTo(-60,-8,-34,-18,-14,-22+br);
+      c.lineTo(14,-22+br);
+      c.bezierCurveTo(34,-18,60,-8,78,12+br);
+      c.bezierCurveTo(96,40,100,120,96,220); c.closePath(); c.fill();
+      // hood lying on the upper back
+      c.beginPath(); c.ellipse(0,-6+br,40,20,0,0,TAU); c.fill();
+      // neck
+      c.fillRect(-11,-40,22,26);
+      // head, tilted toward Nine
+      c.save(); c.translate(3,-72+br); c.rotate(0.14); c.scale(1.1,1.1);
+      c.beginPath(); c.ellipse(0,0,26,29,0,0,TAU); c.fill();
+      // wolf cut: a rounded crown, soft choppy layers, a longer nape
+      c.beginPath();
+      c.moveTo(-31,-2);
+      c.bezierCurveTo(-36,-40,36,-40,31,-2);
+      const locks=[[36,14],[29,11],[38,30],[27,25],[31,45],[20,37],[17,60],[8,47],[1,66],[-7,47],[-16,60],[-20,37],[-30,45],[-27,25],[-38,30],[-29,11],[-36,14],[-31,-2]];
+      let px=31, py=-2;
+      for(const [lx,ly] of locks){ c.quadraticCurveTo((px+lx)/2+(ly>py?2:-2)*Math.sign(lx||1),(py+ly)/2,lx,ly); px=lx; py=ly; }
+      c.closePath(); c.fill();
+      // a few soft flyaway tufts on the crown
+      for(const [tx,ty,r,a] of [[-18,-27,5,-0.7],[20,-26,5,0.7]]){ c.beginPath(); c.ellipse(tx,ty,r*0.7,r,a,0,TAU); c.fill(); }
       c.restore();
-      // arm reaching toward the cat
-      c.lineCap='round'; c.lineWidth=17; c.beginPath(); c.moveTo(38,10); c.bezierCurveTo(60,4,76,-4,92,-14); c.stroke();
-      c.beginPath(); c.ellipse(96,-17,9,7,-0.4,0,TAU); c.fill();
-    },'rgba(175,155,255,.45)');
+      // shoulder seam where Nine sits
+      c.beginPath(); c.ellipse(58,-4+br,26,10,0.15,0,TAU); c.fill();
+    },'rgba(175,155,255,.5)');
+    // hoodie drawstrings catching the moonlight
+    g.save(); g.translate(x,y); g.scale(s,s);
+    g.strokeStyle='rgba(190,180,240,.35)'; g.lineWidth=1.4;
+    g.beginPath(); g.moveTo(-26,-8+br); g.quadraticCurveTo(-30,4,-28,14); g.stroke();
+    g.restore();
   },
   // Nine seen from behind: the scarf-wearing design, looking up at the moon.
-  catBack(g,x,y,h){
+  catBack(g,x,y,h,onShoulder){
     const s=h/112, t=this.t;
     const BASE='#0f0d1c';
     const breathe=1+0.008*Math.sin(t*1.6);
     // Build the silhouette once per frame on offscreen layers so shading and rim light
     // follow the real outline (no seams between head, body and tail).
     const d=this.dpr, pad=50;
-    const cw=Math.ceil((130+pad*2)*s*d), chh=Math.ceil((125+pad)*s*d);
+    const cw=Math.ceil((130+pad*2)*s*d), chh=Math.ceil((150+pad)*s*d);
     const L=this.layers||(this.layers=[0,1,2].map(()=>document.createElement('canvas')));
     for(const c of L){ if(c.width!==cw||c.height!==chh){ c.width=cw; c.height=chh; } }
     const ox=(45+pad)*s*d, oy=(118)*s*d;
@@ -187,7 +221,8 @@ const T={
       c.closePath(); c.fill();
       const sw=Math.sin(t*0.9)*3;
       c.lineWidth=9; c.lineCap='round'; c.beginPath();
-      c.moveTo(22,-5); c.bezierCurveTo(46,4,70,4,80,-6); c.bezierCurveTo(86,-13,84+sw,-22,78+sw,-26); c.stroke();
+      if(onShoulder){ c.moveTo(-18,-4); c.bezierCurveTo(-34,8,-40+sw,34,-30+sw,60); c.bezierCurveTo(-24+sw,70,-16+sw,68,-14+sw,60); c.stroke(); }
+      else { c.moveTo(22,-5); c.bezierCurveTo(46,4,70,4,80,-6); c.bezierCurveTo(86,-13,84+sw,-22,78+sw,-26); c.stroke(); }
       c.translate(-2,-82); c.rotate(-0.2);
       c.beginPath(); c.ellipse(0,0,19,16.5,0,0,TAU); c.fill();
       c.beginPath(); c.ellipse(0,6,21,10.5,0,0,TAU); c.fill();

@@ -779,8 +779,10 @@ const R={
     g.restore();
 
     this.dynBack(g,w,T);
-    for(const e of w.ents) if(e.draw && !e.front) e.draw(g,w,T);
+    // doors sit in the background: arrows, bells and falling things pass in front of them
     if(w.goal) drawDoor(g,w.goal.x,w.goal.y||G,T.door,w.t,{glow:w.def.final||T.dark,leak:w.def.final});
+    for(const e of w.ents) if(e.kind==='fakedoor') e.draw(g,w,T);
+    for(const e of w.ents) if(e.draw && !e.front && e.kind!=='fakedoor') e.draw(g,w,T);
     if(ui.cp) drawCheckpoint(g,ui.cp,w.t,this.whiteOf(this.imgs.sit));
     if(ui.known && ui.known.size){ for(const e of w.ents){ if(!ui.known.has(e.idx)||!e.hintRect) continue; const r=e.hintRect(w); if(r) drawHint(g,r,w.t); } }
     this.drawGhosts(g,w,dt);
