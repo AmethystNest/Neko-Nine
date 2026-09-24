@@ -81,6 +81,11 @@ body.nohud .controls button{pointer-events:none}
 .titleMenu button:focus-visible{outline:1px dashed rgba(203,188,255,.6);outline-offset:4px}
 .titleMenu button small{font:600 .7em/1 var(--serif);letter-spacing:.18em;opacity:.6;margin-left:.8em}
 .titleMenu [hidden]{display:none!important}
+@media (max-height:520px){
+  .titleName{font-size:clamp(40px,min(11vw,17vh),120px)}
+  .titleMenu{margin-top:clamp(8px,3vh,20px);gap:0}
+  .titleMenu button{padding:4px 2px;font-size:clamp(14px,4.2vh,19px)}
+}
 .titleClear{margin-top:14px;font:600 11px/1 var(--serif);letter-spacing:.3em;color:#cbbcff;opacity:.8;display:none}
 #titleScreen.cleared .titleClear{display:block}
 #titleScreen.play .tagline{animation:rise 1.6s ease .3s forwards}
@@ -173,6 +178,11 @@ body.nohud #pauseBtn{opacity:0;pointer-events:none}
 .sheet kbd{display:inline-block;min-width:1.5em;padding:1px 6px;border:1px solid #4a4580;border-bottom-width:2px;border-radius:5px;background:#221f40;font:600 12px/1.5 system-ui;text-align:center;color:#efe9ff}
 .sheet .help .note{grid-column:1/-1;color:#b5acd8;font-size:12.5px}
 body.touch .help.pc,body:not(.touch) .help.tp{display:none}
+.selectBox{max-height:calc(100dvh - 24px);overflow:auto}
+.stageGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px}
+.stageGrid button{display:flex;align-items:baseline;gap:10px;background:none;border:0;border-radius:8px;padding:7px 8px;text-align:left;color:#efe9ff;cursor:pointer;font:700 15px/1.3 var(--serif);letter-spacing:.08em;white-space:nowrap}
+.stageGrid button small{font:600 11px/1 var(--display);letter-spacing:.14em;color:#9f97c8;min-width:4.6em}
+.stageGrid button:hover,.stageGrid button:focus-visible{background:#221f40;color:#9fdcff;outline:none}
 .sheet .val{font:600 12px/1 system-ui;text-align:right;color:#b5acd8;font-variant-numeric:tabular-nums}
 
 /* ---- toast ---- */
@@ -253,6 +263,7 @@ body.touch .help.pc,body:not(.touch) .help.tp{display:none}
       <button id="btnStart" class="primary" type="button">はじめる</button>
       <button id="btnContinue" class="primary" type="button" hidden>つづきから</button>
       <button id="btnNew" type="button" hidden>はじめから</button>
+      <button id="btnSelect" type="button" hidden>ステージ選択</button>
       <button id="btnHelp" type="button">操作方法</button>
       <button id="btnSettings" type="button">設定</button>
     </div>
@@ -271,6 +282,11 @@ body.touch .help.pc,body:not(.touch) .help.tp{display:none}
   <label for="volMusic">BGM<input id="volMusic" type="range" min="0" max="100" step="5"><span class="val" id="volMusicV"></span></label>
   <label for="volSe">効果音<input id="volSe" type="range" min="0" max="100" step="5"><span class="val" id="volSeV"></span></label>
   <button class="item" id="btnSettingsClose" type="button">とじる</button>
+</div></div>
+<div id="select" class="sheet" aria-hidden="true"><div class="box selectBox">
+  <h2>Stages</h2>
+  <div class="stageGrid" id="stageGrid"></div>
+  <button class="item" id="btnSelectClose" type="button">とじる</button>
 </div></div>
 <div id="help" class="sheet" aria-hidden="true"><div class="box">
   <h2>Controls</h2>

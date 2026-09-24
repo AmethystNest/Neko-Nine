@@ -388,16 +388,18 @@ function toTitle(){
   $('btnStart').hidden=has; $('btnContinue').hidden=!has; $('btnNew').hidden=!has;
   $('btnContinue').innerHTML='つづきから<small>STAGE '+((sv.stage||0)+1)+'</small>';
   t.classList.toggle('cleared',!!sv.cleared);
+  $('btnSelect').hidden=!sv.cleared;
   window.NEKO_TITLE.cleared=!!sv.cleared;
   t.style.display='';
   t.classList.remove('play'); void t.offsetWidth;
   requestAnimationFrame(()=>{ t.classList.remove('hide'); t.classList.add('play'); });
   if(AU.ready){ AU.music('title'); AU.setRain(sv.cleared?0:0.45); }
 }
-function beginGame(fromStage){
+function beginGame(fromStage,picked){
   const sv=loadSave();
   S.lives=LIVES;
-  S.deaths=fromStage>0?(sv.deaths||0):0;
+  // a stage picked from the select menu starts a fresh run from there
+  S.deaths=fromStage>0&&!picked?(sv.deaths||0):0;
   S.fallGag=fromStage>0?(sv.fallGag||0):0;
   S.playTime=0;
   const t=$('titleScreen'); t.classList.add('hide'); setTimeout(()=>{ if(t.classList.contains('hide')) t.style.display='none'; },700);
@@ -408,13 +410,22 @@ function requestFs(){
   try{ const r=document.documentElement; if(r.requestFullscreen&&!document.fullscreenElement){ const p=r.requestFullscreen({navigationUI:'hide'}); if(p&&p.catch)p.catch(()=>{}); } else if(r.webkitRequestFullscreen&&!document.webkitFullscreenElement) r.webkitRequestFullscreen(); }catch(_){}
   try{ if(screen.orientation&&screen.orientation.lock){ const p=screen.orientation.lock('landscape'); if(p&&p.catch)p.catch(()=>{}); } }catch(_){}
 }
-function titleTap(e,fromStage){
+function titleTap(e,fromStage,picked){
   if(S.mode!=='title') return;
   e.preventDefault(); e.stopPropagation();
   AU.unlock(); AU.play('start');
   requestFs();
-  beginGame(fromStage);
+  beginGame(fromStage,picked);
 }
+// Stage select (unlocked after the ending)
+STAGES.forEach((d,i)=>{
+  const b=document.createElement('button'); b.type='button';
+  b.innerHTML='<small>STAGE '+(i+1)+'</small>'; b.appendChild(document.createTextNode(d.name));
+  b.addEventListener('click',e=>{ sheet('select',false); writeSave({stage:i,deaths:0}); titleTap(e,i,true); });
+  $('stageGrid').appendChild(b);
+});
+$('btnSelect').addEventListener('click',e=>{ e.stopPropagation(); AU.unlock(); sheet('select',true); });
+$('btnSelectClose').addEventListener('click',()=>sheet('select',false));
 $('btnStart').addEventListener('click',e=>{ writeSave({stage:0,deaths:0}); titleTap(e,0); });
 $('btnContinue').addEventListener('click',e=>titleTap(e,loadSave().stage||0));
 $('btnNew').addEventListener('click',e=>{ writeSave({stage:0,deaths:0}); titleTap(e,0); });
@@ -509,7 +520,7 @@ addEventListener('keydown',e=>{
   if(e.key==='ArrowRight'||e.key==='d') input.right=true;
   if(e.code==='Space'||e.key==='ArrowUp'||e.key==='w'||e.key==='z'){ if(!input.jump) input.press=true; input.jump=true; e.preventDefault(); }
   // a help/settings sheet opened from the title: Esc closes it, other keys are ignored
-  const sub=['help','settings'].find(id=>$(id).classList.contains('show'));
+  const sub=['select','help','settings'].find(id=>$(id).classList.contains('show'));
   if(sub && !S.paused){ if(e.key==='Escape') sheet(sub,false); return; }
   if(e.key==='Escape'||e.key==='p'){ if(sub){ sheet(sub,false); return; } if(S.paused) resumeGame(); else pauseGame(); return; }
   if(S.paused){ if(e.key==='Enter') resumeGame(); return; }
