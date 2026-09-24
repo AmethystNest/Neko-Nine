@@ -438,12 +438,19 @@ P.Shot.prototype.draw=function(g,w,T){
     g.fillStyle='#c0504a'; g.beginPath(); g.moveTo(tail,y); g.lineTo(tail-dir*10,y-6); g.lineTo(tail+dir*4,y); g.lineTo(tail-dir*10,y+6); g.fill();
   }else if(this.style==='crow'){
     const f=Math.sin(this.ft*28);
+    // moonlit rim so the black bird reads against the night sky
+    g.save(); g.strokeStyle='rgba(185,205,255,.75)'; g.lineWidth=2.4;
+    g.beginPath(); g.ellipse(x,y,15,7,0,0,TAU); g.stroke();
+    g.beginPath(); g.arc(x+dir*13,y-3,6,0,TAU); g.stroke();
+    g.beginPath(); g.moveTo(x-6,y-2); g.lineTo(x-4*dir,y-16*f-2); g.lineTo(x+2,y-2); g.stroke();
+    g.restore();
     g.fillStyle='#0c0c10';
     g.beginPath(); g.ellipse(x,y,15,7,0,0,TAU); g.fill();
     circ(g,'#0c0c10',x+dir*13,y-3,6);
     g.beginPath(); g.moveTo(x-6,y-2); g.lineTo(x+2,y-2); g.lineTo(x-4*dir,y-16*f-2); g.fill();
     g.fillStyle='#d8b030'; g.beginPath(); g.moveTo(x+dir*18,y-4); g.lineTo(x+dir*25,y-2); g.lineTo(x+dir*18,y); g.fill();
-    circ(g,'#f04040',x+dir*14,y-4,1.6);
+    glow(g,x+dir*14,y-4,9,'rgba(255,80,80,A)',0.6);
+    circ(g,'#ff5a5a',x+dir*14,y-4,1.8);
   }else{
     rect(g,'#30353a',x-this.w/2,y-this.h/2,this.w,this.h);
     rect(g,'#ef8a3a',x-this.w/2,y-this.h/2,this.w,5);
@@ -902,8 +909,10 @@ const R={
     }
     g.globalAlpha=1;
   },
-  sprite(w){
+  sprite(w,ui){
     const P=w.P, im=this.imgs;
+    if(ui&&ui.sleep) return im.sitBlink;
+    if(ui&&ui.idleT>5&&P.ground&&Math.abs(P.vx)<=8) return (w.t%0.9)<0.45?im.sitBlink:im.sit;
     if(!P.ground){ if(P.vy<-120) return im.jump.rise; if(Math.abs(P.vy)<=120) return im.jump.apex; return im.jump.fall; }
     if(P.land>0) return im.jump.land;
     if(Math.abs(P.vx)>8) return im.walk[P.frame];
@@ -912,7 +921,7 @@ const R={
   bottomOf(sp){ return sp.height; },
   drawCat(g,w,ui){
     const P=w.P;
-    let sp=this.sprite(w);
+    let sp=this.sprite(w,ui);
     const SC=window.NEKO_SPRITES.SCALE, dw=sp.width*SC, dh=sp.height*SC, pad=0;
     if(P.dead){
       // the body flashes white and fades; a small soul rises
@@ -933,7 +942,18 @@ const R={
     g.translate(Math.round(P.x),Math.round(P.y+pad));
     if(P.facing<0) g.scale(-1,1);
     g.drawImage(sp,Math.round(-dw/2),Math.round(-dh),Math.round(dw),Math.round(dh));
+    // once in a while, falling into a pit, the cat really does try to fly
+    if(w.flap && !P.ground && P.vy>0 && P.y>G+4){
+      const k=Math.sin(w.t*38)*0.8;
+      g.fillStyle='#f4f1ea'; g.strokeStyle='#8a8fa8'; g.lineWidth=1;
+      for(const s of [0,1]){ g.save(); g.translate(s?2:-6,-dh*0.62); g.scale(1.3,1.3); g.rotate(-0.5+k+(s?0.35:0)); g.globalAlpha=s?1:0.7; g.beginPath(); g.moveTo(0,0); g.quadraticCurveTo(-8,-20,-26,-16); g.quadraticCurveTo(-14,-6,0,0); g.fill(); g.stroke(); g.restore(); }
+    }
     g.restore();
+    if(ui&&ui.sleep){
+      g.save(); g.fillStyle='#eef2ff'; g.shadowColor='rgba(0,0,0,.6)'; g.shadowBlur=4; g.font="italic 700 20px 'Cormorant Garamond',Georgia,serif";
+      for(let i=0;i<3;i++){ const k=((performance.now()/1000)*0.5+i/3)%1; g.globalAlpha=Math.sin(k*Math.PI); g.fillText('z',P.x+10+k*16,P.y-dh-2-k*26); }
+      g.restore();
+    }
   },
   // The last door: it swings open and warm light floods the hallway.
   drawHomeLight(g,w,t,dt){

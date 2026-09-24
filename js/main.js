@@ -87,6 +87,7 @@ function trapKeyOf(ev){
   return ev.cause==='fall'?'fall':null;
 }
 function trapLine(key){
+  if(S.world&&S.world.flap&&FALL_KEYS.has(key)) return '羽、生えた気がしたのに。';
   // pits and floors: the running bird gag comes first (the moving floor also has its own lines)
   if(FALL_KEYS.has(key) && S.fallGag<FALL_GAG.length && !(key==='pit' && Math.random()<0.5)){
     return FALL_GAG[S.fallGag++];
@@ -151,10 +152,11 @@ let storyDone=null, storyTimers=[], storyStage=0, storyOpenedAt=0, storyInstant=
 const STORY_SKIP_GUARD=700;
 function skipStory(){ if(storyDone && performance.now()-storyOpenedAt>=STORY_SKIP_GUARD) storyDone(); }
 function clearStoryTimers(){ storyTimers.forEach(clearTimeout); storyTimers=[]; }
-function showStory(lines,card,then){
+function showStory(lines,card,then,you){
   const el=$('story');
   clearStoryTimers();
   el.replaceChildren();
+  el.classList.toggle('you',!!you);
   const box=document.createElement('div');
   el.appendChild(box);
   const skip=document.createElement('div'); skip.className='skip'; skip.textContent=(IS_TOUCH()?'TAP':'CLICK')+' ▶'; el.appendChild(skip);
@@ -204,9 +206,12 @@ function enterStage(i,withStory){
   // a retry keeps this stage's mercy (checkpoint, trap hints); a new stage starts fresh
   const go=()=>startStage(i,withStory==='retry'?false:!!withStory);
   const card={no:'STAGE '+(i+1),name:def.name};
+  // after the ending, the same nights are told from your side
+  const you=!!loadSave().cleared && def.storyYou;
+  const story=you?def.storyYou:def.story;
   // chain straight into the stage story so the screen never drops to the old stage in between
-  if(withStory==='prologue') showStory(PROLOGUE,null,()=>showStory(def.story,card,go));
-  else if(withStory) showStory(def.story,card,go);
+  if(withStory==='prologue') showStory(PROLOGUE,null,()=>showStory(story,card,go,you));
+  else if(withStory) showStory(story,card,go,you);
   else showStory([],card,go);
 }
 // Mercy (only after a game over in this stage): a checkpoint appears, and traps
@@ -227,6 +232,7 @@ function startStage(i,fresh){
   if(fresh!==false && (fresh || S.stage!==i)){ M.deaths=0; M.known=new Map(); M.cpOn=false; M.cpReached=false; R.trail=null; }
   S.stage=i;
   S.world=new E.World(STAGES[i],spawnOpts());
+  rollFlap(S.world);
   R.ghosts=[]; R.parts=[];
   S.ui.snapCam=true; S.ui.deathQuote=''; input.press=false;
   $('msg').textContent='STAGE '+(i+1);
@@ -257,8 +263,11 @@ function onDeath(ev){
     S.respawnAt=S.clock+1.05;
   }
 }
+// After the bird gag has run its course, now and then the cat tries to flap over a pit.
+function rollFlap(w){ w.flap=S.fallGag>=FALL_GAG.length && Math.random()<0.15; }
 function respawn(){
   S.world=new E.World(STAGES[S.stage],spawnOpts());
+  rollFlap(S.world);
   AU.play('meow',0.45);
   S.ui.deathQuote='';
   S.ui.snapCam=!!M.cpReached;
@@ -358,6 +367,9 @@ function startEnding(){
     ['cat','うまく生きられない日があっても、'],
     ['cat','そのひとつを、どうか手放さないで。'],
     ['cat',`残った${KANA_NUM[left-1]}の命は、ぜんぶ君のそばで使うよ。`],
+    // a few words more, depending on how many lives Nine brought home
+    ...(left>=LIVES?[['you','……九つとも、ちゃんと持って帰ってきたんだね。'],['cat','うん。ぜんぶ、君に会うためにとっておいた。']]:
+        left===1?[['you','ぼろぼろじゃない……。'],['cat','最後のひとつで、間に合った。']]:[]),
     ['you','……おかえり、ナイン。',()=>{ END.lightOn=true; }],
     ['cat','ただいま。']
   ];
@@ -599,6 +611,10 @@ function loop(now){
     }
   }
   const rdt=active?dt:0;
+  // idle grooming / sleeping during pause
+  const busy=input.left||input.right||input.jump;
+  S.ui.idleT=(active&&!busy&&w&&!w.P.dead)?(S.ui.idleT||0)+dt:0;
+  S.ui.sleep=!!S.paused;
   try{
     if(w && (S.mode==='play'||S.mode==='dying'||S.mode==='story'||S.mode==='gameover')){
       R.frame(w,S.ui,rdt);
