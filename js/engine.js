@@ -128,6 +128,8 @@ class World{
 
     // --- entities (traps) update; solids record their motion this frame ---
     for(const s of this.S){ s.px=s.x; s.py=s.y; }
+    // any trap guarding the exit may lock the door this frame
+    if(this.goal) this.goal.locked=false;
     for(const e of this.ents) e.update && e.update(this,dt);
     this.S=this.collect();
     for(const s of this.S){
@@ -477,7 +479,7 @@ class Crusher extends Ent{
     this.s.y=this.y;
     this.s.on=this.y+this.h>this.ceil+0.5;
     // a press guarding the exit keeps the door shut until it has come down
-    if(this.lockGoal && w.goal) w.goal.locked=this.st==='wait'||this.st==='fall';
+    if(this.lockGoal && w.goal && (this.st==='wait'||this.st==='fall')) w.goal.locked=true;
   }
   fallDur(){ return (this.floor-this.h-this.restY)/this.fallSpeed; }
   riseDur(){ return (this.floor-this.h-this.restY)/this.riseSpeed; }
@@ -571,7 +573,7 @@ class Shot extends Ent{
     // a shot guarding the exit keeps the door shut until it has passed the cat
     if(this.lockGoal && w.goal){
       const ahead=this.from==='left'?this.x-this.w/2<w.P.x+CFG.hurtHead:this.x+this.w/2>w.P.x-CFG.hurtHead;
-      w.goal.locked=this.st==='wait'||(this.st==='fly'&&ahead);
+      if(this.st==='wait'||(this.st==='fly'&&ahead)) w.goal.locked=true;
     }
   }
   cy(){ return this.y+(this.dive?Math.max(0,this.dive*Math.sin(Math.min(Math.PI,this.ft*this.diveRate))):0); }
@@ -793,8 +795,11 @@ class Crossing extends Ent{
       this.tm+=dt;
       this.active=false;
       this.trainIdx=-1;
+      const P=w.P, onTracks=!P.dead && P.x>=this.x0 && P.x<=this.x1;
       for(let i=0;i<this.trains.length;i++){
         const tr=this.trains[i];
+        // a train with 'enter' waits for the cat to step onto the tracks inside its window
+        if(tr.enter){ if(tr.at===undefined){ if(onTracks && this.tm>=tr.enter[0] && this.tm<tr.enter[1]) tr.at=this.tm+(tr.delay||0); else continue; } }
         if(this.tm>=tr.at && this.tm<tr.at+tr.dur){ this.active=true; this.trainIdx=i; this.pass=(this.tm-tr.at)/tr.dur; if(!tr.fired){ tr.fired=true; w.se('wallmove'); w.shake(6);} }
       }
       const bells=this.bells||[[0,this.gateUp]];

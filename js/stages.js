@@ -102,7 +102,10 @@ const STAGES=[
     F.Lightning({lock:0.5,strike:1.0,predict:true,width:34,when:w=>w.P.x>=150&&w.P.x<360}),
     F.DropFloor({x:530,w:60,y:400,thick:14,delay:0.04,gravity:1800,style:'glass',se:'floorbreak'}),
     F.Wind({x0:600,x1:840,v:-175,onT:1.3,offT:1.7,phase:0}),
-    F.Shot({from:'right',y:430-20,w:34,h:18,speed:620,delay:0.15,style:'crow',se:'trap',warnSE:'warn',lockGoal:true,when:w=>w.P.ground&&w.P.x>=800})
+    F.Shot({from:'right',y:430-20,w:34,h:18,speed:620,delay:0.15,style:'crow',se:'trap',warnSE:'warn',lockGoal:true,when:w=>w.P.ground&&w.P.x>=800}),
+    // ...and its partner swoops in from behind once you have landed
+    F.Shot({from:'left',x0:560,y:430-20,w:34,h:18,speed:620,delay:0.35,style:'crow',se:'trap',warnSE:'warn',lockGoal:true,
+      when:w=>{ const c=w.ents[3]; return w.P.ground && (c.st==='done'||(c.st==='fly'&&c.x<w.P.x-30)); }})
   ]
 },
 // ---------------------------------------------------------------- 7
@@ -114,8 +117,9 @@ const STAGES=[
   goal:{x:1520},
   ents:F=>[
     F.Block({x:300,y:G-84,w:46,h:84,style:'vending'}),
-    // Two trains, the gates lift... and the bell starts again for a late express.
-    F.Crossing({x0:600,x1:820,tx:530,trains:[{at:1.1,dur:0.75},{at:2.35,dur:0.75},{at:4.15,dur:0.45}],bells:[[0,3.25],[3.55,4.8]]}),
+    // The second train comes the moment you step onto the tracks while the bell still rings;
+    // the gates lift... and the bell starts again for a late express.
+    F.Crossing({x0:600,x1:820,tx:530,trains:[{at:1.1,dur:0.75},{enter:[1.85,3.25],delay:0.2,dur:0.75},{at:4.15,dur:0.45}],bells:[[0,3.25],[3.55,4.8]]}),
     F.Bonk({x:990,y:G-180,w:80,h:36}),
     F.Conveyor({x:1120,w:300,v:140,rx:1290,rv:-430}),
     // The obvious escape jump from the reversing walkway hits a hidden block.
