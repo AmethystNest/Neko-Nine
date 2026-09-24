@@ -23,7 +23,7 @@ const DEATH_QUOTES=[
 // Lines for the trap that got you. Key: trap kind (or kind:style). Edit freely.
 const TRAP_QUOTES={
   'trapdoor':     ["床が裏切った。","その床、さっきまで床だったのに。"],
-  'pit':          ["おまえが避けるんかい。","そこは受け止める場面だろ。","床にも回避性能あるの？"],
+  'pit':          ["おまえが避けるんかい。","そこは受け止めてよ。","床にも回避性能あるの？"],
   'dropfloor':    ["床ごと落ちるのはずるい。","床に置いていかれた。"],
   'dropfloor:crumble':["ヒビには気づいてた。気づいてただけ。"],
   'dropfloor:glass':  ["ガラスの上に乗る猫、いる？ いた。"],
@@ -31,20 +31,18 @@ const TRAP_QUOTES={
   'crush':        ["薄型モデルじゃないです。","猫って液体だよね？","圧縮に失敗しました。"],
   'fallblock:pot':["植木鉢、狙ってたよね？"],
   'fallblock:rock':["落石注意の看板、出しといて。"],
-  'fallblock':    ["上も見るべきだった。"],
   'spike':        ["トゲって、生えるんだ。","針治療にしては刺しすぎ。"],
   'shot:arrow':   ["矢って、猫にも当たるんだ。","背中から撃つのは卑怯。"],
   'shot:block':   ["壁が走ってきた。"],
   'shot:crow':    ["カラスとは分かり合えない。"],
-  'laser':        ["レーザー、点くタイミング教えて。"],
+  'laser':        ["しびれた。物理的に。"],
   'electric':     ["しびれた。物理的に。"],
   'shutter':      ["シャッター、閉店ガラガラ。"],
   'wall':         ["壁ドンされた。物理的に。"],
   'lightning':    ["雷、猫を狙わないで。"],
   'train':        ["終電、乗れなかった。轢かれた。","踏切では止まりましょう。"],
   'pendulum':     ["振り子を見てたら、吸い込まれた。"],
-  'dark':         ["暗闇に食べられた。"],
-  'fall':         ["下、見てなかった。"]
+  'dark':         ["暗闇に食べられた。"]
 };
 // Falling into any pit, trapdoor or moving floor runs this gag in order (once per playthrough).
 const FALL_GAG=["次回作、鳥で。","まだ猫です。","鳥の企画、通った？","羽だけでも先に実装して。","もう飛べる気がしてきた。","飛べませんでした。"];
@@ -93,13 +91,15 @@ function trapLine(key){
   if(FALL_KEYS.has(key) && S.fallGag<FALL_GAG.length && !(key==='pit' && Math.random()<0.5)){
     return FALL_GAG[S.fallGag++];
   }
+  if(!TRAP_QUOTES[key]) return nextDeathQuote();
   return (trapBags[key]||(trapBags[key]=bag(TRAP_QUOTES[key])))();
 }
 function deathQuoteFor(lives,ev){
   const c=COUNT_QUOTES[lives];
   if(c && Math.random()<COUNT_QUOTE_RATE) return c[Math.floor(Math.random()*c.length)];
   const key=ev&&trapKeyOf(ev);
-  if(key && TRAP_QUOTES[key] && Math.random()<TRAP_QUOTE_RATE) return trapLine(key);
+  const gagLeft=key && FALL_KEYS.has(key) && S.fallGag<FALL_GAG.length;
+  if(key && (TRAP_QUOTES[key]||gagLeft) && Math.random()<TRAP_QUOTE_RATE) return trapLine(key);
   return nextDeathQuote();
 }
 const KANA_NUM=['ひとつ','ふたつ','みっつ','よっつ','いつつ','むっつ','ななつ','やっつ','ここのつ'];
