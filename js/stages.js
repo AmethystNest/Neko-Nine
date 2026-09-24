@@ -31,8 +31,8 @@ const STAGES=[
   floors:[[0,350],[500,680],[820,1000]],
   goal:{x:905},
   ents:F=>[
-    F.Deco({type:'window',x:292,y:132}),
-    F.FallBlock({x:292,w:24,h:24,y0:150,tx:205,delay:0,gravity:3000,style:'pot',landSE:'floorbreak',shadow:true}),
+    F.Deco({type:'window',x:304,y:150}),
+    F.FallBlock({x:292,w:24,h:24,y0:130,tx:205,delay:0,gravity:3000,style:'pot',landSE:'floorbreak',shadow:true}),
     F.ChaseWall({startX:780,w:54,h:170,when:w=>w.P.x>=640&&w.P.x<760,riseSpeed:900,speed:560,minX:500}),
     F.TrapFloor({x:680,w:140,dir:'lr',delay:0.08,speed:900,armed:w=>!!w.flags.wallDone})
   ]
