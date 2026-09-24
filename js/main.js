@@ -23,13 +23,12 @@ const DEATH_QUOTES=[
 // Lines for the trap that got you. Key: trap kind (or kind:style). Edit freely.
 const TRAP_QUOTES={
   'trapdoor':     ["床が裏切った。","その床、さっきまで床だったのに。"],
-  'pit':          ["穴のほうから来るのは反則。","穴が動くのは聞いてない。"],
+  'pit':          ["おまえが避けるんかい。","そこは受け止める場面だろ。","床にも回避性能あるの？"],
   'dropfloor':    ["床ごと落ちるのはずるい。","床に置いていかれた。"],
   'dropfloor:crumble':["ヒビには気づいてた。気づいてただけ。"],
   'dropfloor:glass':  ["ガラスの上に乗る猫、いる？ いた。"],
   'dropfloor:ledge':  ["扉だと思った？ ぼくも。"],
-  'crusher':      ["天井が落ちてくるタイプの物件だった。","ぺちゃんこでも猫です。"],
-  'crusher:bell': ["鐘が鳴る前に、ぼくが鳴った。"],
+  'crush':        ["薄型モデルじゃないです。","猫って液体だよね？","圧縮に失敗しました。"],
   'fallblock:pot':["植木鉢、狙ってたよね？"],
   'fallblock:rock':["落石注意の看板、出しといて。"],
   'fallblock':    ["上も見るべきだった。"],
@@ -47,8 +46,13 @@ const TRAP_QUOTES={
   'dark':         ["暗闇に食べられた。"],
   'fall':         ["下、見てなかった。"]
 };
-// How often a trap line wins over the random pool (when more than 3 lives are left).
+// Falling into any pit, trapdoor or moving floor runs this gag in order (once per playthrough).
+const FALL_GAG=["次回作、鳥で。","まだ猫です。","鳥の企画、通った？","羽だけでも先に実装して。","もう飛べる気がしてきた。","飛べませんでした。"];
+const FALL_KEYS=new Set(['trapdoor','pit','dropfloor','dropfloor:crumble','dropfloor:glass','dropfloor:ledge','fall']);
+// How often a trap line wins over the random pool.
 const TRAP_QUOTE_RATE=0.5;
+// How often the "lives left" line is used when there is one for this count.
+const COUNT_QUOTE_RATE=0.5;
 // Lines tied to how many lives are left (after this death).
 const COUNT_QUOTES={
   8:["ひとつめ。まだ平気。"],
@@ -79,6 +83,7 @@ function bag(list){ let b=[]; return ()=>{ if(!b.length){ b=list.slice(); for(le
 const nextDeathQuote=bag(DEATH_QUOTES), nextRetryQuote=bag(RETRY_QUOTES);
 const trapBags={};
 function trapKeyOf(ev){
+  if(ev.cause==='crush') return 'crush';
   const e=S.world&&ev.killer>=0?S.world.ents[ev.killer]:null;
   if(!e) return ev.cause==='fall'?'fall':null;
   const withStyle=e.kind+':'+(e.style||'');
@@ -86,12 +91,18 @@ function trapKeyOf(ev){
   if(TRAP_QUOTES[e.kind]) return e.kind;
   return ev.cause==='fall'?'fall':null;
 }
+function trapLine(key){
+  // pits and floors: the running bird gag comes first (the moving floor also has its own lines)
+  if(FALL_KEYS.has(key) && S.fallGag<FALL_GAG.length && !(key==='pit' && Math.random()<0.5)){
+    return FALL_GAG[S.fallGag++];
+  }
+  return (trapBags[key]||(trapBags[key]=bag(TRAP_QUOTES[key])))();
+}
 function deathQuoteFor(lives,ev){
   const c=COUNT_QUOTES[lives];
-  if(c && lives<=3) return c[Math.floor(Math.random()*c.length)];
+  if(c && Math.random()<COUNT_QUOTE_RATE) return c[Math.floor(Math.random()*c.length)];
   const key=ev&&trapKeyOf(ev);
-  if(key && Math.random()<TRAP_QUOTE_RATE){ return (trapBags[key]||(trapBags[key]=bag(TRAP_QUOTES[key])))(); }
-  if(c && Math.random()<0.6) return c[Math.floor(Math.random()*c.length)];
+  if(key && TRAP_QUOTES[key] && Math.random()<TRAP_QUOTE_RATE) return trapLine(key);
   return nextDeathQuote();
 }
 const KANA_NUM=['ひとつ','ふたつ','みっつ','よっつ','いつつ','むっつ','ななつ','やっつ','ここのつ'];
@@ -113,7 +124,7 @@ const AU=window.NEKO_AUDIO;
 const S={
   mode:'boot', stage:0, lives:LIVES, deaths:0, world:null,
   ui:{deathQuote:'',snapCam:true,lastLife:false,thunder:()=>AU.thunder()},
-  respawnAt:0, clearAt:0, playTime:0, clock:0, paused:false
+  respawnAt:0, clearAt:0, playTime:0, clock:0, paused:false, fallGag:0
 };
 const input={left:false,right:false,jump:false,press:false};
 let imgs=null, ICON='';
@@ -222,7 +233,7 @@ function onDeath(ev){
   M.deaths++;
   if(ev.killer>=0) M.known.set(ev.killer,(M.known.get(ev.killer)||0)+1);
   syncMercyUI();
-  writeSave({deaths:S.deaths});
+  writeSave({deaths:S.deaths,fallGag:S.fallGag});
   updateLifeUI(true);
   if(S.lives<=0){
     S.ui.deathQuote='';
@@ -230,6 +241,7 @@ function onDeath(ev){
     setTimeout(showGameOver,900);
   }else{
     S.ui.deathQuote=deathQuoteFor(S.lives,ev);
+    writeSave({fallGag:S.fallGag});
     S.respawnAt=S.clock+1.05;
   }
 }
@@ -389,6 +401,7 @@ function beginGame(fromStage){
   const sv=loadSave();
   S.lives=LIVES;
   S.deaths=fromStage>0?(sv.deaths||0):0;
+  S.fallGag=fromStage>0?(sv.fallGag||0):0;
   S.playTime=0;
   const t=$('titleScreen'); t.classList.add('hide'); setTimeout(()=>{ if(t.classList.contains('hide')) t.style.display='none'; },700);
   enterStage(fromStage,fromStage===0?'prologue':true);
