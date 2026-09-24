@@ -191,7 +191,8 @@ class World{
     P.coyote=Math.max(0,P.coyote-dt);
 
     if(!P.ground){
-      if(!inp.jump && P.vy<-180) P.vy+=CFG.gravity*CFG.cutGravity*dt;
+      if(P.vy>=0) P.boost=false;
+      if(!inp.jump && !P.boost && P.vy<-180) P.vy+=CFG.gravity*CFG.cutGravity*dt;
       P.vy=Math.min(CFG.maxFall,P.vy+CFG.gravity*dt);
       P.jumpT+=dt; P.air+=dt;
     }else{
@@ -207,6 +208,12 @@ class World{
     P.x+=(P.vx+drift)*dt;
     for(const s of this.S){
       if(s.hidden || !ovPlayer(P,s)) continue;
+      // Step up onto low ledges (springs, kerbs) instead of being stopped by them.
+      if(P.ground && s.y>=P.y-16 && s.y<P.y){
+        const oy0=P.y; P.y=s.y;
+        if(!this.anyOverlap(null,0.5)){ P.ref=s; continue; }
+        P.y=oy0;
+      }
       if(P.x>=ox && ox+HW<=s.x+0.5+Math.max(0,-s.dx)){ P.x=s.x-HW; if(P.vx>0)P.vx=0; }
       else if(P.x<=ox && ox-HW>=s.x+s.w-0.5-Math.max(0,s.dx)){ P.x=s.x+s.w+HW; if(P.vx<0)P.vx=0; }
     }
@@ -741,7 +748,7 @@ class Spring extends Ent{
     const P=w.P;
     this.squash=Math.max(0,this.squash-dt*4);
     if(!P.dead && P.ground && P.ref===this.s){
-      P.vy=-this.power; P.ground=false; P.ref=null; P.jumpX=P.x; P.jumpT=0;
+      P.vy=-this.power; P.boost=true; P.ground=false; P.ref=null; P.jumpX=P.x; P.jumpT=0;
       this.squash=1; w.se('jump'); w.se('trapdoor'); this.used=true;
     }
   }

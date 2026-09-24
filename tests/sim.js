@@ -16,6 +16,7 @@ function run(idx,script,opts={}){
     const cur=script[Math.min(si,script.length-1)];
     inp.left=!!cur.l; inp.right=!!cur.r; inp.jump=!!cur.j;
     if(cur.p && st===0) inp.press=true;
+    if(cur.fn) cur.fn(w,inp,st);
     w.step(dt,inp);
     w.events.length=0;
     st+=dt; T+=dt;

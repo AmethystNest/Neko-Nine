@@ -3,6 +3,14 @@ const R={r:1}, L={l:1};
 const walk=(until)=>({r:1,until});
 const jumpR=(hold=0.5)=>[{r:1,j:1,p:1,t:hold},{r:1,until:GR}];
 const wait=t=>({t});
+// Walk right, hopping over any swinging blade that comes low and close.
+const dodge=(w,inp)=>{
+  inp.right=true;
+  if(w._jt>0){ w._jt-=1/120; inp.jump=w._jt>0; return; }
+  if(!w.P.ground) return;
+  for(const e of w.ents){ if(e.kind!=='pendulum') continue;
+    const dx=e.bx()-w.P.x; if(e.by()>320 && dx>-10 && dx<130){ inp.press=true; inp.jump=true; w._jt=0.6; } }
+};
 
 // expect: 'dead' (first-time kill) or 'clear'
 const cases={
@@ -53,19 +61,21 @@ const cases={
 ],
 8:[
   ['naive walk',            'dead', [walk(X(2000))]],
-  ['use the spring',        'dead', [walk(X(40)),{until:w=>w.ents[1].ang< -0.5},walk(X(520)),walk(X(560))]],
-  ['solution',              'clear',[walk(X(40)),{until:w=>w.ents[0].ang>0.6},walk(X(345)),{until:w=>w.ents[1].ang>0.6},walk(X(475)),...jumpR(0.3),walk(X(588)),...jumpR(0.6),walk(X(700)),...jumpR(0.6),{until:GR},wait(1.6),walk(X(2000)),{l:1,until:XL(930)}]],
+  ['use the spring',        'dead', [{fn:dodge,until:X(570)},{until:GR},{until:w=>w.ents[1].ang<-0.3},walk(X(705)),wait(1)]],
+  ['walk into the fake door','dead',[{fn:dodge,until:X(570)},{until:GR},{l:1,until:XL(640)},wait(0.3),{until:w=>w.ents[1].ang<-0.3},walk(X(655)),{r:1,j:1,p:1,until:X(840)},{j:1,until:GR},walk(X(2000))]],
+  ['rush the real door',    'dead', [{fn:dodge,until:X(570)},{until:GR},{l:1,until:XL(640)},wait(0.3),{until:w=>w.ents[1].ang<-0.3},walk(X(655)),{r:1,j:1,p:1,until:X(840)},{j:1,until:GR},walk(X(870)),...jumpR(0.6),walk(X(2000))]],
+  ['solution',              'clear',[{fn:dodge,until:X(570)},{until:GR},{l:1,until:XL(640)},wait(0.3),{until:w=>w.ents[1].ang<-0.3},walk(X(655)),{r:1,j:1,p:1,until:X(840)},{j:1,until:GR},walk(X(870)),...jumpR(0.6),{until:GR},wait(0.1),{l:1,until:XL(1360)},{until:w=>w.ents[7].st==='rise'},walk(X(2000)),{l:1,until:XL(1300)}]],
 ],
 9:[
   ['naive walk',            'dead', [walk(X(2000))]],
   ['solution',              'clear',[walk(X(405)),...jumpR(0.6),walk(X(690)),...jumpR(0.6),walk(X(985)),{until:w=>w.ents[2].s.x<1045},{r:1,j:1,p:1,t:0.3},{r:1,until:GR},walk(X(1100)),
-                                     {until:w=>w.ents[2].s.x>1170},{r:1,j:1,p:1,t:0.5},{r:1,until:GR},walk(X(1390)),wait(0.5),walk(X(1530)),wait(0.45),walk(X(1705)),...jumpR(0.6),walk(X(1860)),...jumpR(0.6),walk(X(2000))]],
+                                     {until:w=>w.ents[2].s.x>1170},{r:1,j:1,p:1,until:X(1318)},{j:1,until:GR},{until:GR},wait(0.45),walk(X(1453)),wait(0.35),walk(X(1705)),...jumpR(0.6),walk(X(1860)),...jumpR(0.6),walk(X(2000))]],
 ],
 10:[
   ['stage1 habit jump',     'dead', [walk(X(285)),...jumpR(0.6),walk(X(2000))]],
   ['solution',              'clear',[walk(X(455)),...jumpR(0.6),walk(X(690)),...jumpR(0.6),walk(X(840)),
-                                      {until:w=>!w.ents[1].on&&w.ents[1].tm%1.75>0.85&&w.ents[1].tm%1.75<0.95},walk(X(935)),
-                                      {until:w=>w.ents[4].st==='rise'&&w.ents[4].y<w.ents[4].restY+60},walk(X(1250)),walk(X(1291)),{until:w=>w.ents[5].st==='move'},{j:1,p:1,t:0.5},{until:GR},{until:w=>w.ents[5].st==='stop'},walk(X(2000)),{l:1,until:XL(1700)}]],
+                                      {until:w=>!w.ents[1].on&&w.ents[1].tm%1.75>0.85&&w.ents[1].tm%1.75<0.95},walk(X(995)),
+                                      {until:w=>w.ents[4].st==='rise'&&w.ents[4].y<w.ents[4].restY+60},walk(X(1300)),walk(X(1346)),{until:w=>w.ents[5].st==='move'},{j:1,p:1,t:0.5},{until:GR},{until:w=>w.ents[5].st==='stop'},walk(X(2000)),{l:1,until:XL(1700)}]],
 ],
 };
 let fail=0;

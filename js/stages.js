@@ -116,19 +116,20 @@ const STAGES=[
 {
   name:'時計塔', theme:'clock', width:1400,
   story:['時間は、巻き戻らない。','命は、何度でも戻ってくるのに。'],
-  floors:[[0,760],[960,1400]],
+  spawn:{x:80,y:420},
+  floors:[[0,760],[1040,1400]],
   goal:{x:1300},
   ents:F=>[
-    F.Pendulum({px:260,py:90,len:290,amp:0.75,period:2.2,phase:0,r:20}),
-    F.Pendulum({px:540,py:90,len:290,amp:0.75,period:2.2,phase:1.1,r:20}),
+    F.Pendulum({px:245,py:90,len:290,amp:0.72,period:2.2,phase:0,r:20}),
+    F.Pendulum({px:480,py:90,len:290,amp:0.72,period:2.2,phase:1.1,r:20}),
     F.Spring({x:690,w:40,power:1150}),
     F.Spikes({x:630,w:160,y:90,maxH:34,dirn:'down',delay:0,riseSpeed:900,permanent:true,when:w=>w.P.vy<-900}),
-    F.DropFloor({x:790,w:170,y:250,thick:20,delay:0.02,gravity:2200,style:'ledge',se:'trapdoor',
-      when:(w,e)=>w.P.ground&&w.P.ref===e.s&&w.P.x>=888}),
+    F.DropFloor({x:790,w:135,y:250,thick:20,delay:0.02,speed:1100,style:'ledge',se:'trapdoor',
+      when:(w,e)=>w.P.ground&&w.P.ref===e.s&&w.P.x>=896}),
     F.FakeDoor({x:905,y:250}),
-    F.SpikeRow({x:760,w:200,y:G+120,h:26}),
-    F.Crusher({x:1265,w:70,h:78,delay:0.25,fallSpeed:1000,hold:0.7,riseSpeed:380,style:'bell',
-      when:w=>w.P.ground&&Math.abs(w.P.x-1300)<75&&w.P.y>=G-1})
+    F.SpikeRow({x:760,w:280,y:G+120,h:26}),
+    F.Crusher({x:1265,w:70,h:78,delay:0.12,fallSpeed:1000,hold:0.7,riseSpeed:380,style:'bell',
+      when:w=>w.P.ground&&w.P.x>=1170&&w.P.y>=G-1})
   ]
 },
 // ---------------------------------------------------------------- 9
@@ -141,8 +142,8 @@ const STAGES=[
     F.DarkChase({startX:-80,tx:170,speed:150,accel:14,maxSpeed:200,leash:560,boostX:2150,boostSpeed:212}),
     F.DropFloor({x:700,w:100,delay:0.28,crack:true,gravity:1500,se:'floorbreak',style:'crumble'}),
     F.Mover({x:1030,y:G-14,w:92,h:16,ax:'x',range:160,period:2.4,style:'plank'}),
-    F.FallBlock({x:1440,w:40,h:40,y0:-60,tx:1395,delay:0.08,gravity:2600,style:'rock',landSE:'blockfall',shadow:true}),
-    F.FallBlock({x:1590,w:40,h:40,y0:-60,tx:1540,delay:0.02,gravity:2600,style:'rock',landSE:'blockfall',shadow:true}),
+    F.FallBlock({x:1440,w:40,h:40,y0:-60,tx:1300,delay:0.08,gravity:2600,style:'rock',landSE:'blockfall',shadow:true}),
+    F.FallBlock({x:1590,w:40,h:40,y0:-60,tx:1452,delay:0.02,gravity:2600,style:'rock',landSE:'blockfall',shadow:true}),
     F.Light({x:1935,y:300,r:130,warm:true,lantern:true}),
     F.TrapFloor({x:1880,w:110,dir:'mid',delay:0.03,speed:900})
   ]
@@ -157,11 +158,11 @@ const STAGES=[
   ents:F=>[
     // Stage 1 trapdoor spot is honest this time. The landing spot is not.
     F.TrapFloor({x:470,w:140,dir:'lr',delay:0.03,speed:900}),
-    F.Laser({x:905,y0:90,y1:G,always:true,onT:0.8,offT:0.95,phase:0}),
-    F.Crusher({x:980,w:80,h:150,period:2.4,phase:0.0,fallSpeed:950,hold:0.3,riseSpeed:520}),
-    F.Crusher({x:1060,w:80,h:150,period:2.4,phase:0.3,fallSpeed:950,hold:0.3,riseSpeed:520}),
-    F.Crusher({x:1140,w:80,h:150,period:2.4,phase:0.6,fallSpeed:950,hold:0.3,riseSpeed:520}),
-    F.ChaseWall({startX:1460,w:54,h:170,when:w=>w.P.x>=1290,riseSpeed:900,speed:520,minX:1225,flag:'wall10'}),
+    F.Laser({x:965,y0:90,y1:G,always:true,onT:0.8,offT:0.95,phase:0}),
+    F.Crusher({x:1030,w:80,h:150,period:2.4,phase:0.0,fallSpeed:950,hold:0.3,riseSpeed:520}),
+    F.Crusher({x:1110,w:80,h:150,period:2.4,phase:0.3,fallSpeed:950,hold:0.3,riseSpeed:520}),
+    F.Crusher({x:1190,w:80,h:150,period:2.4,phase:0.6,fallSpeed:950,hold:0.3,riseSpeed:520}),
+    F.ChaseWall({startX:1520,w:54,h:170,when:w=>w.P.x>=1345,riseSpeed:900,speed:520,minX:1275,flag:'wall10'}),
     F.Deco({type:'fakecrack',x:1560,w:70}),
     F.Light({x:1700,y:370,r:170,warm:true,doorGlow:true})
   ]
