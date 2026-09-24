@@ -476,6 +476,8 @@ class Crusher extends Ent{
     }
     this.s.y=this.y;
     this.s.on=this.y+this.h>this.ceil+0.5;
+    // a press guarding the exit keeps the door shut until it has come down
+    if(this.lockGoal && w.goal) w.goal.locked=this.st==='wait'||this.st==='fall';
   }
   fallDur(){ return (this.floor-this.h-this.restY)/this.fallSpeed; }
   riseDur(){ return (this.floor-this.h-this.restY)/this.riseSpeed; }

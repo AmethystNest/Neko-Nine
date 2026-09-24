@@ -139,8 +139,8 @@ const STAGES=[
       when:(w,e)=>w.P.ground&&w.P.ref===e.s&&w.P.x>=896}),
     F.FakeDoor({x:905,y:250}),
     F.SpikeRow({x:760,w:280,y:G+120,h:26}),
-    F.Crusher({x:1265,w:70,h:78,delay:0.12,fallSpeed:1000,hold:0.7,riseSpeed:380,style:'bell',
-      when:w=>w.P.ground&&w.P.x>=1170&&w.P.y>=G-1})
+    F.Crusher({x:1240,w:84,h:78,delay:0.12,fallSpeed:1100,lockGoal:true,hold:0.7,riseSpeed:380,style:'bell',
+      when:w=>w.P.ground&&w.P.x>=1160&&w.P.y>=G-1})
   ]
 },
 // ---------------------------------------------------------------- 9

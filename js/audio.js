@@ -142,14 +142,14 @@ const THEME_TRACK={hall:'hall',alley:'rain',roof:'rain',factory:'factory',sewer:
 // Audio object
 // ---------------------------------------------------------------------------
 const AU={
-  ctx:null, master:null, seBus:null, musicBus:null, rev:null, buf:{}, ready:false, cur:null,
+  ctx:null, master:null, seBus:null, musicBus:null, rev:null, buf:{}, ready:false, cur:null, musicVol:1, seVol:1,
   init(){
     try{ const C=root.AudioContext||root.webkitAudioContext; if(!C) return; this.ctx=new C(); }catch(_){ return; }
     const c=this.ctx;
     this.master=c.createGain(); this.master.gain.value=0.9;
     const comp=c.createDynamicsCompressor(); comp.threshold.value=-14; comp.ratio.value=3;
     this.master.connect(comp); comp.connect(c.destination);
-    this.seBus=c.createGain(); this.seBus.gain.value=1; this.seBus.connect(this.master);
+    this.seBus=c.createGain(); this.seBus.gain.value=this.seVol; this.seBus.connect(this.master);
     this.musicBus=c.createGain(); this.musicBus.gain.value=0; this.musicBus.connect(this.master);
     // reverb shared by music
     const len=Math.floor(c.sampleRate*2.6), ir=c.createBuffer(2,len,c.sampleRate);
@@ -185,6 +185,13 @@ const AU={
       try{ const s=c.createBufferSource(); s.buffer=this.buf[name]; const g=c.createGain(); g.gain.value=v; s.connect(g); g.connect(this.seBus); s.start(); }catch(_){}
     }
   },
+  setVolumes(music,se){
+    this.musicVol=music; this.seVol=se;
+    const c=this.ctx; if(!c) return;
+    this.seBus.gain.setTargetAtTime(se,c.currentTime,0.05);
+    this.musicBus.gain.setTargetAtTime(0.55*music,c.currentTime,0.05);
+    if(this.rainNode&&this.rainLevel!==undefined) this.rainNode.gain.setTargetAtTime(this.rainLevel*0.03*se,c.currentTime,0.2);
+  },
   // ---- ambience ----
   setRain(level){
     const c=this.ctx; if(!c) return;
@@ -196,7 +203,8 @@ const AU={
       s.connect(hp); hp.connect(lp); lp.connect(g); g.connect(this.master); s.start();
       this.rainNode=g;
     }
-    this.rainNode.gain.setTargetAtTime(level*0.03,c.currentTime,0.6);
+    this.rainLevel=level;
+    this.rainNode.gain.setTargetAtTime(level*0.03*this.seVol,c.currentTime,0.6);
   },
   whoosh(len,vol,freq){
     const c=this.ctx; if(!c) return;
@@ -228,7 +236,7 @@ const AU={
     ev.sort((a,b)=>a.b-b.b);
     const bus=c.createGain(); bus.gain.value=0.0001; bus.connect(this.dry); bus.connect(this.rev);
     bus.gain.setTargetAtTime(1,c.currentTime,0.8);
-    this.musicBus.gain.setTargetAtTime(0.55,c.currentTime,0.3);
+    this.musicBus.gain.setTargetAtTime(0.55*this.musicVol,c.currentTime,0.3);
     const st={name,ev,spb,loopBeats,start:c.currentTime+0.15,loop:0,i:0,bus};
     st.timer=setInterval(()=>this.sched(st),60);
     this.cur=st;

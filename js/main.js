@@ -73,7 +73,7 @@ const AU=window.NEKO_AUDIO;
 const S={
   mode:'boot', stage:0, lives:LIVES, deaths:0, world:null,
   ui:{deathQuote:'',snapCam:true,lastLife:false,thunder:()=>AU.thunder()},
-  respawnAt:0, clearAt:0, playTime:0
+  respawnAt:0, clearAt:0, playTime:0, clock:0, paused:false
 };
 const input={left:false,right:false,jump:false,press:false};
 let imgs=null, ICON='';
@@ -190,7 +190,7 @@ function onDeath(ev){
     setTimeout(showGameOver,900);
   }else{
     S.ui.deathQuote=deathQuoteFor(S.lives);
-    S.respawnAt=performance.now()+1050;
+    S.respawnAt=S.clock+1.05;
   }
 }
 function respawn(){
@@ -215,7 +215,7 @@ function toast(text){
   clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('on'),2600);
 }
 function onClear(){
-  S.clearAt=performance.now()+1700;
+  S.clearAt=S.clock+1.7;
 }
 
 // ---------------------------------------------------------------------------
@@ -380,6 +380,49 @@ $('splash').addEventListener('pointerup',e=>{
 });
 
 // ---------------------------------------------------------------------------
+// Pause and settings
+// ---------------------------------------------------------------------------
+const SETTINGS_KEY='nekonine.settings';
+function loadSettings(){ try{ return Object.assign({music:80,se:90},JSON.parse(localStorage.getItem(SETTINGS_KEY)||'{}')); }catch(_){ return {music:80,se:90}; } }
+function saveSettings(o){ try{ localStorage.setItem(SETTINGS_KEY,JSON.stringify(o)); }catch(_){} }
+function applySettings(o){
+  AU.setVolumes(o.music/100,o.se/100);
+  $('volMusic').value=o.music; $('volSe').value=o.se;
+  $('volMusicV').textContent=o.music; $('volSeV').textContent=o.se;
+}
+function sheet(id,on){ const el=$(id); el.classList.toggle('show',on); el.setAttribute('aria-hidden',on?'false':'true'); }
+function pauseGame(){
+  if(S.paused || !(S.mode==='play'||S.mode==='dying')) return;
+  S.paused=true; input.left=input.right=input.jump=false; input.press=false;
+  document.querySelectorAll('.controls button').forEach(b=>b.classList.remove('active'));
+  sheet('pause',true);
+  if(AU.ctx) AU.ctx.suspend();
+}
+function resumeGame(){
+  if(!S.paused) return;
+  S.paused=false; sheet('pause',false); sheet('settings',false);
+  pacer.reset(performance.now());
+  if(AU.ctx && AU.ready) AU.ctx.resume();
+}
+$('pauseBtn').addEventListener('click',e=>{ e.preventDefault(); pauseGame(); });
+$('btnResume').addEventListener('click',resumeGame);
+$('btnPauseSettings').addEventListener('click',()=>{ sheet('settings',true); });
+$('btnSettings').addEventListener('click',e=>{ e.stopPropagation(); AU.unlock(); sheet('settings',true); });
+$('btnSettingsClose').addEventListener('click',()=>sheet('settings',false));
+$('btnQuit').addEventListener('click',()=>{
+  S.paused=false; sheet('pause',false); sheet('settings',false);
+  S.respawnAt=0; S.clearAt=0;
+  if(AU.ctx && AU.ready) AU.ctx.resume();
+  toTitle();
+});
+for(const id of ['volMusic','volSe']){
+  $(id).addEventListener('input',()=>{ const o={music:+$('volMusic').value,se:+$('volSe').value}; saveSettings(o); applySettings(o); });
+}
+// Leaving the app or tab pauses the game.
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) pauseGame(); });
+addEventListener('blur',()=>pauseGame());
+
+// ---------------------------------------------------------------------------
 // Input
 // ---------------------------------------------------------------------------
 function bindHold(id,key){
@@ -394,6 +437,8 @@ addEventListener('keydown',e=>{
   if(e.key==='ArrowLeft'||e.key==='a') input.left=true;
   if(e.key==='ArrowRight'||e.key==='d') input.right=true;
   if(e.code==='Space'||e.key==='ArrowUp'||e.key==='w'||e.key==='z'){ if(!input.jump) input.press=true; input.jump=true; e.preventDefault(); }
+  if(e.key==='Escape'||e.key==='p'){ if(S.paused) resumeGame(); else pauseGame(); return; }
+  if(S.paused){ if(e.key==='Enter') resumeGame(); return; }
   if(e.key==='Enter'||e.code==='Space'){
     if(S.mode==='splash'){ $('splash').dispatchEvent(new PointerEvent('pointerup')); }
     else if(S.mode==='title'){ const sv=loadSave(); AU.unlock(); AU.play('start'); beginGame(sv.stage>0?sv.stage:0); }
@@ -411,41 +456,44 @@ addEventListener('blur',()=>{ input.left=input.right=input.jump=false; });
 // ---------------------------------------------------------------------------
 // Main loop (fixed 120 Hz simulation)
 // ---------------------------------------------------------------------------
-const DT=1/120;
-let acc=0, last=performance.now();
+// Frame pacing: one smooth update per displayed frame at any refresh rate (js/loop.js).
+const pacer=new window.NEKO_LOOP.FramePacer(1/120,0.05);
+let last=performance.now();
+function stepWorld(w,h){
+  w.step(h,input);
+  for(const ev of w.events){
+    if(ev.type==='se') AU.play(ev.name);
+    else if(ev.type==='death') onDeath(ev);
+    else if(ev.type==='clear') onClear();
+    else if(ev.type==='gust') AU.whoosh(1.2,0.07,380);
+    else if(ev.type==='whoosh') AU.whoosh(0.35,0.035,900);
+    R.onEvent(ev,w);
+  }
+  w.events.length=0;
+}
 function loop(now){
+  const steps=pacer.frame(now);
   const dt=Math.min(0.05,(now-last)/1000); last=now;
   const w=S.world;
   const portrait=window.innerHeight>window.innerWidth;
   if(portrait){ input.left=input.right=input.jump=false; input.press=false; }
-  if((S.mode==='play'||S.mode==='dying') && !portrait){
-    S.playTime+=dt;
-    acc+=dt;
-    while(acc>=DT){
-      acc-=DT;
-      w.step(DT,input);
-      for(const ev of w.events){
-        if(ev.type==='se') AU.play(ev.name);
-        else if(ev.type==='death') onDeath(ev);
-        else if(ev.type==='clear') onClear();
-        else if(ev.type==='gust') AU.whoosh(1.2,0.07,380);
-        else if(ev.type==='whoosh') AU.whoosh(0.35,0.035,900);
-        R.onEvent(ev,w);
-      }
-      w.events.length=0;
-    }
+  const active=(S.mode==='play'||S.mode==='dying') && !portrait && !S.paused;
+  if(active){
+    for(const h of steps){ S.playTime+=h; S.clock+=h; stepWorld(w,h); }
     if(S.mode==='play') checkMercy();
-    if(S.respawnAt && now>=S.respawnAt){ S.respawnAt=0; respawn(); }
-    if(S.clearAt && now>=S.clearAt){
+    if(S.respawnAt && S.clock>=S.respawnAt){ S.respawnAt=0; respawn(); }
+    if(S.clearAt && S.clock>=S.clearAt){
       S.clearAt=0;
       if(STAGES[S.stage].final) startEnding();
       else enterStage(S.stage+1,true);
     }
   }
+  const rdt=active?dt:0;
   try{
     if(w && (S.mode==='play'||S.mode==='dying'||S.mode==='story'||S.mode==='gameover')){
-      R.frame(w,S.ui,dt);
+      R.frame(w,S.ui,rdt);
       R.overlay(w,S.ui,now);
+      if(R.debug) R.drawDebug(w,S.ui,steps);
     }
     if($('titleScreen').style.display!=='none' && window.NEKO_TITLE.cv) window.NEKO_TITLE.frame(dt);
     if(S.mode==='ending'||S.mode==='credits'){
@@ -483,6 +531,7 @@ function loop(now){
 const load=src=>new Promise(res=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=()=>res(im); im.src=src; });
 (async()=>{
     AU.init();
+  applySettings(loadSettings());
   imgs=window.NEKO_SPRITES.build();
   ICON=imgs.icon;
 
@@ -491,6 +540,7 @@ const load=src=>new Promise(res=>{ const im=new Image(); im.onload=()=>res(im); 
   S.mode='splash';
   // Debug / test hook: ?stage=N starts directly at stage N.
   const q=new URLSearchParams(location.search);
+  R.debug=q.has('debug')||location.hash==='#debug';
   if(q.has('title')){ $('splash').classList.add('hide'); toTitle(); }
   if(q.has('stage')){ $('splash').classList.add('hide'); const n=Math.max(1,Math.min(STAGES.length,+q.get('stage')||1))-1; $('titleScreen').classList.add('hide'); $('titleScreen').style.display='none'; startStage(n); }
   if(q.has('ending')){ $('splash').classList.add('hide'); $('titleScreen').classList.add('hide'); $('titleScreen').style.display='none'; S.deaths=+q.get('ending')||37; S.lives=3; startEnding(); }

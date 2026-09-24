@@ -22,6 +22,7 @@
 - `js/sprites.js` 主人公ナインのドット絵（コードで生成）
 - `js/audio.js` 効果音・BGM（すべて WebAudio で合成）
 - `js/title.js` タイトル画面の雨の窓辺シーン
+- `js/loop.js` フレームペーシング（どのリフレッシュレートでも毎フレーム1回なめらかに更新。LittleJS の考え方を参考）
 - `js/engine.js` 物理・当たり判定・罠のロジック（DOM非依存）
 - `js/stages.js` ストーリー文と全ステージの配置データ
 - `js/render.js` 描画（ステージ背景・罠・演出・エンディング）
@@ -29,10 +30,14 @@
 - `tests/` ヘッドレス検証（各ステージが「初見の動きでは死に、正解の動きならクリアできる」ことを確認）
 
 ```
-node tests/stages.test.js
+node tests/stages.test.js          # 全ステージ（DT=144 などで刻み幅を変えても実行可）
+node tests/loop.test.js            # フレームペーシング
 ```
 
 デバッグ用: `index.html?stage=7` で指定ステージから、`index.html?ending=30` でエンディングを表示。
+`?debug`（または `#debug`）で当たり判定・足場・罠の範囲・トリガー位置と FPS を表示。
+
+一時停止: 右上の ❚❚ / Esc / P。アプリ切り替えやタブを隠すと自動で一時停止。設定（BGM・効果音の音量）はタイトルと一時停止メニューから。
 
 ## GitHub Pages
 リポジトリ直下をそのまま公開すれば `index.html` が起動ページです。

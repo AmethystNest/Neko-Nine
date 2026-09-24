@@ -148,6 +148,22 @@ body.nohud .controls button{pointer-events:none}
 @keyframes turn{0%,20%{transform:rotate(0)}50%,80%{transform:rotate(-90deg)}100%{transform:rotate(0)}}
 @media (orientation:portrait){#rotate{display:flex}}
 
+/* ---- pause / settings ---- */
+#pauseBtn{position:fixed;top:max(10px,env(safe-area-inset-top));right:max(64px,calc(env(safe-area-inset-right) + 64px));width:46px;height:46px;
+  border-radius:14px;border:1px solid rgba(255,255,255,.28);background:rgba(0,0,0,.42);color:#fff;font:700 15px/1 system-ui;letter-spacing:-1px;z-index:60;backdrop-filter:blur(5px)}
+@media (orientation:landscape) and (max-height:600px){#pauseBtn{width:40px;height:40px;top:max(6px,env(safe-area-inset-top));right:max(56px,calc(env(safe-area-inset-right) + 56px));border-radius:12px}
+  #msg{right:max(104px,calc(env(safe-area-inset-right) + 104px))!important}}
+body.nohud #pauseBtn{opacity:0;pointer-events:none}
+.sheet{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;background:rgba(8,8,20,.72);backdrop-filter:blur(6px)}
+.sheet.show{display:flex}
+.sheet .box{min-width:min(86vw,340px);padding:22px 26px 20px;border-radius:16px;background:#17162c;border:1px solid #34305e;color:#efe9ff;display:flex;flex-direction:column;gap:12px}
+.sheet h2{margin:0 0 4px;font:italic 600 28px/1 var(--display);letter-spacing:.04em;background:linear-gradient(105deg,#8fd3ff,#8b7dff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.sheet button.item{background:none;border:0;padding:8px 2px;text-align:left;color:#efe9ff;font:700 17px/1.2 var(--serif);letter-spacing:.14em;cursor:pointer}
+.sheet button.item:focus-visible,.sheet button.item:hover{color:#9fdcff}
+.sheet label{display:grid;grid-template-columns:5.5em 1fr 2.6em;align-items:center;gap:10px;font:600 14px/1 var(--serif);letter-spacing:.08em}
+.sheet input[type=range]{width:100%;accent-color:#7f9dff}
+.sheet .val{font:600 12px/1 system-ui;text-align:right;color:#b5acd8;font-variant-numeric:tabular-nums}
+
 /* ---- toast ---- */
 #toast{position:fixed;left:50%;top:max(54px,calc(env(safe-area-inset-top) + 48px));transform:translate(-50%,-6px);z-index:35;pointer-events:none;
   padding:8px 18px;border-radius:999px;background:rgba(10,10,18,.62);color:#f3ead8;font:600 clamp(13px,2vw,16px)/1.4 var(--serif);letter-spacing:.08em;
@@ -186,6 +202,7 @@ body.nohud .controls button{pointer-events:none}
   </div>
   <button id="jump">JUMP</button>
 </div>
+<button id="pauseBtn" type="button" aria-label="一時停止">❚❚</button>
 <button id="fullscreenBtn" type="button" aria-label="フルスクリーン">⛶</button>
 
 <div id="story" aria-live="polite"></div>
@@ -225,15 +242,29 @@ body.nohud .controls button{pointer-events:none}
       <button id="btnStart" class="primary" type="button">はじめる</button>
       <button id="btnContinue" class="primary" type="button" hidden>つづきから</button>
       <button id="btnNew" type="button" hidden>はじめから</button>
+      <button id="btnSettings" type="button">設定</button>
     </div>
     <div class="titleClear">♡ ALL CLEAR</div>
   </div>
 </div>
+<div id="pause" class="sheet" aria-hidden="true"><div class="box">
+  <h2>Pause</h2>
+  <button class="item" id="btnResume" type="button">つづける</button>
+  <button class="item" id="btnPauseSettings" type="button">設定</button>
+  <button class="item" id="btnQuit" type="button">タイトルへもどる</button>
+</div></div>
+<div id="settings" class="sheet" aria-hidden="true"><div class="box">
+  <h2>Settings</h2>
+  <label for="volMusic">BGM<input id="volMusic" type="range" min="0" max="100" step="5"><span class="val" id="volMusicV"></span></label>
+  <label for="volSe">効果音<input id="volSe" type="range" min="0" max="100" step="5"><span class="val" id="volSeV"></span></label>
+  <button class="item" id="btnSettingsClose" type="button">とじる</button>
+</div></div>
 <div id="rotate" role="alert"><div class="phone"></div><div class="t1">横画面にしてください</div><div class="t2">Neko Nine はスマートフォンの横画面、またはPCで遊べます。</div></div>
 <div id="splash"><div class="sp1">Neko Nine</div><div class="sp2">TAP TO BEGIN</div><div class="sp3">♪ 音が出ます</div></div>
 
 <script src="js/sprites.js"></script>
 <script src="js/audio.js"></script>
+<script src="js/loop.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/stages.js"></script>
 <script src="js/render.js"></script>

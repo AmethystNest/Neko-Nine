@@ -9,7 +9,7 @@ const {STAGES}=globalThis.NEKO_STORY;
 function run(idx,script,opts={}){
   const w=new World(STAGES[idx],opts.spawn?{spawn:opts.spawn}:undefined);
   const inp={left:false,right:false,jump:false,press:false};
-  const dt=1/120;
+  const dt=process.env.DT?1/+process.env.DT:1/120;
   let si=0, st=0, T=0;
   const log=[];
   while(T<(opts.maxT||40)){
