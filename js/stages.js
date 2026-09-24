@@ -42,7 +42,7 @@ const STAGES=[
 // ---------------------------------------------------------------- 3
 {
   name:'錆びた工場', theme:'factory',
-  story:['君は、疲れた顔で帰ってくる日が多かった。','それでも、ぼくを見ると少しだけ笑った。'],
+  story:['「頑張らなきゃ」って、君は毎朝つぶやいて出かけた。','もう、十分すぎるくらい頑張っていたのに。'],
   floors:[[0,600],[740,1000]],
   checkpoint:{x:560},
   goal:{x:920},
@@ -93,7 +93,7 @@ const STAGES=[
 // ---------------------------------------------------------------- 6
 {
   name:'雨の屋上', theme:'roof', rain:2,
-  story:['ずっと遠くに、','君の住む街の灯りが見えた。'],
+  story:['ごはんを食べることも、眠ることも、','君はいつからか、できなくなっていった。'],
   floors:[[0,360,420],[470,530,400],[590,640,400],[800,1000,430]],
   checkpoint:{x:612,y:400},
   goal:{x:915,y:430},
@@ -102,20 +102,26 @@ const STAGES=[
     F.Lightning({lock:0.5,strike:1.0,predict:true,width:34,when:w=>w.P.x>=150&&w.P.x<360}),
     F.DropFloor({x:530,w:60,y:400,thick:14,delay:0.04,gravity:1800,style:'glass',se:'floorbreak'}),
     F.Wind({x0:600,x1:840,v:-175,onT:1.3,offT:1.7,phase:0}),
-    F.Shot({from:'right',y:430-20,w:34,h:18,speed:620,delay:0.15,style:'crow',se:'trap',warnSE:'warn',lockGoal:true,when:w=>w.P.ground&&w.P.x>=800})
+    // the wind drops and you want to jump... a crow comes in at the height of that jump.
+    // Leap at once and you meet it mid-air; let it pass first.
+    F.Shot({from:'right',y:225,w:34,h:18,speed:1000,delay:0,style:'crow',se:'trap',warnSE:'warn',
+      when:w=>w.P.ground&&w.P.x>=590&&w.P.x<=640&&!w.ents[2].active}),
+    // ...and its partner swoops in low from behind once you land. Don't linger.
+    F.Shot({from:'left',x0:560,y:430-20,w:34,h:18,speed:760,delay:0.2,style:'crow',se:'trap',warnSE:'warn',when:w=>w.P.ground&&w.P.x>=800})
   ]
 },
 // ---------------------------------------------------------------- 7
 {
   name:'終電の駅', theme:'station', width:1600,
-  story:['君は毎晩、この駅から帰ってきた。','最終電車にも、君はいなかった。'],
+  story:['終電で帰ってきて、始発でまた出ていく。','そんな君が、今夜は最終電車にもいなかった。'],
   floors:[[0,1000],[1120,1600]],
   checkpoint:{x:900},
   goal:{x:1520},
   ents:F=>[
     F.Block({x:300,y:G-84,w:46,h:84,style:'vending'}),
-    // Two trains, the gates lift... and the bell starts again for a late express.
-    F.Crossing({x0:600,x1:820,tx:530,trains:[{at:1.1,dur:0.75},{at:2.35,dur:0.75},{at:4.15,dur:0.45}],bells:[[0,3.25],[3.55,4.8]]}),
+    // One train passes and the gates lift... but the moment you step onto the tracks,
+    // the bell starts again and a second train comes.
+    F.Crossing({x0:600,x1:820,tx:530,trains:[{at:1.1,dur:0.75},{enter:2.0,delay:0.6,dur:0.75}],bells:[[0,2.0]]}),
     F.Bonk({x:990,y:G-180,w:80,h:36}),
     F.Conveyor({x:1120,w:300,v:140,rx:1290,rv:-430}),
     // The obvious escape jump from the reversing walkway hits a hidden block.
@@ -174,9 +180,9 @@ const STAGES=[
   memories:[
     {x:300, text:'「ただいま、ナイン。いい子にしてた？」'},
     {x:1130,text:'「ごめんね。今日も、遅くなっちゃった」'},
-    {x:1640,text:'「雨、ひどかったよ。……ナインはあったかいね」'},
+    {x:1640,text:'「頑張らなきゃ。……みんな、頑張ってるんだから」'},
     {x:1990,y:292,text:'「大丈夫。……大丈夫だから」'},
-    {x:2400,text:'「明日は、早く帰るからね」'},
+    {x:2400,text:'「ごめんね。……なんにも、できなくなっちゃった」'},
     {x:2800,text:'「長生きしてね」'}
   ],
   ents:F=>[

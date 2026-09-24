@@ -1094,7 +1094,9 @@ const R={
       g.fillText(ui.deathQuote,this.W/2,this.H/2);
       g.globalAlpha=1;
     }
-    if(homeT>=0){
+    const homeT=(w.def.final&&w.cleared)?w.clearT:-1;
+    if(homeT>=0 && this.xf){
+      const {v,cam,sx,sy}=this.xf;
       const d=w.goal, px=sx+(d.x-cam)*v.scale, py=v.oy+sy+(G-40)*v.scale;
       const r=this.H*(0.3+homeT*0.9);
       const gr=g.createRadialGradient(px,py,0,px,py,r);

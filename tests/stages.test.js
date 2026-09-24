@@ -12,6 +12,12 @@ const dodge=(w,inp)=>{
     const dx=e.bx()-w.P.x; if(e.by()>320 && dx>-10 && dx<130){ inp.press=true; inp.jump=true; w._jt=0.6; } }
 };
 
+// Stage 7: let the first train pass, step onto the tracks to call the second, step back, then cross
+const S7_CROSS=[walk(X(270)),...jumpR(0.6),walk(X(555)),{until:w=>w.ents[1].tm>2.2},walk(X(602)),{l:1,until:XL(560)},{until:w=>w.ents[1].st==='done'}];
+// Stage 6: reach the small roof before the last gap; the wind drops = the moment to jump
+const S6_TO_ROOF=[walk(X(152)),{r:1,t:0.45},wait(0.6),walk(X(348)),{r:1,j:1,p:1,t:0.12},{r:1,until:GR},walk(X(515)),{r:1,j:1,p:1,t:0.15},{r:1,until:X(603)},{until:GR},wait(0.1),walk(X(625)),{until:w=>w.ents[2].active}];
+const S6_CALM=w=>!w.ents[2].active;
+
 // Stage 10 pieces (entity order: 0 trapdoor, 1 pit, 2 laser, 3-5 presses, 6 wind, 7 arc,
 // 8 lightning, 9 pendulum, 10 spikes, 11 wall, 12 arrow)
 const CP10={spawn:{x:1330,y:420}};
@@ -66,18 +72,18 @@ const cases={
   ['naive walk',            'dead', [walk(X(2000))]],
   ['stop at once for bolt',  'dead', [walk(X(152)),wait(1.2)]],
   ['full jump gap1',        'dead', [walk(X(152)),{r:1,t:0.45},wait(0.6),walk(X(345)),...jumpR(0.6),walk(X(2000))]],
-  ['solution',              'clear',[walk(X(152)),{r:1,t:0.45},wait(0.6),walk(X(348)),{r:1,j:1,p:1,t:0.12},{r:1,until:GR},walk(X(515)),{r:1,j:1,p:1,t:0.15},{r:1,until:X(603)},{until:GR},wait(0.1),walk(X(625)),
-                                      {until:w=>!w.flags.wind&&w.ents[2].tm%3>1.45},walk(X(630)),...jumpR(0.6),{until:w=>w.ents[3].st==='fly'&&w.ents[3].x<w.P.x+110},{j:1,p:1,t:0.4},{until:GR},walk(X(2000))]],
-  ['ignore crow, walk to door',       'dead', [walk(X(152)),{r:1,t:0.45},wait(0.6),walk(X(348)),{r:1,j:1,p:1,t:0.12},{r:1,until:GR},walk(X(515)),{r:1,j:1,p:1,t:0.15},{r:1,until:X(603)},{until:GR},wait(0.1),walk(X(625)),{until:w=>!w.flags.wind&&w.ents[2].tm%3>1.45},walk(X(630)),...jumpR(0.6),walk(X(2000))]],
+  ['solution',              'clear',[...S6_TO_ROOF,{until:S6_CALM},wait(0.45),...jumpR(0.6),walk(X(2000))]],
+  ['jump as the wind drops','dead', [...S6_TO_ROOF,{until:S6_CALM},...jumpR(0.6),walk(X(2000))]],
+  ['jump into the wind',    'dead', [...S6_TO_ROOF,{until:w=>w.ents[2].active&&w.ents[2].tm%3>0.2&&w.ents[2].tm%3<0.3},...jumpR(0.6),walk(X(2000))]],
+  ['linger after landing',  'dead', [...S6_TO_ROOF,{until:S6_CALM},wait(0.45),...jumpR(0.6),wait(1.5)]],
 ],
 7:[
   ['naive walk+jump obstacle','dead',[walk(X(270)),...jumpR(0.6),walk(X(2000))]],
-  ['wait one train only',   'dead', [walk(X(270)),...jumpR(0.6),walk(X(570)),{until:w=>w.ents[1].tm>1.9},walk(X(2000))]],
-  ['full jump over pit',    'dead', [walk(X(270)),...jumpR(0.6),walk(X(555)),{until:w=>w.ents[1].st==='done'},walk(X(975)),...jumpR(0.6),walk(X(2000))]],
-  ['solution',              'clear',[walk(X(270)),...jumpR(0.6),walk(X(555)),{until:w=>w.ents[1].st==='done'},walk(X(990)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(1300)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(2000)),{l:1,until:XL(1520)}]],
-  ['go when gates lift',    'dead', [walk(X(270)),...jumpR(0.6),walk(X(570)),{until:w=>w.ents[1].tm>3.3},walk(X(2000))]],
-  ['full jump off walkway', 'dead', [walk(X(270)),...jumpR(0.6),walk(X(555)),{until:w=>w.ents[1].st==='done'},walk(X(990)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(1300)),...jumpR(0.6),walk(X(2000))]],
-  ['ride the walkway',      'dead', [walk(X(270)),...jumpR(0.6),walk(X(555)),{until:w=>w.ents[1].st==='done'},walk(X(990)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(2000))]],
+  ['cross when gates lift', 'dead', [walk(X(270)),...jumpR(0.6),walk(X(555)),{until:w=>w.ents[1].tm>2.2},walk(X(2000))]],
+  ['full jump over pit',    'dead', [...S7_CROSS,walk(X(975)),...jumpR(0.6),walk(X(2000))]],
+  ['solution',              'clear',[...S7_CROSS,walk(X(990)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(1300)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(2000)),{l:1,until:XL(1520)}]],
+  ['full jump off walkway', 'dead', [...S7_CROSS,walk(X(990)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(1300)),...jumpR(0.6),walk(X(2000))]],
+  ['ride the walkway',      'dead', [...S7_CROSS,walk(X(990)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(2000))]],
 ],
 8:[
   ['naive walk',            'dead', [walk(X(2000))]],
