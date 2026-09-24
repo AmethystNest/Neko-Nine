@@ -102,7 +102,7 @@ const STAGES=[
     F.Lightning({lock:0.5,strike:0.78,predict:true,width:34,when:w=>w.P.x>=150&&w.P.x<360}),
     F.DropFloor({x:530,w:60,y:400,thick:14,delay:0.04,gravity:1800,style:'glass',se:'floorbreak'}),
     F.Wind({x0:600,x1:840,v:-175,onT:1.3,offT:1.7,phase:0}),
-    F.Shot({from:'right',y:430-20,w:34,h:18,speed:480,delay:0.25,style:'crow',se:'trap',warnSE:'warn',when:w=>w.P.ground&&w.P.x>=800})
+    F.Shot({from:'right',y:430-20,w:34,h:18,speed:620,delay:0.15,style:'crow',se:'trap',warnSE:'warn',lockGoal:true,when:w=>w.P.ground&&w.P.x>=800})
   ]
 },
 // ---------------------------------------------------------------- 7

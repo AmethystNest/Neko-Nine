@@ -568,6 +568,11 @@ class Shot extends Ent{
       this.x+=(this.from==='left'?1:-1)*this.speed*dt;
       if(this.x<-300||this.x>w.W+300) this.st='done';
     }
+    // a shot guarding the exit keeps the door shut until it has passed the cat
+    if(this.lockGoal && w.goal){
+      const ahead=this.from==='left'?this.x-this.w/2<w.P.x+CFG.hurtHead:this.x+this.w/2>w.P.x-CFG.hurtHead;
+      w.goal.locked=this.st==='wait'||(this.st==='fly'&&ahead);
+    }
   }
   cy(){ return this.y+(this.dive?Math.max(0,this.dive*Math.sin(Math.min(Math.PI,this.ft*this.diveRate))):0); }
   hazards(){

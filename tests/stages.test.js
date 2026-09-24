@@ -50,7 +50,7 @@ const cases={
   ['full jump gap1',        'dead', [walk(X(152)),{r:1,t:0.45},wait(0.6),walk(X(345)),...jumpR(0.6),walk(X(2000))]],
   ['solution',              'clear',[walk(X(152)),{r:1,t:0.45},wait(0.6),walk(X(348)),{r:1,j:1,p:1,t:0.12},{r:1,until:GR},walk(X(515)),{r:1,j:1,p:1,t:0.15},{r:1,until:X(603)},{until:GR},wait(0.1),walk(X(625)),
                                       {until:w=>!w.flags.wind&&w.ents[2].tm%3>1.45},walk(X(630)),...jumpR(0.6),{until:w=>w.ents[3].st==='fly'&&w.ents[3].x<w.P.x+110},{j:1,p:1,t:0.4},{until:GR},walk(X(2000))]],
-  ['ignore the crow',       'dead', [walk(X(152)),{r:1,t:0.45},wait(0.6),walk(X(348)),{r:1,j:1,p:1,t:0.12},{r:1,until:GR},walk(X(515)),{r:1,j:1,p:1,t:0.15},{r:1,until:X(603)},{until:GR},wait(0.1),walk(X(625)),{until:w=>!w.flags.wind&&w.ents[2].tm%3>1.45},walk(X(630)),...jumpR(0.6),wait(1.5)]],
+  ['ignore crow, walk to door',       'dead', [walk(X(152)),{r:1,t:0.45},wait(0.6),walk(X(348)),{r:1,j:1,p:1,t:0.12},{r:1,until:GR},walk(X(515)),{r:1,j:1,p:1,t:0.15},{r:1,until:X(603)},{until:GR},wait(0.1),walk(X(625)),{until:w=>!w.flags.wind&&w.ents[2].tm%3>1.45},walk(X(630)),...jumpR(0.6),walk(X(2000))]],
 ],
 7:[
   ['naive walk+jump obstacle','dead',[walk(X(270)),...jumpR(0.6),walk(X(2000))]],
