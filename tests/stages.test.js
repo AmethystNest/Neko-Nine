@@ -30,7 +30,7 @@ const cases={
   ['naive walk',            'dead', [walk(X(2000))]],
   ['wait crusher A, walk on','dead',[walk(X(300)),wait(2.2),walk(X(2000))]],
   ['wait both, stand still','dead',[walk(X(300)),wait(2.2),walk(X(409)),wait(3)]],
-  ['solution',              'clear',[walk(X(300)),wait(2.2),walk(X(409)),wait(0.55),{j:1,p:1,t:0.5},{until:GR},wait(1.2),walk(X(585)),...jumpR(0.6),walk(X(812)),...jumpR(0.6),{l:1,until:XL(921)},wait(0.2)]],
+  ['solution',              'clear',[walk(X(300)),wait(2.2),walk(X(390)),wait(0.4),{fn:(w,inp,st)=>{inp.right=(st%0.3)<0.08;},until:w=>w.ents[1].st!=='idle'},wait(0.1),{until:w=>w.ents[2].st==='fly'&&w.ents[2].x>w.P.x-140},{j:1,p:1,t:0.5},{until:GR},wait(1.2),walk(X(585)),...jumpR(0.6),walk(X(812)),...jumpR(0.6),{l:1,until:XL(921)},wait(0.2)]],
 ],
 4:[
   ['naive walk',            'dead', [walk(X(2000))]],
@@ -56,7 +56,9 @@ const cases={
   ['naive walk+jump obstacle','dead',[walk(X(270)),...jumpR(0.6),walk(X(2000))]],
   ['wait one train only',   'dead', [walk(X(270)),...jumpR(0.6),walk(X(570)),{until:w=>w.ents[1].tm>1.9},walk(X(2000))]],
   ['full jump over pit',    'dead', [walk(X(270)),...jumpR(0.6),walk(X(570)),{until:w=>w.ents[1].st==='done'},walk(X(975)),...jumpR(0.6),walk(X(2000))]],
-  ['solution',              'clear',[walk(X(270)),...jumpR(0.6),walk(X(570)),{until:w=>w.ents[1].st==='done'},walk(X(990)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(1270)),...jumpR(0.6),walk(X(2000)),{l:1,until:XL(1520)}]],
+  ['solution',              'clear',[walk(X(270)),...jumpR(0.6),walk(X(570)),{until:w=>w.ents[1].st==='done'},walk(X(990)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(1300)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(2000)),{l:1,until:XL(1520)}]],
+  ['go when gates lift',    'dead', [walk(X(270)),...jumpR(0.6),walk(X(570)),{until:w=>w.ents[1].tm>3.3},walk(X(2000))]],
+  ['full jump off walkway', 'dead', [walk(X(270)),...jumpR(0.6),walk(X(570)),{until:w=>w.ents[1].st==='done'},walk(X(990)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(1300)),...jumpR(0.6),walk(X(2000))]],
   ['ride the walkway',      'dead', [walk(X(270)),...jumpR(0.6),walk(X(570)),{until:w=>w.ents[1].st==='done'},walk(X(990)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(2000))]],
 ],
 8:[
@@ -73,9 +75,15 @@ const cases={
 ],
 10:[
   ['stage1 habit jump',     'dead', [walk(X(285)),...jumpR(0.6),walk(X(2000))]],
-  ['solution',              'clear',[walk(X(455)),...jumpR(0.6),walk(X(690)),...jumpR(0.6),walk(X(840)),
-                                      {until:w=>!w.ents[1].on&&w.ents[1].tm%1.75>0.85&&w.ents[1].tm%1.75<0.95},walk(X(995)),
-                                      {until:w=>w.ents[4].st==='rise'&&w.ents[4].y<w.ents[4].restY+60},walk(X(1300)),walk(X(1346)),{until:w=>w.ents[5].st==='move'},{j:1,p:1,t:0.5},{until:GR},{until:w=>w.ents[5].st==='stop'},walk(X(2000)),{l:1,until:XL(1700)}]],
+  ['plain jump over pit',   'dead', [walk(X(455)),...jumpR(0.6),walk(X(680)),...jumpR(0.6),walk(X(2000))]],
+  ['solution',              'clear',[walk(X(455)),...jumpR(0.6),walk(X(670)),{r:1,j:1,p:1,t:0.14},{l:1,j:1,until:GR},wait(0.2),
+                                      {r:1,until:w=>w.P.x>=w.ents[1].px-70},wait(0.3),
+                                      {until:w=>w.ents[2].on&&w.ents[2].tm%1.65>0.62&&w.ents[2].tm%1.65<0.66},{r:1,until:w=>w.P.x>=w.ents[1].px-14},...jumpR(0.6),walk(X(1000)),
+                                      {until:w=>w.ents[5].st==='rise'&&w.ents[5].y<w.ents[5].restY+60},walk(X(1300)),walk(X(1346)),{until:w=>w.ents[6].st==='move'},{j:1,p:1,t:0.5},{until:GR},{until:w=>w.ents[7].st==='fly'&&w.ents[7].x<w.P.x+130},{j:1,p:1,t:0.5},{until:GR},{until:w=>w.ents[6].st==='stop'},walk(X(2000)),{l:1,until:XL(1700)}]],
+  ['hop down, ignore arrow','dead', [walk(X(455)),...jumpR(0.6),walk(X(670)),{r:1,j:1,p:1,t:0.14},{l:1,j:1,until:GR},wait(0.2),
+                                      {r:1,until:w=>w.P.x>=w.ents[1].px-70},wait(0.3),
+                                      {until:w=>w.ents[2].on&&w.ents[2].tm%1.65>0.62&&w.ents[2].tm%1.65<0.66},{r:1,until:w=>w.P.x>=w.ents[1].px-14},...jumpR(0.6),walk(X(1000)),
+                                      {until:w=>w.ents[5].st==='rise'&&w.ents[5].y<w.ents[5].restY+60},walk(X(1300)),walk(X(1346)),{until:w=>w.ents[6].st==='move'},{j:1,p:1,t:0.5},{until:GR},{until:w=>w.ents[6].st==='stop'},walk(X(2000)),{l:1,until:XL(1700)}]],
 ],
 };
 let fail=0;

@@ -105,11 +105,63 @@ const T={
       g.fillStyle=`rgba(220,230,255,${0.12+0.1*Math.sin(this.t+m.p)})`; g.fillRect(x,y,2,2);
     }
     // Nine on the sill, seen from behind, looking up at the moon
-    this.catBack(g,wx+ww*0.64,sy,wh*0.5);
+    if(this.cleared){
+      // after the ending: you and Nine, together at the window
+      this.catBack(g,wx+ww*0.68,sy,wh*0.44);
+      this.ownerBack(g,wx+ww*0.4,sy+wh*0.08,wh*0.62);
+    }else{
+      this.catBack(g,wx+ww*0.64,sy,wh*0.5);
+    }
     // vignette
     const vg=g.createRadialGradient(W*0.55,H*0.45,H*0.2,W*0.5,H*0.5,H*1.1);
     vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,.65)');
     g.fillStyle=vg; g.fillRect(0,0,W,H);
+  },
+  // Draw a moonlit silhouette: soft halo, shading from the upper left, and a rim light
+  // that follows the real outline. box: [left, top, right, bottom] in shape units.
+  lit(g,x,y,s,key,box,shape,halo){
+    const d=this.dpr, pad=30;
+    const cw=Math.ceil((box[2]-box[0]+pad*2)*s*d), chh=Math.ceil((box[3]-box[1]+pad*2)*s*d);
+    this.litL=this.litL||{};
+    const L=this.litL[key]||(this.litL[key]=[0,1,2].map(()=>document.createElement('canvas')));
+    for(const c of L){ if(c.width!==cw||c.height!==chh){ c.width=cw; c.height=chh; } }
+    const ox=(-box[0]+pad)*s*d, oy=(-box[1]+pad)*s*d;
+    const draw=(c,col)=>{ c.save(); c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,cw,chh); c.translate(ox,oy); c.scale(s*d,s*d); c.fillStyle=col; c.strokeStyle=col; shape(c); c.restore(); };
+    const [A,B,C]=L, a=A.getContext('2d'), b=B.getContext('2d'), c2=C.getContext('2d');
+    draw(a,'#0f0d1c'); draw(c2,'#0f0d1c');
+    c2.save(); c2.globalCompositeOperation='source-atop';
+    const lg=c2.createLinearGradient(0,0,cw*0.8,chh); lg.addColorStop(0,'rgba(150,135,230,.34)'); lg.addColorStop(0.45,'rgba(80,72,150,.1)'); lg.addColorStop(1,'rgba(0,0,0,0)');
+    c2.fillStyle=lg; c2.fillRect(0,0,cw,chh); c2.restore();
+    draw(b,'rgba(215,200,255,.72)');
+    b.save(); b.globalCompositeOperation='destination-out'; b.drawImage(A,1.4*s*d,1.6*s*d);
+    b.globalCompositeOperation='destination-in'; const fg=b.createLinearGradient(0,0,cw*0.9,chh*0.9); fg.addColorStop(0,'rgba(0,0,0,1)'); fg.addColorStop(0.6,'rgba(0,0,0,.45)'); fg.addColorStop(1,'rgba(0,0,0,0)'); b.fillStyle=fg; b.fillRect(0,0,cw,chh); b.restore();
+    g.save(); g.setTransform(1,0,0,1,0,0);
+    const px=x*d-ox, py=y*d-oy;
+    if(halo){ g.shadowColor=halo; g.shadowBlur=22*s*d; }
+    g.drawImage(A,px,py); g.shadowBlur=0;
+    g.drawImage(C,px,py); g.drawImage(B,px,py);
+    g.restore();
+  },
+  // You, seen from behind, sitting by the window with a hand on Nine's back.
+  ownerBack(g,x,y,h){
+    const s=h/150, t=this.t;
+    const breathe=Math.sin(t*1.2)*0.6;
+    this.lit(g,x,y,s,'owner',[-60,-100,110,170],c=>{
+      c.beginPath();
+      c.moveTo(-54,170); c.lineTo(-54,40);
+      c.bezierCurveTo(-54,2,-36,-18,-11,-24+breathe);
+      c.lineTo(11,-24+breathe);
+      c.bezierCurveTo(36,-18,54,2,54,40); c.lineTo(54,170); c.closePath(); c.fill();
+      c.fillRect(-9,-38,18,18);
+      c.save(); c.translate(1,-58+breathe); c.rotate(0.12);
+      c.beginPath(); c.ellipse(0,0,22,25,0,0,TAU); c.fill();
+      // hair: a soft bob
+      c.beginPath(); c.moveTo(-26,-6); c.bezierCurveTo(-28,-34,26,-38,27,-6); c.bezierCurveTo(28,10,24,22,18,26); c.lineTo(-18,26); c.bezierCurveTo(-25,20,-27,8,-26,-6); c.fill();
+      c.restore();
+      // arm reaching toward the cat
+      c.lineCap='round'; c.lineWidth=17; c.beginPath(); c.moveTo(38,10); c.bezierCurveTo(60,4,76,-4,92,-14); c.stroke();
+      c.beginPath(); c.ellipse(96,-17,9,7,-0.4,0,TAU); c.fill();
+    },'rgba(175,155,255,.45)');
   },
   // Nine seen from behind: the scarf-wearing design, looking up at the moon.
   catBack(g,x,y,h){

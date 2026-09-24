@@ -147,9 +147,9 @@ function enterStage(i,withStory){
   else if(withStory) showStory(def.story,card,go);
   else showStory([],card,go);
 }
-// Mercy: after a few lost lives in one stage, a checkpoint appears; traps that
-// killed you twice start showing a faint outline before they trigger.
-const CP_AFTER=3, HINT_AFTER=2;
+// Mercy (only after a game over in this stage): a checkpoint appears, and traps
+// that killed you twice start showing a faint outline before they trigger.
+const HINT_AFTER=2;
 const M={deaths:0,known:new Map(),cpOn:false,cpReached:false};
 function spawnOpts(){
   const cp=STAGES[S.stage].checkpoint;
@@ -181,8 +181,6 @@ function onDeath(ev){
   S.deaths++;
   M.deaths++;
   if(ev.killer>=0) M.known.set(ev.killer,(M.known.get(ev.killer)||0)+1);
-  const newlyCp=!M.cpOn && M.deaths>=CP_AFTER && STAGES[S.stage].checkpoint;
-  if(newlyCp) M.cpOn=true;
   syncMercyUI();
   writeSave({deaths:S.deaths});
   updateLifeUI(true);
@@ -193,7 +191,6 @@ function onDeath(ev){
   }else{
     S.ui.deathQuote=deathQuoteFor(S.lives);
     S.respawnAt=performance.now()+1050;
-    if(newlyCp) setTimeout(()=>toast('失くした命が、道しるべを残していった。'),1100);
   }
 }
 function respawn(){
@@ -259,7 +256,10 @@ $('retryBtn').addEventListener('click',e=>{
     msg.classList.remove('show'); msg.setAttribute('aria-hidden','true');
     S.lives=LIVES;
     if(RESTART_FROM_STAGE1){ S.stage=0; }
+    const firstMercy=!M.cpOn && !!STAGES[S.stage].checkpoint;
+    M.cpOn=true;
     enterStage(S.stage,false);
+    if(firstMercy) setTimeout(()=>toast('失くした命が、道しるべを残していった。'),2900);
   },3900));
 });
 
@@ -416,7 +416,9 @@ let acc=0, last=performance.now();
 function loop(now){
   const dt=Math.min(0.05,(now-last)/1000); last=now;
   const w=S.world;
-  if(S.mode==='play'||S.mode==='dying'){
+  const portrait=window.innerHeight>window.innerWidth;
+  if(portrait){ input.left=input.right=input.jump=false; input.press=false; }
+  if((S.mode==='play'||S.mode==='dying') && !portrait){
     S.playTime+=dt;
     acc+=dt;
     while(acc>=DT){

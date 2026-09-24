@@ -147,11 +147,12 @@ class World{
     for(const s of this.S){
       if(!s.kin || s.hidden || (!s.dx && !s.dy)) continue;
       if(!ovPlayer(P,s)) continue;
+      let vert=false;
       const ox=Math.min(P.x+HW,s.x+s.w)-Math.max(P.x-HW,s.x);
       if(s.dy<0 && P.y<=s.py+1.5+Math.abs(s.dx)){
         P.y=s.y; P.vy=Math.min(P.vy,0); if(!P.ground){ P.ground=true; } P.ref=s; P.vy=0;
       }else if(s.dy>0 && P.y-BH>=s.py+s.h-1.5-Math.abs(s.dx) && ox>8){
-        P.y=s.y+s.h+BH; if(P.vy<0) P.vy=0;
+        P.y=s.y+s.h+BH; if(P.vy<0) P.vy=0; vert=true;
         if(P.ground && P.ref && !P.ref.kin){ /* pinned to floor: crush check below */ }
       }else if(s.dx>0 && (P.x-HW>=s.px+s.w-1.5 || s.dy>0)){
         P.x=s.x+s.w+HW; if(P.vx<0) P.vx=0;
@@ -164,7 +165,8 @@ class World{
         const l=(P.x+HW)-s.x, r=(s.x+s.w)-(P.x-HW);
         if(l<r) P.x-=l; else P.x+=r;
       }
-      const other=this.anyOverlap(s,1.2);
+      // A press coming down is lethal as soon as the cat is pinned, even by a sliver.
+      const other=this.anyOverlap(s,vert?0.05:1.2);
       if(other){ this.kill('crush',s.owner); this.emit('squash',{}); this.shake(9); return; }
     }
 
@@ -774,8 +776,9 @@ class Pendulum extends Ent{
 
 // Railway crossing: trains pass through the zone (perpendicular to the screen).
 class Crossing extends Ent{
-  init(){ this.kind='train'; this.trainIdx=-1; this.active=false; this.pass=0; }
+  init(){ this.kind='train'; this.trainIdx=-1; this.active=false; this.pass=0; this.gk=0; this.alwaysUpdate=true; }
   update(w,dt){
+    this.gk+=((this.bellOn&&this.st!=='done'?1:0)-this.gk)*Math.min(1,dt*5);
     if(this.st==='idle'){ if(this.triggered(w)){ this.st='bell'; this.tm=0; w.se('warn'); } }
     if(this.st!=='idle' && this.st!=='done'){
       this.tm+=dt;
@@ -785,9 +788,10 @@ class Crossing extends Ent{
         const tr=this.trains[i];
         if(this.tm>=tr.at && this.tm<tr.at+tr.dur){ this.active=true; this.trainIdx=i; this.pass=(this.tm-tr.at)/tr.dur; if(!tr.fired){ tr.fired=true; w.se('wallmove'); w.shake(6);} }
       }
-      this.bellOn=this.tm<this.gateUp;
+      const bells=this.bells||[[0,this.gateUp]];
+      this.bellOn=bells.some(b=>this.tm>=b[0]&&this.tm<b[1]);
       if(Math.floor(this.tm*2.6)!==this.ring && this.bellOn && Math.abs(w.P.x-(this.x0+this.x1)/2)<500){ this.ring=Math.floor(this.tm*2.6); w.se('warn'); }
-      if(this.tm>=this.gateUp) this.st='done';
+      if(this.tm>=bells[bells.length-1][1] && !this.active) this.st='done';
     }
   }
   hazards(){

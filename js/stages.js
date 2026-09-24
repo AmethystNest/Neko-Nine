@@ -114,9 +114,12 @@ const STAGES=[
   goal:{x:1520},
   ents:F=>[
     F.Block({x:300,y:G-84,w:46,h:84,style:'vending'}),
-    F.Crossing({x0:600,x1:820,tx:530,trains:[{at:1.1,dur:0.75},{at:2.35,dur:0.75}],gateUp:3.25}),
+    // Two trains, the gates lift... and the bell starts again for a late express.
+    F.Crossing({x0:600,x1:820,tx:530,trains:[{at:1.1,dur:0.75},{at:2.35,dur:0.75},{at:4.15,dur:0.45}],bells:[[0,3.25],[3.55,4.8]]}),
     F.Bonk({x:990,y:G-180,w:80,h:36}),
-    F.Conveyor({x:1120,w:300,v:140,rx:1290,rv:-430})
+    F.Conveyor({x:1120,w:300,v:140,rx:1290,rv:-430}),
+    // The obvious escape jump from the reversing walkway hits a hidden block.
+    F.Bonk({x:1288,y:G-176,w:110,h:34})
   ]
 },
 // ---------------------------------------------------------------- 8
@@ -160,18 +163,22 @@ const STAGES=[
 {
   name:'ただいま', theme:'home', width:1800,
   story:['見覚えのある廊下。','ドアの向こうに、君の気配がする。'],
-  floors:[[0,470],[610,700],[820,1800]],
-  checkpoint:{x:850},
+  floors:[[0,470],[1030,1800]],
+  checkpoint:{x:1000},
   goal:{x:1700,locked:false},
   final:true,
   ents:F=>[
     // Stage 1 trapdoor spot is honest this time. The landing spot is not.
     F.TrapFloor({x:470,w:140,dir:'lr',delay:0.03,speed:900}),
-    F.Laser({x:965,y0:90,y1:G,always:true,onT:0.8,offT:0.95,phase:0}),
-    F.Crusher({x:1030,w:80,h:150,ceil:39,period:2.4,phase:0.0,fallSpeed:950,hold:0.3,riseSpeed:520}),
-    F.Crusher({x:1110,w:80,h:150,ceil:39,period:2.4,phase:0.3,fallSpeed:950,hold:0.3,riseSpeed:520}),
-    F.Crusher({x:1190,w:80,h:150,ceil:39,period:2.4,phase:0.6,fallSpeed:950,hold:0.3,riseSpeed:520}),
+    // The pit from the very first hallway remembers you, too.
+    F.ShiftPit({x0:610,x1:1030,px:700,pw:120,minShift:40,maxShift:150,look:150,speed:800}),
+    F.Laser({x:965,y0:90,y1:G,always:true,onT:0.8,offT:0.85,phase:0}),
+    F.Crusher({x:1030,w:80,h:150,ceil:39,period:2.1,phase:0.0,fallSpeed:1000,hold:0.25,riseSpeed:560}),
+    F.Crusher({x:1110,w:80,h:150,ceil:39,period:2.1,phase:0.25,fallSpeed:1000,hold:0.25,riseSpeed:560}),
+    F.Crusher({x:1190,w:80,h:150,ceil:39,period:2.1,phase:0.5,fallSpeed:1000,hold:0.25,riseSpeed:560}),
     F.ChaseWall({startX:1520,w:54,h:170,when:w=>w.P.x>=1345,riseSpeed:900,speed:520,minX:1275,flag:'wall10'}),
+    // The wall stops... and the door answers with an arrow along the floor.
+    F.Shot({from:'right',y:G-22,w:54,h:8,speed:820,delay:0.3,style:'arrow',when:w=>!!w.flags.wall10}),
     F.Deco({type:'fakecrack',x:1560,w:70}),
     F.Light({x:1700,y:370,r:170,warm:true,doorGlow:true})
   ]

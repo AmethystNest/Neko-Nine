@@ -3,7 +3,7 @@
 (function(root){
 'use strict';
 const W=44, H=30, OX=2, OY=2;
-const PAL=[null,'#1c1926','#4d4868','#9fdcff','#3f8fe0','#ffffff','#f39bb2','#5a2a44','#3d86f0','#f5c542','#2c2838','#a8ceff','#9aa5c8'];
+const PAL=[null,'#1c1926','#4d4868','#9fdcff','#3f8fe0','#ffffff','#f39bb2','#5a2a44','#3d86f0','#f5c542','#2c2838','#a8ceff','#9aa5c8','#3a6fd8','#9ad6ff'];
 // 1 body  2 rim light  3 eye light  4 eye deep  5 glint  6 pink  7 blush  8 blue cloth  9 bell  10 shade  11 cloth light  12 whisker
 
 // ---------------------------------------------------------------------------
@@ -16,7 +16,7 @@ const DESIGNS={
   sura:{name:'すらり',desc:'細身で大人びた猫。細い青の首輪にタグ。長いしっぽ。',
     body:[16,17.5,10.5,4.6], neck:[24,13,3.4], head:[29,8.5,6.2,5.6], ear:11.5, legs:[[8,12,20,23],6,2],
     tail:[[6,16],[-1,8],[5,1],1.05], eye:'almond', acc:'tag'},
-  mafu:{name:'マフラー',desc:'ふわっと丸い体。青いマフラーの端が風になびく。',
+  mafu:{name:'マフラー',eyeCute:true,desc:'ふわっと丸い体。青いマフラーの端が風になびく。',
     body:[17,17.5,11,6.4], neck:[24,14,4.6], head:[29,11,7.6,6.8], ear:12, earW:1.25, legs:[[9,13,21,25],4,3],
     tail:[[7,15],[0,12],[2,5],1.7], eye:'oval', acc:'scarf', noPink:true, whiskers:true},
   koneko:{name:'こねこ',desc:'頭の大きな子猫。大きな瞳と青いリボン。',
@@ -75,6 +75,12 @@ function face(g,D,HX,HY,blink){
   if(blink){
     for(const x of [HX-1,HX,HX+1]) set(g,x,HY,2);
     for(const x of [HX+far-1,HX+far]) set(g,x,HY,2);
+  }else if(D.eyeCute){
+    // cute eyes: rich blue iris, a white sparkle, a pale reflection at the bottom
+    const near=[[0,13,13],[5,13,13],[13,13,13],[0,14,14]];
+    near.forEach((row,ry)=>row.forEach((v,rx)=>{ if(v) set(g,HX-1+rx,HY-2+ry,v); }));
+    const farE=[[13,13],[5,13],[13,13],[14,0]];
+    farE.forEach((row,ry)=>row.forEach((v,rx)=>{ if(v) set(g,HX+far-1+rx,HY-2+ry,v); }));
   }else if(D.eye==='oval'){
     // rounder eyes: 4x4 near eye and 3x4 far eye with clipped corners
     for(let y=HY-2;y<=HY+1;y++) for(let x=HX-2;x<=HX+1;x++){ const corner=(y===HY-2||y===HY+1)&&(x===HX-2||x===HX+1); if(!corner) set(g,x,y,y<HY?3:4); }

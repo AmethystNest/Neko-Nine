@@ -581,7 +581,7 @@ P.Crossing.prototype.draw=function(g,w,T){
     if(on) glow(g,sx+(blink?-9:9),G-118,30,'rgba(255,50,50,A)',0.4);
   }
   // gate arms (down while ringing)
-  const k=this.st==='idle'||this.st==='done'?0:Math.min(1,this.tm/0.6);
+  const k=this.gk||0;
   for(const [sx,dir] of [[x0-10,1],[x1+10,-1]]){
     g.save(); g.translate(sx,G-60); g.rotate(-dir*(1-k)*Math.PI/2*0.95);
     for(let i=0;i<5;i++){ g.fillStyle=i%2?'#ffea30':'#222'; g.fillRect(dir>0?i*16:-(i+1)*16,-3,16,6); }

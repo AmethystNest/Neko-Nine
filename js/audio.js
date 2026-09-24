@@ -61,10 +61,11 @@ function bell(c,d,f,t,dur,vol){
 const SE_DEF={
   jump:[0.2,(c,d)=>{ tone(c,d,{f0:330,f1:660,dur:0.16,vol:0.22,glide:0.1}); tone(c,d,{type:'triangle',f0:660,f1:990,dur:0.1,vol:0.05}); }],
   land:[0.14,(c,d)=>{ tone(c,d,{f0:150,f1:60,dur:0.1,vol:0.35}); noise(c,d,{f0:700,dur:0.06,vol:0.12}); }],
-  death:[1.2,(c,d)=>{
-    tone(c,d,{type:'triangle',f0:hz('E5'),f1:hz('E4'),dur:0.5,vol:0.16,glide:0.45,lin:true,vib:[7,8]});
-    bell(c,d,hz('B5'),0.02,0.9,0.08); bell(c,d,hz('G5'),0.22,1.0,0.07); bell(c,d,hz('E5'),0.44,1.1,0.08);
-    noise(c,d,{f0:3000,ft:'highpass',dur:0.4,vol:0.03,t:0.05});
+  death:[0.6,(c,d)=>{
+    // a soft falling "pew" with a little wobble: no bells
+    tone(c,d,{type:'triangle',f0:hz('A5'),f1:hz('A3'),dur:0.42,vol:0.2,glide:0.38,vib:[9,14]});
+    tone(c,d,{f0:hz('A4'),f1:hz('A2'),dur:0.4,vol:0.12,glide:0.36});
+    noise(c,d,{f0:900,ft:'bandpass',q:1,dur:0.12,vol:0.08});
   }],
   goal:[1.8,(c,d)=>{ ['C5','E5','G5','C6','E6'].forEach((n,i)=>bell(c,d,hz(n),i*0.09,1.4,0.1)); tone(c,d,{f0:hz('C4'),dur:1.4,vol:0.08,a:0.05}); }],
   warn:[0.25,(c,d)=>{ tone(c,d,{type:'square',f0:1250,dur:0.07,vol:0.05,lp:3000}); tone(c,d,{type:'square',f0:1250,dur:0.07,vol:0.05,t:0.11,lp:3000}); }],
@@ -83,7 +84,15 @@ const SE_DEF={
   }],
   crusher:[1.0,(c,d)=>{ tone(c,d,{f0:90,f1:32,dur:0.7,vol:0.55}); noise(c,d,{f0:500,f1:120,dur:0.5,vol:0.35}); noise(c,d,{f0:3000,ft:'bandpass',q:4,dur:0.08,vol:0.08}); }],
   floorbreak:[1.0,(c,d)=>{ for(let i=0;i<10;i++) noise(c,d,{f0:900+Math.random()*1500,ft:'bandpass',q:1.5,t:i*0.045+Math.random()*0.03,dur:0.12,vol:0.18}); tone(c,d,{f0:110,f1:45,dur:0.4,vol:0.3,t:0.05}); }],
-  spike:[0.5,(c,d)=>{ noise(c,d,{f0:5000,ft:'highpass',dur:0.12,vol:0.18}); tone(c,d,{type:'triangle',f0:2600,f1:1800,dur:0.3,vol:0.08}); tone(c,d,{type:'triangle',f0:3900,f1:2900,dur:0.2,vol:0.04}); }],
+  spike:[1.1,(c,d)=>{
+    // "shaki-in": a bright blade being drawn, then a ringing metallic tail
+    noise(c,d,{f0:2500,f1:9000,ft:'highpass',dur:0.09,vol:0.3});
+    noise(c,d,{f0:7000,ft:'bandpass',q:6,dur:0.5,vol:0.08,t:0.05});
+    for(const [f,v,dd] of [[3150,0.07,0.9],[4720,0.05,0.75],[6230,0.04,0.6],[8410,0.025,0.5]]){
+      tone(c,d,{f0:f*0.94,f1:f,dur:dd,vol:v,glide:0.06,t:0.03});
+    }
+    tone(c,d,{type:'triangle',f0:1580,f1:2100,dur:0.18,vol:0.05});
+  }],
   blockfall:[0.8,(c,d)=>{ tone(c,d,{f0:120,f1:40,dur:0.5,vol:0.45}); noise(c,d,{f0:700,f1:150,dur:0.35,vol:0.3}); }],
   wallmove:[1.1,(c,d)=>{ noise(c,d,{f0:220,dur:1.0,vol:0.35,a:0.12,curve:'lin'}); tone(c,d,{f0:48,dur:1.0,vol:0.2,a:0.1,curve:'lin'}); }],
   arrow:[0.45,(c,d)=>{ tone(c,d,{type:'triangle',f0:196,f1:180,dur:0.18,vol:0.14}); noise(c,d,{f0:4000,f1:900,ft:'bandpass',q:1.2,dur:0.32,vol:0.2,t:0.02}); }],
