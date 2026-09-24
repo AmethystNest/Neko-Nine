@@ -161,26 +161,39 @@ const STAGES=[
 },
 // ---------------------------------------------------------------- 10
 {
-  name:'ただいま', theme:'home', width:1800,
+  name:'ただいま', theme:'home', width:3150,
   story:['見覚えのある廊下。','ドアの向こうに、君の気配がする。'],
-  floors:[[0,470],[1030,1800]],
-  checkpoint:{x:1000},
-  goal:{x:1700,locked:false},
+  // The whole way home, every trap from the journey comes back once more.
+  floors:[[0,470],[1030,1480],[1580,3150]],
+  checkpoint:{x:1330},
+  goal:{x:3050,locked:false},
   final:true,
   ents:F=>[
-    // Stage 1 trapdoor spot is honest this time. The landing spot is not.
+    // 1: the trapdoor spot is honest this time. The landing spot is not.
     F.TrapFloor({x:470,w:140,dir:'lr',delay:0.03,speed:900}),
-    // The pit from the very first hallway remembers you, too.
+    // 1: the pit from the very first hallway remembers you, too.
     F.ShiftPit({x0:610,x1:1030,px:700,pw:120,minShift:40,maxShift:150,look:150,speed:800}),
+    // 5 + 3: laser fence, then three presses in a row.
     F.Laser({x:965,y0:90,y1:G,always:true,onT:0.8,offT:0.85,phase:0}),
     F.Crusher({x:1030,w:80,h:150,ceil:39,period:2.1,phase:0.0,fallSpeed:1000,hold:0.25,riseSpeed:560}),
     F.Crusher({x:1110,w:80,h:150,ceil:39,period:2.1,phase:0.25,fallSpeed:1000,hold:0.25,riseSpeed:560}),
     F.Crusher({x:1190,w:80,h:150,ceil:39,period:2.1,phase:0.5,fallSpeed:1000,hold:0.25,riseSpeed:560}),
-    F.ChaseWall({startX:1520,w:54,h:170,when:w=>w.P.x>=1345,riseSpeed:900,speed:520,minX:1275,flag:'wall10'}),
+    // 6: a headwind over the gap. Jump into it and you fall short.
+    F.Wind({x0:1370,x1:1575,v:-240,onT:1.3,offT:1.5,phase:0}),
+    // 5: the long jump lands right on a rising arc. Hop short and let it pass.
+    F.Arc({x:1700,w:28,maxH:G-60,tx:1545,delay:0.2,riseSpeed:600,hold:0.35}),
+    // 6: lightning that aims where you are going, twice.
+    F.Lightning({lock:0.5,strike:0.78,predict:true,width:34,count:2,interval:0.75,when:w=>w.P.x>=1820&&w.P.x<2080}),
+    // 8: the clock tower's blade.
+    F.Pendulum({px:2240,py:90,len:290,amp:0.72,period:2.2,phase:0,r:20}),
+    // 4: floor spikes that wait for you to come close.
+    F.Spikes({x:2400,w:96,maxH:42,tx:2385,delay:0.12,riseSpeed:300,hold:0.48,fallSpeed:220}),
+    // 2: the wall from the rainy alley.
+    F.ChaseWall({startX:2870,w:54,h:170,when:w=>w.P.x>=2695,riseSpeed:900,speed:520,minX:2625,flag:'wall10'}),
     // The wall stops... and the door answers with an arrow along the floor.
     F.Shot({from:'right',y:G-22,w:54,h:8,speed:820,delay:0.3,style:'arrow',when:w=>!!w.flags.wall10}),
-    F.Deco({type:'fakecrack',x:1560,w:70}),
-    F.Light({x:1700,y:370,r:170,warm:true,doorGlow:true})
+    F.Deco({type:'fakecrack',x:2910,w:70}),
+    F.Light({x:3050,y:370,r:170,warm:true,doorGlow:true})
   ]
 }
 ];

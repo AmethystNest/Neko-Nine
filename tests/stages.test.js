@@ -12,6 +12,24 @@ const dodge=(w,inp)=>{
     const dx=e.bx()-w.P.x; if(e.by()>320 && dx>-10 && dx<130){ inp.press=true; inp.jump=true; w._jt=0.6; } }
 };
 
+// Stage 10 pieces (entity order: 0 trapdoor, 1 pit, 2 laser, 3-5 presses, 6 wind, 7 arc,
+// 8 lightning, 9 pendulum, 10 spikes, 11 wall, 12 arrow)
+const CP10={spawn:{x:1330,y:420}};
+const windOn=w=>{ const ph=w.ents[6].tm%2.8; return ph>0.3&&ph<0.4; };
+const windCalm=w=>{ const ph=w.ents[6].tm%2.8; return ph>1.6&&ph<1.7; };
+const LT=w=>w.ents[8];
+const S10_START=[walk(X(455)),...jumpR(0.6),walk(X(670)),{r:1,j:1,p:1,t:0.14},{l:1,j:1,until:GR},wait(0.2),
+  {r:1,until:w=>w.P.x>=w.ents[1].px-70},wait(0.3),
+  {until:w=>w.ents[2].on&&w.ents[2].tm%1.65>0.62&&w.ents[2].tm%1.65<0.66},{r:1,until:w=>w.P.x>=w.ents[1].px-14},...jumpR(0.6),walk(X(1000)),
+  {until:w=>w.ents[5].st==='rise'&&w.ents[5].y<w.ents[5].restY+60},walk(X(1300))];
+const S10_MID=[walk(X(1455)),{until:windCalm},{r:1,j:1,p:1,t:0.18},{r:1,until:X(1600)},{until:GR},{until:w=>w.ents[7].st==='done'},walk(X(1820)),
+  {r:1,until:w=>LT(w).st==='aim'&&LT(w).tm>=0.5},{until:w=>LT(w).st!=='aim'||LT(w).tm<0.3},{until:w=>LT(w).st==='aim'&&LT(w).tm>=0.5},{r:1,t:0.3},{until:w=>LT(w).st==='done'}];
+// wait just outside the blade's low arc, then jump over it as it swings away
+const S10_BLADE=[walk(X(2072)),{until:w=>{ const t=w.ents[9].tm%2.2; return t>0.5&&t<0.55; }},{r:1,j:1,p:1,t:0.6},{r:1,until:GR},walk(X(2300)),
+  {until:w=>w.ents[10].st==='idle'||w.ents[10].st==='done'}];
+const S10_END=[walk(X(2372)),...jumpR(0.6),walk(X(2696)),{until:w=>w.ents[11].st==='move'},{j:1,p:1,t:0.5},{until:GR},
+  {until:w=>w.ents[12].st==='fly'&&w.ents[12].x<w.P.x+130},{j:1,p:1,t:0.5},{until:GR},{until:w=>w.ents[11].st==='stop'},walk(X(4000)),{l:1,until:XL(3050)}];
+
 // expect: 'dead' (first-time kill) or 'clear'
 const cases={
 1:[
@@ -74,24 +92,24 @@ const cases={
                                      {until:w=>w.ents[2].s.x>1160},{r:1,j:1,p:1,until:X(1318)},{j:1,until:GR},{until:GR},wait(0.45),walk(X(1453)),wait(0.35),walk(X(1705)),...jumpR(0.6),walk(X(1860)),...jumpR(0.6),walk(X(2000))]],
 ],
 10:[
-  ['stage1 habit jump',     'dead', [walk(X(285)),...jumpR(0.6),walk(X(2000))]],
-  ['plain jump over pit',   'dead', [walk(X(455)),...jumpR(0.6),walk(X(680)),...jumpR(0.6),walk(X(2000))]],
-  ['solution',              'clear',[walk(X(455)),...jumpR(0.6),walk(X(670)),{r:1,j:1,p:1,t:0.14},{l:1,j:1,until:GR},wait(0.2),
-                                      {r:1,until:w=>w.P.x>=w.ents[1].px-70},wait(0.3),
-                                      {until:w=>w.ents[2].on&&w.ents[2].tm%1.65>0.62&&w.ents[2].tm%1.65<0.66},{r:1,until:w=>w.P.x>=w.ents[1].px-14},...jumpR(0.6),walk(X(1000)),
-                                      {until:w=>w.ents[5].st==='rise'&&w.ents[5].y<w.ents[5].restY+60},walk(X(1300)),walk(X(1346)),{until:w=>w.ents[6].st==='move'},{j:1,p:1,t:0.5},{until:GR},{until:w=>w.ents[7].st==='fly'&&w.ents[7].x<w.P.x+130},{j:1,p:1,t:0.5},{until:GR},{until:w=>w.ents[6].st==='stop'},walk(X(2000)),{l:1,until:XL(1700)}]],
-  ['hop down, ignore arrow','dead', [walk(X(455)),...jumpR(0.6),walk(X(670)),{r:1,j:1,p:1,t:0.14},{l:1,j:1,until:GR},wait(0.2),
-                                      {r:1,until:w=>w.P.x>=w.ents[1].px-70},wait(0.3),
-                                      {until:w=>w.ents[2].on&&w.ents[2].tm%1.65>0.62&&w.ents[2].tm%1.65<0.66},{r:1,until:w=>w.P.x>=w.ents[1].px-14},...jumpR(0.6),walk(X(1000)),
-                                      {until:w=>w.ents[5].st==='rise'&&w.ents[5].y<w.ents[5].restY+60},walk(X(1300)),walk(X(1346)),{until:w=>w.ents[6].st==='move'},{j:1,p:1,t:0.5},{until:GR},{until:w=>w.ents[6].st==='stop'},walk(X(2000)),{l:1,until:XL(1700)}]],
+  ['stage1 habit jump',     'dead', [walk(X(285)),...jumpR(0.6),walk(X(4000))]],
+  ['plain jump over pit',   'dead', [walk(X(455)),...jumpR(0.6),walk(X(680)),...jumpR(0.6),walk(X(4000))]],
+  ['solution',              'clear',[...S10_START,...S10_MID,...S10_BLADE,...S10_END]],
+  // sections below start from the mercy checkpoint (x=1330)
+  ['jump into the headwind','dead', [walk(X(1455)),{until:windOn},...jumpR(0.6),walk(X(4000))],CP10],
+  ['full jump in the calm', 'dead', [walk(X(1455)),{until:windCalm},...jumpR(0.6),walk(X(4000))],CP10],
+  ['walk through lightning','dead', [...S10_MID.slice(0,7),walk(X(4000))],CP10],
+  ['walk under the blade',  'dead', [...S10_MID,walk(X(2370))],CP10],
+  ['walk into the spikes',  'dead', [...S10_MID,...S10_BLADE,walk(X(4000))],CP10],
+  ['hop down, ignore arrow','dead', [...S10_MID,...S10_BLADE,walk(X(2372)),...jumpR(0.6),walk(X(2696)),{until:w=>w.ents[11].st==='move'},{j:1,p:1,t:0.5},{until:GR},{until:w=>w.ents[11].st==='stop'},walk(X(4000)),{l:1,until:XL(3050)}],CP10],
 ],
 };
 let fail=0;
 const only=process.argv[2]?+process.argv[2]:0;
 for(const k of Object.keys(cases)){
   if(only && +k!==only) continue;
-  for(const [name,exp,script] of cases[k]){
-    const r=run(k-1,script,{trace:!!process.env.TRACE});
+  for(const [name,exp,script,opts] of cases[k]){
+    const r=run(k-1,script,Object.assign({trace:!!process.env.TRACE,maxT:60},opts));
     const ok=r.res===exp;
     if(!ok) fail++;
     console.log(`${ok?'OK  ':'FAIL'} S${k} ${name.padEnd(28)} -> ${r.res}${r.cause?' ('+r.cause+' x='+r.x+' y='+r.y+' step='+r.step+')':''} t=${r.t}`);

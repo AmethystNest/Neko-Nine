@@ -118,18 +118,18 @@ TH.home=Object.assign({},TH.hall,{
     for(let x=95;x<W;x+=185){ g.beginPath(); g.moveTo(x,42); g.lineTo(x,G-18); g.stroke(); }
     rect(g,'#2d2e3f',0,G-14,W,14);
     // moonlit windows
-    for(const wx of [230,760,1330]){
+    for(let wx=230;wx<W-300;wx+=545){
       rect(g,'#232334',wx,96,112,104); rect(g,'#0f1426',wx+6,102,100,92);
       circ(g,'#d8dcef',wx+72,126,8);
       rect(g,'#232334',wx+54,102,4,92); rect(g,'#232334',wx+6,146,100,4);
       g.fillStyle='rgba(190,205,255,.06)'; g.beginPath(); g.moveTo(wx+6,194); g.lineTo(wx+106,194); g.lineTo(wx+160,G); g.lineTo(wx-40,G); g.fill();
     }
-    // warm glow toward the last door
-    const gr=g.createLinearGradient(1350,0,1800,0);
+    // warm glow toward the last door (the door stands 100px before the end)
+    const gr=g.createLinearGradient(W-450,0,W,0);
     gr.addColorStop(0,'rgba(255,190,120,0)'); gr.addColorStop(1,'rgba(255,190,120,.22)');
-    g.fillStyle=gr; g.fillRect(1350,0,450,G);
+    g.fillStyle=gr; g.fillRect(W-450,0,450,G);
     // name plate
-    rect(g,'#6d5d48',1664,286,72,16); g.fillStyle='#e8d8b0'; g.font='bold 10px sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('201',1700,294);
+    rect(g,'#6d5d48',W-136,286,72,16); g.fillStyle='#e8d8b0'; g.font='bold 10px sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('201',W-100,294);
   },
   floor:floorPainter({body:'#4b4a4f',top:['#6c6a6a',5],seam:'rgba(0,0,0,.2)',step:110}),
   door:{frame:'#4a3a2c',panel:'#7a5e45',line:'rgba(30,20,10,.45)',knob:'#e3c27a',planks:true}
@@ -514,6 +514,19 @@ P.Lightning.prototype.draw=function(g,w,T){
     for(let y=0;y<fy;y+=24){ xx=x+(Math.random()-0.5)*26; g.lineTo(xx,y); } g.lineTo(x,fy); g.stroke();
     g.strokeStyle='rgba(160,200,255,.6)'; g.lineWidth=12; g.stroke();
   }
+};
+P.Wind.prototype.draw=function(g,w,T){
+  if(T.rain || !(this.level>0.02)) return;
+  const dir=Math.sign(this.v), a=this.level;
+  g.save(); g.beginPath(); g.rect(this.x0,0,this.x1-this.x0,G); g.clip();
+  g.strokeStyle=`rgba(210,220,255,${0.32*a})`; g.lineWidth=2; g.beginPath();
+  const span=this.x1-this.x0+240;
+  for(let i=0;i<22;i++){
+    const y=110+((i*67)%290), len=40+(i*29)%70;
+    const x=this.x0-120+(((i*131)+dir*this.tm*640)%span+span)%span;
+    g.moveTo(x,y); g.lineTo(x-dir*len,y);
+  }
+  g.stroke(); g.restore();
 };
 P.Lightning.prototype.floorY=function(w){ for(const s of w.statics) if(this.target>=s.x&&this.target<=s.x+s.w) return s.y; return G; };
 P.Conveyor.prototype.draw=function(g,w,T){
