@@ -13,14 +13,42 @@ const SAVE_KEY='nekonine.save.v2';
 
 // Said by Nine right after losing a life. Light-hearted on purpose: the game is cruel, the cat is not.
 const DEATH_QUOTES=[
-  "猫なのでセーフ。","命、ひとつ落としました。","来世のぼく、あとはよろしく。","今のは練習。",
-  "九つあるって、そういう意味じゃない。","ぼくは悪くない。床が悪い。","知ってた。知らなかったけど。",
-  "次は、ちゃんと見る。","しっぽが引っかかった気がする。","にゃ。","痛くはない。ちょっとしか。",
-  "それは、ずるくない？","覚えた。たぶん。","今のノーカンにならない？","命、返品できます？",
-  "さっきまで生きてた。","猫じゃなかったら終わってた。","残機って言うな。命だぞ。",
-  "思ったより、命って減る。","毛づくろいしてから、もう一回。","ぼくのせいじゃない。……たぶん。",
-  "まっすぐ進むだけが、道じゃなかった。","見なかったことにして。"
+  "猫を大事にするゲームって聞いてたんだけど。","残機って言うな。命だぞ。","命の在庫、確認してきます。",
+  "転生、ヨシ。","四足歩行を過信した。","予備のぼく、出番です。",
+  "画面の前で「あっ」って言ったでしょ。","指、滑ったよね？ そういうことにしとこう。",
+  "知ってた。知らなかったけど。","これは経験値。ぼくの経験値。","今の避ける猫いる？",
+  "転生RTA、更新。","避けたよ？ 気持ちでは。","猫背が敗因。","リスポーンって便利。",
+  "鑑識呼んで。","初見を狙った犯行ですね。"
 ];
+// Lines for the trap that got you. Key: trap kind (or kind:style). Edit freely.
+const TRAP_QUOTES={
+  'trapdoor':     ["床が裏切った。","その床、さっきまで床だったのに。"],
+  'pit':          ["穴のほうから来るのは反則。","穴が動くのは聞いてない。"],
+  'dropfloor':    ["床ごと落ちるのはずるい。","床に置いていかれた。"],
+  'dropfloor:crumble':["ヒビには気づいてた。気づいてただけ。"],
+  'dropfloor:glass':  ["ガラスの上に乗る猫、いる？ いた。"],
+  'dropfloor:ledge':  ["扉だと思った？ ぼくも。"],
+  'crusher':      ["天井が落ちてくるタイプの物件だった。","ぺちゃんこでも猫です。"],
+  'crusher:bell': ["鐘が鳴る前に、ぼくが鳴った。"],
+  'fallblock:pot':["植木鉢、狙ってたよね？"],
+  'fallblock:rock':["落石注意の看板、出しといて。"],
+  'fallblock':    ["上も見るべきだった。"],
+  'spike':        ["トゲって、生えるんだ。","針治療にしては刺しすぎ。"],
+  'shot:arrow':   ["矢って、猫にも当たるんだ。","背中から撃つのは卑怯。"],
+  'shot:block':   ["壁が走ってきた。"],
+  'shot:crow':    ["カラスとは分かり合えない。"],
+  'laser':        ["レーザー、点くタイミング教えて。"],
+  'electric':     ["しびれた。物理的に。"],
+  'shutter':      ["シャッター、閉店ガラガラ。"],
+  'wall':         ["壁ドンされた。物理的に。"],
+  'lightning':    ["雷、猫を狙わないで。"],
+  'train':        ["終電、乗れなかった。轢かれた。","踏切では止まりましょう。"],
+  'pendulum':     ["振り子を見てたら、吸い込まれた。"],
+  'dark':         ["暗闇に食べられた。"],
+  'fall':         ["下、見てなかった。"]
+};
+// How often a trap line wins over the random pool (when more than 3 lives are left).
+const TRAP_QUOTE_RATE=0.5;
 // Lines tied to how many lives are left (after this death).
 const COUNT_QUOTES={
   8:["ひとつめ。まだ平気。"],
@@ -49,9 +77,21 @@ const RETRY_QUOTES=[
 ];
 function bag(list){ let b=[]; return ()=>{ if(!b.length){ b=list.slice(); for(let i=b.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [b[i],b[j]]=[b[j],b[i]]; } } return b.pop(); }; }
 const nextDeathQuote=bag(DEATH_QUOTES), nextRetryQuote=bag(RETRY_QUOTES);
-function deathQuoteFor(lives){
+const trapBags={};
+function trapKeyOf(ev){
+  const e=S.world&&ev.killer>=0?S.world.ents[ev.killer]:null;
+  if(!e) return ev.cause==='fall'?'fall':null;
+  const withStyle=e.kind+':'+(e.style||'');
+  if(TRAP_QUOTES[withStyle]) return withStyle;
+  if(TRAP_QUOTES[e.kind]) return e.kind;
+  return ev.cause==='fall'?'fall':null;
+}
+function deathQuoteFor(lives,ev){
   const c=COUNT_QUOTES[lives];
-  if(c && (lives<=3 || Math.random()<0.6)) return c[Math.floor(Math.random()*c.length)];
+  if(c && lives<=3) return c[Math.floor(Math.random()*c.length)];
+  const key=ev&&trapKeyOf(ev);
+  if(key && Math.random()<TRAP_QUOTE_RATE){ return (trapBags[key]||(trapBags[key]=bag(TRAP_QUOTES[key])))(); }
+  if(c && Math.random()<0.6) return c[Math.floor(Math.random()*c.length)];
   return nextDeathQuote();
 }
 const KANA_NUM=['ひとつ','ふたつ','みっつ','よっつ','いつつ','むっつ','ななつ','やっつ','ここのつ'];
@@ -189,7 +229,7 @@ function onDeath(ev){
     S.mode='dying';
     setTimeout(showGameOver,900);
   }else{
-    S.ui.deathQuote=deathQuoteFor(S.lives);
+    S.ui.deathQuote=deathQuoteFor(S.lives,ev);
     S.respawnAt=S.clock+1.05;
   }
 }
