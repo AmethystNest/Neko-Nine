@@ -168,6 +168,17 @@ const STAGES=[
   checkpoint:{x:1330},
   goal:{x:3050,locked:false},
   final:true,
+  // the darkness of stage 9 follows you in, and lifts on the way to the door
+  dusk:{from:0.84,x0:300,x1:2750},
+  // the owner's voice, remembered along the way home
+  memories:[
+    {x:300, text:'「ただいま、ナイン。いい子にしてた？」'},
+    {x:1130,text:'「ごめんね。今日も、遅くなっちゃった」'},
+    {x:1640,text:'「雨、ひどかったよ。……ナインはあったかいね」'},
+    {x:1990,y:292,text:'「大丈夫。……大丈夫だから」'},
+    {x:2400,text:'「明日は、早く帰るからね」'},
+    {x:2800,text:'「長生きしてね」'}
+  ],
   ents:F=>[
     // 1: the trapdoor spot is honest this time. The landing spot is not.
     F.TrapFloor({x:470,w:140,dir:'lr',delay:0.03,speed:900}),

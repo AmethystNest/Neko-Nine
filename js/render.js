@@ -806,6 +806,16 @@ const R={
     if(T.rain) this.drawRain(g,w,v,cam,dt);
     g.restore();
 
+    const dk=w.def.dusk?this.duskAt(w):0;
+    if(dk>0.01){
+      // the last hallway: the darkness of stage 9 thins out the closer you get to the door
+      this.drawDark(w,v,cam,sx,sy,{alpha:dk,holes:this.duskHoles(w),motes:false});
+    }
+    if(w.def.memories){
+      g.save(); g.translate(sx,v.oy+sy); g.scale(v.scale,v.scale); g.translate(-cam,0);
+      this.drawMemories(g,w,dt);
+      g.restore();
+    }
     if(T.dark){
       this.drawDark(w,v,cam,sx,sy);
       // things that must stay visible in the dark
@@ -825,6 +835,19 @@ const R={
     if(ui.lastLife){ const a=0.12+0.1*Math.sin(performance.now()/260); g.fillStyle=`rgba(160,0,20,${a})`; g.fillRect(0,0,this.W,6); g.fillRect(0,this.H-6,this.W,6); g.fillRect(0,0,6,this.H); g.fillRect(this.W-6,0,6,this.H); }
   },
   dynBack(g,w,T){
+    if(T===TH.home){
+      const f=this.flashA;
+      g.save();
+      for(let wx=230;wx<w.W-300;wx+=545){
+        g.save(); g.beginPath(); g.rect(wx+6,102,100,92); g.clip();
+        if(f>0){ g.fillStyle=`rgba(200,215,255,${Math.min(0.85,f)})`; g.fillRect(wx+6,102,100,92); }
+        g.strokeStyle='rgba(170,190,230,.35)'; g.lineWidth=1; g.beginPath();
+        for(let i=0;i<14;i++){ const x=wx+((i*37+w.t*60)%130)-10, y=102+((i*53+w.t*420)%112)-10; g.moveTo(x,y); g.lineTo(x-3,y+12); }
+        g.stroke(); g.restore();
+        rect(g,'#232334',wx+54,102,4,92); rect(g,'#232334',wx+6,146,100,4);
+      }
+      g.restore();
+    }
     if(T===TH.clock){
       const t=w.t;
       g.save(); g.translate(520,250);
@@ -907,13 +930,52 @@ const R={
     g.drawImage(sp,Math.round(-dw/2),Math.round(-dh),Math.round(dw),Math.round(dh));
     g.restore();
   },
-  drawDark(w,v,cam,sx,sy){
+  duskAt(w){
+    const d=w.def.dusk, k=clamp((w.P.x-d.x0)/(d.x1-d.x0),0,1);
+    return d.from*(1-k*k*(3-2*k));
+  },
+  duskHoles(w){
+    const out=[];
+    for(let wx=230;wx<w.W-300;wx+=545) out.push([wx+56,150,120,0.55+0.4*this.flashA]);
+    for(const e of w.ents){
+      if(e.kind==='laser' && (e.on||e.charging)) out.push([e.x,250,110,0.8]);
+      else if(e.kind==='electric' && e.h>8) out.push([e.x,G-e.h/2,120,0.9]);
+      else if(e.kind==='lightning' && (e.st==='aim'||e.st==='strike') && e.target!==undefined) out.push([e.target,G-20,90,0.9]);
+      else if(e.kind==='spike' && e.h>0) out.push([e.x+e.w/2,G-10,80,0.7]);
+      else if(e.kind==='pendulum') out.push([e.bx(),e.by(),80,0.85]);
+    }
+    return out;
+  },
+  // Lines of the owner's voice written faintly along the wall; they surface as the cat passes.
+  drawMemories(g,w,dt){
+    const P=w.P;
+    if(!this.mem||this.mem.w!==w) this.mem={w,a:[],seen:[]};
+    const M=this.mem;
+    g.save(); g.textAlign='center'; g.textBaseline='middle';
+    g.font="500 21px 'Shippori Mincho','Hiragino Mincho ProN','Yu Mincho',serif";
+    w.def.memories.forEach((m,i)=>{
+      const near=clamp(1-(Math.abs(P.x-m.x)-80)/260,0,1);
+      if(near>0.6) M.seen[i]=true;
+      // once read, a line stays behind as a faint trace; hidden while the death line is up
+      const target=P.dead?0:Math.max(near,M.seen[i]?0.16:0);
+      const cur=M.a[i]=(M.a[i]||0)+(target-(M.a[i]||0))*Math.min(1,dt*(P.dead?8:2.5));
+      if(cur<0.02) return;
+      const y=m.y||250, rise=(1-Math.min(1,cur*1.4))*8;
+      glow(g,m.x,y,150,'rgba(255,214,160,A)',0.10*cur);
+      g.shadowColor='rgba(255,200,140,.8)'; g.shadowBlur=12;
+      g.fillStyle=`rgba(255,238,214,${0.9*cur})`;
+      g.fillText(m.text,m.x,y+rise);
+    });
+    g.restore();
+  },
+  drawDark(w,v,cam,sx,sy,o){
+    o=o||{};
     const c=this.darkCv;
     if(c.width!==this.cv.width||c.height!==this.cv.height){ c.width=this.cv.width; c.height=this.cv.height; }
     const d=c.getContext('2d');
     d.setTransform(1,0,0,1,0,0);
     d.globalCompositeOperation='source-over';
-    d.fillStyle='rgba(2,2,6,.965)'; d.fillRect(0,0,c.width,c.height);
+    d.fillStyle=`rgba(2,2,6,${o.alpha===undefined?0.965:o.alpha})`; d.fillRect(0,0,c.width,c.height);
     d.setTransform(this.dpr,0,0,this.dpr,0,0);
     d.translate(sx,v.oy+sy); d.scale(v.scale,v.scale); d.translate(-cam,0);
     d.globalCompositeOperation='destination-out';
@@ -924,8 +986,9 @@ const R={
     if(w.goal) hole(w.goal.x,G-40,150,0.95);
     for(const gh of this.ghosts) hole(gh.x,gh.y-16,50,0.5);
     const r=rng(3);
-    for(let i=0;i<26;i++){ const x=r()*w.W, y=120+r()*260; hole(x+Math.sin(w.t+i)*12,y+Math.cos(w.t*0.7+i)*8,26,0.5); }
+    if(o.motes!==false) for(let i=0;i<26;i++){ const x=r()*w.W, y=120+r()*260; hole(x+Math.sin(w.t+i)*12,y+Math.cos(w.t*0.7+i)*8,26,0.5); }
     for(const e of w.ents) if(e.kind==='fallblock' && (e.st==='wait'||e.st==='fall')) hole(e.x+e.w/2,G,60,0.6);
+    if(o.holes) for(const h of o.holes) hole(h[0],h[1],h[2],h[3]);
     const g=this.g; g.save(); g.setTransform(1,0,0,1,0,0); g.drawImage(c,0,0); g.restore();
   },
   // ?debug: solids, hazards, hurtbox and trigger lines, plus a small status readout.
