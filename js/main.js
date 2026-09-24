@@ -55,9 +55,6 @@ const TRAP_QUOTE_RATE=0.5;
 const COUNT_QUOTE_RATE=0.5;
 // Lines tied to how many lives are left (after this death).
 const COUNT_QUOTES={
-  8:["ひとつめ。まだ平気。"],
-  6:["もう三つ。数えるのはやめよう。"],
-  4:["半分より、少なくなった。"],
   3:["あと三つ。……急がなきゃ。"],
   2:["あと、ふたつ。"],
   1:["あと、ひとつ。","これが最後の命。","……まだ、終われない。"]
