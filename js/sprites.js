@@ -1,14 +1,32 @@
 // Neko Nine: Nine, the black cat, drawn as pixel art from code.
-// Every frame comes from the same shape recipe, so the cat stays consistent.
+// Every frame comes from one shape recipe per design, so the cat stays consistent.
 (function(root){
 'use strict';
-const W=40, H=28;
-const PAL=[null,'#1c1926','#4a4462','#ffc95a','#120f18','#ffffff','#f39bb2','#5a2a44','#e0484f','#f5c542','#2c2838'];
-// 1 body  2 rim light  3 eye  4 pupil  5 glint  6 pink  7 blush  8 collar  9 bell  10 shade
+const W=44, H=30, OX=2, OY=2;
+const PAL=[null,'#1c1926','#4d4868','#9fdcff','#3f8fe0','#ffffff','#f39bb2','#5a2a44','#3d86f0','#f5c542','#2c2838','#a8ceff'];
+// 1 body  2 rim light  3 eye light  4 eye deep  5 glint  6 pink  7 blush  8 blue cloth  9 bell  10 shade  11 cloth light
+
+// ---------------------------------------------------------------------------
+// Character designs. Eyes and neckwear are blue in every design.
+// ---------------------------------------------------------------------------
+const DESIGNS={
+  maru:{name:'まる',desc:'丸い頭のちびキャラ。青い首輪に金の鈴。',
+    body:[17,17,10.5,5.8], neck:[24,14,4.2], head:[29,10,7.4,6.6], ear:10, legs:[[9,13,21,25],5,3],
+    tail:[[8,15],[1,10],[3,2],1.35], eye:'round', acc:'collar'},
+  sura:{name:'すらり',desc:'細身で大人びた猫。細い青の首輪にタグ。長いしっぽ。',
+    body:[16,17.5,10.5,4.6], neck:[24,13,3.4], head:[29,8.5,6.2,5.6], ear:11.5, legs:[[8,12,20,23],6,2],
+    tail:[[6,16],[-1,8],[5,1],1.05], eye:'almond', acc:'tag'},
+  mafu:{name:'マフラー',desc:'ふわっと丸い体。青いマフラーの端が風になびく。',
+    body:[17,17.5,11,6.4], neck:[24,14,4.6], head:[29,10.5,7.6,6.8], ear:9.5, legs:[[9,13,21,25],4,3],
+    tail:[[7,15],[0,12],[2,5],1.7], eye:'round', acc:'scarf'},
+  koneko:{name:'こねこ',desc:'頭の大きな子猫。大きな瞳と青いリボン。',
+    body:[17,19,9,5], neck:[23,15,4], head:[28.5,10,8.6,7.6], ear:9, legs:[[10,13.5,20,23.5],4,3],
+    tail:[[9,17],[3,14],[4,7],1.3], eye:'big', acc:'ribbon'}
+};
 
 function makeGrid(){ return new Uint8Array(W*H); }
-function set(g,x,y,c){ x=Math.round(x); y=Math.round(y); if(x>=0&&y>=0&&x<W&&y<H) g[y*W+x]=c; }
-function get(g,x,y){ return (x>=0&&y>=0&&x<W&&y<H)?g[y*W+x]:0; }
+function set(g,x,y,c){ x=Math.round(x)+OX; y=Math.round(y)+OY; if(x>=0&&y>=0&&x<W&&y<H) g[y*W+x]=c; }
+function rawGet(g,x,y){ return (x>=0&&y>=0&&x<W&&y<H)?g[y*W+x]:0; }
 function ellipse(g,cx,cy,rx,ry,c){
   for(let y=Math.floor(cy-ry-1);y<=cy+ry+1;y++) for(let x=Math.floor(cx-rx-1);x<=cx+rx+1;x++){
     const dx=(x+0.5-cx)/rx, dy=(y+0.5-cy)/ry; if(dx*dx+dy*dy<=1) set(g,x,y,c);
@@ -23,7 +41,7 @@ function tri(g,a,b,c,col){
     const neg=d1<0||d2<0||d3<0, pos=d1>0||d2>0||d3>0; if(!(neg&&pos)) set(g,x,y,col);
   }
 }
-function thick(g,pts,r,c){ // polyline with round brush
+function thick(g,pts,r,c){
   for(let i=0;i<pts.length-1;i++){
     const [x0,y0]=pts[i],[x1,y1]=pts[i+1]; const n=Math.ceil(Math.hypot(x1-x0,y1-y0)*2)+1;
     for(let k=0;k<=n;k++){ const t=k/n; ellipse(g,x0+(x1-x0)*t,y0+(y1-y0)*t,r,r,c); }
@@ -31,80 +49,110 @@ function thick(g,pts,r,c){ // polyline with round brush
 }
 function bez(p0,p1,p2,n){ const out=[]; for(let i=0;i<=n;i++){ const t=i/n,u=1-t; out.push([u*u*p0[0]+2*u*t*p1[0]+t*t*p2[0],u*u*p0[1]+2*u*t*p1[1]+t*t*p2[1]]); } return out; }
 
-// o: {bob, legs:[[dx,len]x4], head:[dx,dy], tail:[cx,cy,tx,ty], squash, blink, sit}
-function paint(o){
-  const g=makeGrid();
-  const b=o.bob||0, hx=(o.head?o.head[0]:0), hy=(o.head?o.head[1]:0)+b;
-  const sq=o.squash||0;
-  if(o.sit){
-    // sitting, seen from the side, tail curled around the paws
-    thick(g,bez([10,25],[2,26],[3,19],10),1.3,1);
-    ellipse(g,15,19,7.5,7.2,1);
-    ellipse(g,18,24.5,5,2.6,1);
-    ellipse(g,22,13,3.5,4,1);
-    const HX=24, HY=8;
-    ellipse(g,HX,HY,7.2,6.4,1);
-    tri(g,[HX-6,HY-3],[HX-5,HY-9.5],[HX-1.5,HY-5],1); tri(g,[HX+1.5,HY-5],[HX+5,HY-9.5],[HX+6.5,HY-2],1);
-    set(g,HX-4.5,HY-6.5,6); set(g,HX+4.5,HY-6.5,6);
-    rim(g);
-    face(g,HX,HY,o.blink,o.lookBack);
-    collar(g,HX-3,HY+5);
-    return g;
-  }
-  // tail
-  const t=o.tail||[1,10,3,2];
-  thick(g,bez([8,15+b],[t[0],t[1]+b],[t[2],t[3]+b],12),1.35,1);
-  // legs (drawn before the body so the body overlaps their tops)
-  const L=o.legs||[[0,5],[0,5],[0,5],[0,5]];
-  const lx=[9,13,21,25];
-  for(let i=0;i<4;i++){
-    const x=lx[i]+L[i][0], top=19+b, len=L[i][1];
-    for(let y=top;y<top+len+2;y++) for(let k=0;k<3;k++) set(g,x+k,y,i%2?1:10);
-    set(g,x+3,top+len+1,i%2?1:10); // paw
-  }
-  // body, neck, head
-  ellipse(g,17,17+b+sq*0.6,10.5,5.8-sq,1);
-  ellipse(g,24,14+b,4.2,4.2,1);
-  const HX=29+hx, HY=10+hy;
-  ellipse(g,HX,HY,7.4,6.6,1);
-  tri(g,[HX-6.2,HY-3],[HX-5,HY-10],[HX-1.2,HY-5.2],1);
-  tri(g,[HX+1.4,HY-5.4],[HX+5.2,HY-10],[HX+6.8,HY-2.2],1);
-  set(g,HX-4.6,HY-7,6); set(g,HX-4.6,HY-6,6); set(g,HX+4.6,HY-7,6);
-  rim(g);
-  face(g,HX,HY,o.blink);
-  collar(g,HX-6,HY+4.5);
-  return g;
-}
 function rim(g){
   const out=g.slice();
   for(let y=0;y<H;y++) for(let x=0;x<W;x++){
-    if(g[y*W+x]!==1&&g[y*W+x]!==10) continue;
-    if(!get(g,x,y-1)||!get(g,x-1,y)&&!get(g,x,y-2)) out[y*W+x]=2;
+    const v=g[y*W+x]; if(v!==1&&v!==10) continue;
+    if(!rawGet(g,x,y-1)||(!rawGet(g,x-1,y)&&!rawGet(g,x,y-2))) out[y*W+x]=2;
   }
   g.set(out);
 }
-function face(g,HX,HY,blink,back){
-  // big round eyes: the near one and the far one
+function ears(g,D,HX,HY){
+  const h=D.ear, rx=D.head[2];
+  tri(g,[HX-rx*0.84,HY-3],[HX-rx*0.66,HY-h],[HX-rx*0.16,HY-rx*0.7],1);
+  tri(g,[HX+rx*0.2,HY-rx*0.72],[HX+rx*0.7,HY-h],[HX+rx*0.92,HY-2.2],1);
+  set(g,HX-rx*0.62,HY-h*0.7,6); set(g,HX-rx*0.62,HY-h*0.6,6); set(g,HX+rx*0.62,HY-h*0.7,6);
+}
+function face(g,D,HX,HY,blink){
+  const far=D.eye==='big'?5:D.eye==='almond'?4:5;
   if(blink){
     for(const x of [HX-1,HX,HX+1]) set(g,x,HY,2);
-    for(const x of [HX+4,HX+5]) set(g,x,HY,2);
+    for(const x of [HX+far-1,HX+far]) set(g,x,HY,2);
+  }else if(D.eye==='almond'){
+    for(const x of [HX-1,HX,HX+1]) set(g,x,HY-1,3);
+    for(const x of [HX-1,HX,HX+1]) set(g,x,HY,4);
+    set(g,HX-1,HY-1,5);
+    set(g,HX+far-1,HY-1,3); set(g,HX+far,HY-1,3); set(g,HX+far-1,HY,4); set(g,HX+far,HY,4);
+  }else if(D.eye==='big'){
+    for(let y=HY-2;y<=HY+1;y++) for(let x=HX-1;x<=HX+1;x++) set(g,x,y,y<HY?3:4);
+    set(g,HX+1,HY-2,1); set(g,HX-1,HY+1,1);
+    set(g,HX-1,HY-2,5); set(g,HX,HY-2,5);
+    for(let y=HY-2;y<=HY+1;y++) for(let x=HX+far-1;x<=HX+far;x++) set(g,x,y,y<HY?3:4);
+    set(g,HX+far-1,HY-2,5);
   }else{
-    // simple round eyes: amber with a single sparkle
-    for(let y=HY-2;y<=HY+1;y++) for(let x=HX-1;x<=HX;x++) set(g,x,y,3);
+    for(let y=HY-2;y<=HY+1;y++) for(let x=HX-1;x<=HX;x++) set(g,x,y,y<HY?3:4);
     set(g,HX-1,HY-2,5);
-    for(let y=HY-2;y<=HY+1;y++) for(let x=HX+4;x<=HX+5;x++) set(g,x,y,3);
-    set(g,HX+4,HY-2,5);
+    for(let y=HY-2;y<=HY+1;y++) for(let x=HX+far-1;x<=HX+far;x++) set(g,x,y,y<HY?3:4);
+    set(g,HX+far-1,HY-2,5);
   }
-  set(g,HX+6,HY+2,6); // nose
-  set(g,HX-1,HY+3,7); set(g,HX,HY+3,7); // blush
+  set(g,HX+Math.round(D.head[2]*0.8),HY+2,6);       // nose
+  set(g,HX-1,HY+3,7); set(g,HX,HY+3,7);             // blush
 }
-function collar(g,x,y){
-  for(let i=0;i<5;i++) set(g,x+i,y+(i>1&&i<4?1:0)+(i===4?0:0),8);
-  set(g,x+2,y+2,9); set(g,x+3,y+2,9); set(g,x+2,y+3,9); set(g,x+3,y+3,9);
+function neckwear(g,D,HX,HY,flutter){
+  const x=HX-Math.round(D.head[2]*0.8), y=HY+Math.round(D.head[3]*0.66);
+  if(D.acc==='scarf'){
+    // a soft wrap around the neck, knotted at the back, two short ends hanging
+    for(let i=0;i<6;i++){ set(g,x+i,y-1+(i>1&&i<5?1:0),8); set(g,x+i,y+(i>1&&i<5?1:0),i%2?11:8); }
+    const f=flutter||0;
+    set(g,x-1,y,8); set(g,x-1,y+1,8);
+    thick(g,[[x-1,y+1],[x-3,y+3+f*0.5]],0.6,8);
+    thick(g,[[x,y+2],[x-1,y+4+f*0.5],[x-2,y+5]],0.6,11);
+  }else if(D.acc==='ribbon'){
+    for(let i=0;i<6;i++) set(g,x+i-1,y+(i>1&&i<4?1:0),8);
+    // bow on the near side
+    const bx=x+1, by=y+1;
+    set(g,bx,by,11);
+    for(const [dx,dy] of [[-1,-1],[-2,-1],[-1,0],[-2,0],[-2,1],[1,-1],[2,-1],[1,0],[2,0],[2,1]]) set(g,bx+dx,by+dy,8);
+    set(g,bx-1,by+1,8); set(g,bx+1,by+2,8); set(g,bx-1,by+2,8);
+  }else if(D.acc==='tag'){
+    for(let i=0;i<5;i++) set(g,x+i,y+(i>1&&i<4?1:0),8);
+    set(g,x+2,y+2,11); set(g,x+2,y+3,9);
+  }else{
+    for(let i=0;i<5;i++){ set(g,x+i,y+(i>1&&i<4?1:0),8); }
+    set(g,x+1,y,11);
+    set(g,x+2,y+2,9); set(g,x+3,y+2,9); set(g,x+2,y+3,9); set(g,x+3,y+3,9);
+  }
+}
+
+// o: {bob, legs:[[dx,len]x4], head:[dx,dy], tail:[cx,cy,tx,ty], squash, blink, sit, flutter}
+function paint(D,o){
+  const g=makeGrid();
+  const b=o.bob||0, sq=o.squash||0;
+  if(o.sit){
+    const s=D.head[2]/7.4;
+    thick(g,bez([10,25],[2,26],[3,19],10),D.tail[3],1);
+    ellipse(g,15,19,7.5*(D.body[3]/5.8)**0.3,7.2,1);
+    ellipse(g,18,24.5,5,2.6,1);
+    ellipse(g,21.5,13,D.neck[2]*0.85,4,1);
+    const HX=24, HY=9-(s-1)*3;
+    ellipse(g,HX,HY,D.head[2],D.head[3],1);
+    ears(g,D,HX,HY);
+    rim(g);
+    face(g,D,HX,HY,o.blink);
+    neckwear(g,D,HX,HY,0.5);
+    return g;
+  }
+  const T=o.tail||[D.tail[1][0],D.tail[1][1],D.tail[2][0],D.tail[2][1]];
+  thick(g,bez([D.tail[0][0],D.tail[0][1]+b],[T[0],T[1]+b],[T[2],T[3]+b],14),D.tail[3],1);
+  const L=o.legs||[[0,D.legs[1]],[0,D.legs[1]],[0,D.legs[1]],[0,D.legs[1]]];
+  const lw=D.legs[2], top=D.body[1]+D.body[3]*0.35+b;
+  for(let i=0;i<4;i++){
+    const x=D.legs[0][i]+L[i][0], len=L[i][1];
+    for(let y=Math.floor(top);y<top+len+2;y++) for(let k=0;k<lw;k++) set(g,x+k,y,i%2?1:10);
+    set(g,x+lw,Math.floor(top+len+1),i%2?1:10);
+  }
+  ellipse(g,D.body[0],D.body[1]+b+sq*0.6,D.body[2],D.body[3]-sq,1);
+  ellipse(g,D.neck[0],D.neck[1]+b,D.neck[2],D.neck[2],1);
+  const HX=D.head[0]+(o.head?o.head[0]:0), HY=D.head[1]+(o.head?o.head[1]:0)+b;
+  ellipse(g,HX,HY,D.head[2],D.head[3],1);
+  ears(g,D,HX,HY);
+  rim(g);
+  face(g,D,HX,HY,o.blink);
+  neckwear(g,D,HX,HY,o.flutter);
+  return g;
 }
 function toCanvas(g){
-  const c=(typeof document!=='undefined')?document.createElement('canvas'):null;
-  c.width=W; c.height=H;
+  const c=document.createElement('canvas'); c.width=W; c.height=H;
   const x=c.getContext('2d'); const img=x.createImageData(W,H);
   for(let i=0;i<W*H;i++){
     const col=PAL[g[i]]; if(!col) continue;
@@ -115,29 +163,34 @@ function toCanvas(g){
   return c;
 }
 
-function build(){
+let current='maru';
+function build(id){
+  const D=DESIGNS[id||current]||DESIGNS.maru;
+  const n=D.legs[1];
   const walkLegs=[
-    [[1,5],[-1,4],[-1,4],[1,5]],
-    [[0,5],[0,5],[0,5],[0,5]],
-    [[-1,4],[1,5],[1,5],[-1,4]],
-    [[0,5],[0,5],[0,5],[0,5]]
+    [[1,n],[-1,n-1],[-1,n-1],[1,n]],
+    [[0,n],[0,n],[0,n],[0,n]],
+    [[-1,n-1],[1,n],[1,n],[-1,n-1]],
+    [[0,n],[0,n],[0,n],[0,n]]
   ];
+  const t=D.tail;
+  const P=(o)=>toCanvas(paint(D,o));
   const f={
-    idle:toCanvas(paint({})),
-    idleBlink:toCanvas(paint({blink:true})),
-    walk:walkLegs.map((legs,i)=>toCanvas(paint({legs,bob:i%2?-1:0,tail:[0,9+(i%2),3,1+(i%2)]}))),
+    idle:P({}),
+    idleBlink:P({blink:true}),
+    walk:walkLegs.map((legs,i)=>P({legs,bob:i%2?-1:0,flutter:i%2,tail:[t[1][0]-1,t[1][1]+(i%2),t[2][0],t[2][1]+(i%2)]})),
     jump:{
-      rise:toCanvas(paint({legs:[[-2,5],[-2,5],[2,3],[2,3]],head:[0,-1],tail:[-1,16,1,20]})),
-      apex:toCanvas(paint({legs:[[0,3],[0,3],[0,3],[0,3]],tail:[0,8,4,1]})),
-      fall:toCanvas(paint({legs:[[-1,6],[1,6],[-1,6],[1,6]],head:[0,1],tail:[1,4,6,0]})),
-      land:toCanvas(paint({legs:[[-1,3],[1,3],[-1,3],[1,3]],bob:2,squash:1,head:[0,0],tail:[0,12,2,8]}))
+      rise:P({legs:[[-2,n],[-2,n],[2,n-2],[2,n-2]],head:[0,-1],tail:[t[0][0]-8,t[0][1]+1,t[0][0]-13,t[0][1]+4],flutter:2}),
+      apex:P({legs:[[0,n-2],[0,n-2],[0,n-2],[0,n-2]],flutter:1}),
+      fall:P({legs:[[-1,n+1],[1,n+1],[-1,n+1],[1,n+1]],head:[0,1],tail:[t[1][0],t[1][1]-5,t[2][0]+3,t[2][1]-2],flutter:-1}),
+      land:P({legs:[[-1,n-2],[1,n-2],[-1,n-2],[1,n-2]],bob:2,squash:1,tail:[t[1][0],t[1][1]+3,t[2][0],t[2][1]+6]})
     },
-    sit:toCanvas(paint({sit:true})),
-    sitBlink:toCanvas(paint({sit:true,blink:true}))
+    sit:P({sit:true}),
+    sitBlink:P({sit:true,blink:true})
   };
   f.icon=f.idle.toDataURL();
-  f.sitIcon=f.sit.toDataURL();
+  f.design=id||current;
   return f;
 }
-root.NEKO_SPRITES={build,W,H,SCALE:2};
+root.NEKO_SPRITES={build,DESIGNS,W,H,SCALE:2,get current(){return current;},set current(v){ if(DESIGNS[v]) current=v; }};
 })(window);

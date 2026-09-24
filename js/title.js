@@ -11,6 +11,9 @@ const T={
     const r=this.rand(21);
     this.city=[]; for(let i=0;i<140;i++) this.city.push({x:r(),y:0.55+r()*0.35,r:2+r()*7,c:r()<0.7?[255,196,120]:[190,210,255],a:0.25+r()*0.5,p:r()*TAU});
     this.motes=[]; for(let i=0;i<30;i++) this.motes.push({x:r(),y:r(),v:0.004+r()*0.008,p:r()*TAU});
+    this.stars=[]; for(let i=0;i<150;i++){ const big=r()<0.08; this.stars.push({x:r(),y:r()*0.85,r:big?2.2:1+r()*1.2,a:0.35+r()*0.6,s:0.6+r()*2,p:r()*TAU,big}); }
+    this.clouds=[]; for(let i=0;i<14;i++) this.clouds.push({x:r()*1.4-0.2,y:0.35+r()*0.6,r:0.12+r()*0.22,v:0.004+r()*0.006,
+      a:0.10+r()*0.16,col:r()<0.5?'205,180,230':(r()<0.5?'240,200,225':'150,140,210')});
     this.resize();
   },
   rand(seed){ let s=seed; return ()=>{ s=(s*16807)%2147483647; return (s%10000)/10000; }; },
@@ -29,39 +32,38 @@ const T={
     const wall=g.createLinearGradient(0,0,0,H);
     wall.addColorStop(0,this.mix('#0d0f1c','#2a2030')); wall.addColorStop(1,this.mix('#07080f','#1a1319'));
     g.fillStyle=wall; g.fillRect(0,0,W,H);
-    // window
-    const wx=W*0.46, wy=H*0.1, ww=W*0.46, wh=H*0.66;
-    const sky=g.createLinearGradient(0,wy,0,wy+wh);
-    sky.addColorStop(0,'#0a1230'); sky.addColorStop(0.6,'#1a2350'); sky.addColorStop(1,'#3a2c4a');
-    g.fillStyle=sky; g.fillRect(wx,wy,ww,wh);
+    // window: a violet, watercolor night with a crescent moon
+    const wx=W*0.46, wy=H*0.08, ww=W*0.46, wh=H*0.68;
     g.save(); g.beginPath(); g.rect(wx,wy,ww,wh); g.clip();
-    // moon behind thin clouds
-    const mx=wx+ww*0.78, my=wy+wh*0.2;
-    this.glow(g,mx,my,wh*0.45,'rgba(200,215,255,A)',0.18);
-    g.fillStyle='#e9ecf6'; g.beginPath(); g.arc(mx,my,wh*0.055,0,TAU); g.fill();
-    // city bokeh ("the town where you live")
-    for(const b of this.city){
-      const a=b.a*(0.75+0.25*Math.sin(this.t*0.8+b.p));
-      g.fillStyle=`rgba(${b.c[0]},${b.c[1]},${b.c[2]},${a*0.35})`;
-      g.beginPath(); g.arc(wx+b.x*ww,wy+b.y*wh,b.r*(W/900),0,TAU); g.fill();
+    const sky=g.createLinearGradient(0,wy,0,wy+wh);
+    sky.addColorStop(0,'#15173d'); sky.addColorStop(0.45,'#2e2c64'); sky.addColorStop(0.8,'#6a5a98'); sky.addColorStop(1,'#b596c4');
+    g.fillStyle=sky; g.fillRect(wx,wy,ww,wh);
+    // soft clouds, layered like washes of paint
+    for(const c of this.clouds){
+      c.x+=c.v*dt; if(c.x>1.3) c.x=-0.3;
+      const cx=wx+c.x*ww, cy=wy+c.y*wh, r=c.r*wh;
+      const gr=g.createRadialGradient(cx,cy,0,cx,cy,r);
+      gr.addColorStop(0,`rgba(${c.col},${c.a})`); gr.addColorStop(1,`rgba(${c.col},0)`);
+      g.fillStyle=gr; g.beginPath(); g.ellipse(cx,cy,r*1.7,r,0,0,TAU); g.fill();
     }
-    // rain outside
-    g.strokeStyle='rgba(170,190,235,.22)'; g.lineWidth=1; g.beginPath();
-    for(const s of this.streaks){
-      s.y+=dt*1.4*s.s; if(s.y>1.05){ s.y=-0.05; s.x=Math.random(); }
-      const x=wx+s.x*ww, y=wy+s.y*wh; g.moveTo(x,y); g.lineTo(x-3,y+14*s.s);
+    // stars
+    for(const st of this.stars){
+      const a=st.a*(0.55+0.45*Math.sin(this.t*st.s+st.p));
+      const x=wx+st.x*ww, y=wy+st.y*wh;
+      if(st.big){ this.glow(g,x,y,st.r*5,'rgba(255,250,235,A)',a*0.35); }
+      g.fillStyle=`rgba(255,250,240,${a})`; g.fillRect(x-st.r/2,y-st.r/2,st.r,st.r);
     }
-    g.stroke();
-    // drops on the glass
-    for(let i=0;i<this.drops.length;i++){
-      const d=this.drops[i];
-      if(d.stick>0) d.stick-=dt; else d.y+=d.v*dt*2;
-      if(d.y>1.02){ this.drops[i]=this.newDrop(false); continue; }
-      const x=wx+d.x*ww, y=wy+d.y*wh, r=d.r*ww;
-      if(d.stick<=0){ g.strokeStyle='rgba(200,215,255,.08)'; g.lineWidth=r*0.9; g.beginPath(); g.moveTo(x,y); g.lineTo(x,y-r*6); g.stroke(); }
-      g.fillStyle='rgba(210,225,255,.22)'; g.beginPath(); g.arc(x,y,r,0,TAU); g.fill();
-      g.fillStyle='rgba(255,255,255,.45)'; g.beginPath(); g.arc(x-r*0.3,y-r*0.3,r*0.3,0,TAU); g.fill();
-    }
+    // crescent moon
+    const mx=wx+ww*0.3, my=wy+wh*0.24, mr=wh*0.07;
+    this.glow(g,mx,my,mr*6,'rgba(255,240,210,A)',0.22);
+    const mc=this.moonCv||(this.moonCv=document.createElement('canvas'));
+    const ms=Math.ceil(mr*2.4); if(mc.width!==ms){ mc.width=mc.height=ms; }
+    const m=mc.getContext('2d'); m.clearRect(0,0,ms,ms);
+    m.fillStyle='#fff4dc'; m.beginPath(); m.arc(ms/2,ms/2,mr,0,TAU); m.fill();
+    m.globalCompositeOperation='destination-out'; m.beginPath(); m.arc(ms/2+mr*0.45,ms/2-mr*0.3,mr*0.92,0,TAU); m.fill(); m.globalCompositeOperation='source-over';
+    g.drawImage(mc,mx-ms/2,my-ms/2);
+    // a faint reflection on the glass
+    g.fillStyle='rgba(255,255,255,.035)'; g.beginPath(); g.moveTo(wx+ww*0.62,wy); g.lineTo(wx+ww*0.8,wy); g.lineTo(wx+ww*0.5,wy+wh); g.lineTo(wx+ww*0.32,wy+wh); g.fill();
     g.restore();
     // window frame
     const fc=this.mix('#1c1a26','#3a2c24');
@@ -72,7 +74,7 @@ const T={
     g.fillStyle=this.mix('#232030','#4a372b'); g.fillRect(wx-30,sy,ww+60,12);
     g.fillStyle=this.mix('#15131e','#2c2019'); g.fillRect(wx-30,sy+12,ww+60,6);
     // moonlight falling into the room
-    g.fillStyle='rgba(170,190,255,.045)'; g.beginPath(); g.moveTo(wx,wy+wh); g.lineTo(wx+ww,wy+wh); g.lineTo(wx+ww*0.9,H); g.lineTo(wx-ww*0.35,H); g.fill();
+    g.fillStyle='rgba(190,170,255,.05)'; g.beginPath(); g.moveTo(wx,wy+wh); g.lineTo(wx+ww,wy+wh); g.lineTo(wx+ww*0.9,H); g.lineTo(wx-ww*0.35,H); g.fill();
     // warm lamp (bright after the game has been cleared)
     const lx=W*0.14, ly=H*0.62;
     this.glow(g,lx,ly,H*0.55,'rgba(255,190,120,A)',0.06+0.22*this.warm);
@@ -84,19 +86,42 @@ const T={
       const x=wx-ww*0.1+m.x*ww*1.1+Math.sin(this.t*0.5+m.p)*8, y=wy+wh*0.6+m.y*H*0.4;
       g.fillStyle=`rgba(220,230,255,${0.12+0.1*Math.sin(this.t+m.p)})`; g.fillRect(x,y,2,2);
     }
-    // Nine on the sill, looking out
-    const sp=(this.t%5.2>5.05)?this.sp.sitBlink:this.sp.sit;
-    const sc=Math.max(3,Math.round(H*0.0105));
-    const cw=sp.width*sc, ch=sp.height*sc;
-    const cx=wx+ww*0.3, cy=sy;
-    g.save(); g.imageSmoothingEnabled=false;
-    this.glow(g,cx,cy-ch*0.5,ch*1.1,'rgba(170,190,255,A)',0.12);
-    g.drawImage(sp,cx-cw/2,cy-ch,cw,ch);
-    g.restore();
+    // Nine on the sill, seen from behind, looking up at the moon
+    this.catBack(g,wx+ww*0.62,sy,wh*0.46);
     // vignette
     const vg=g.createRadialGradient(W*0.55,H*0.45,H*0.2,W*0.5,H*0.5,H*1.1);
     vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,.65)');
     g.fillStyle=vg; g.fillRect(0,0,W,H);
+  },
+  catBack(g,x,y,h){
+    const s=h/110;
+    const path=()=>{
+      g.beginPath();
+      g.moveTo(-26,0);
+      g.bezierCurveTo(-36,-22,-30,-54,-12,-66);
+      g.bezierCurveTo(-16,-74,-17,-86,-12,-93);
+      g.lineTo(-17,-111); g.lineTo(-2,-100);
+      g.bezierCurveTo(1,-100,5,-100,8,-98);
+      g.lineTo(19,-109); g.lineTo(17,-90);
+      g.bezierCurveTo(19,-84,17,-73,12,-66);
+      g.bezierCurveTo(30,-54,36,-22,28,0);
+      g.closePath();
+    };
+    g.save(); g.translate(x,y); g.scale(s,s);
+    // soft glow from the moon behind the silhouette
+    this.glow(g,-10,-70,90,'rgba(200,180,255,A)',0.10);
+    // tail along the sill
+    g.strokeStyle='#0d0b17'; g.lineWidth=7; g.lineCap='round';
+    g.beginPath(); g.moveTo(22,-3); g.bezierCurveTo(50,4,72,2,78,-8); g.bezierCurveTo(82,-16,80,-24,76,-26); g.stroke();
+    path(); g.fillStyle='#0d0b17'; g.fill();
+    // rim light where the moonlight touches (upper left)
+    g.save(); path(); g.clip();
+    g.strokeStyle='rgba(190,175,240,.55)'; g.lineWidth=3; g.translate(3,2); path(); g.stroke();
+    g.restore();
+    // blue collar and a tiny glint of the bell
+    g.strokeStyle='#3d86f0'; g.lineWidth=3.2; g.beginPath(); g.moveTo(-12,-67); g.quadraticCurveTo(0,-62,12,-67); g.stroke();
+    g.strokeStyle='rgba(168,206,255,.8)'; g.lineWidth=1; g.beginPath(); g.moveTo(-10,-68); g.quadraticCurveTo(0,-64,4,-66); g.stroke();
+    g.restore();
   },
   mix(a,b){ const k=this.warm; const pa=a.match(/\w\w/g).map(h=>parseInt(h,16)), pb=b.match(/\w\w/g).map(h=>parseInt(h,16)); return 'rgb('+pa.map((v,i)=>Math.round(v+(pb[i]-v)*k)).join(',')+')'; },
   glow(g,x,y,r,col,a){ const gr=g.createRadialGradient(x,y,0,x,y,r); gr.addColorStop(0,col.replace('A',a)); gr.addColorStop(1,col.replace('A',0)); g.fillStyle=gr; g.fillRect(x-r,y-r,r*2,r*2); }
