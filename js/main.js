@@ -207,16 +207,17 @@ function enterStage(i,withStory){
   setHud(false);
   AU.setRain(0);
   const def=STAGES[i];
-  const lines=(i===0&&withStory==='prologue'?PROLOGUE.concat(['']).concat(def.story):def.story);
   const go=()=>startStage(i);
-  if(withStory) showStory(lines,{no:'STAGE '+(i+1),name:def.name},go);
-  else showStory([],{no:'STAGE '+(i+1),name:def.name},go);
+  const card={no:'STAGE '+(i+1),name:def.name};
+  if(withStory==='prologue') showStory(PROLOGUE,null,()=>setTimeout(()=>showStory(def.story,card,go),700));
+  else if(withStory) showStory(def.story,card,go);
+  else showStory([],card,go);
 }
 function startStage(i){
   S.stage=i;
   S.world=new E.World(STAGES[i]);
   R.ghosts=[]; R.parts=[];
-  S.ui.snapCam=true; S.ui.deathQuote='';
+  S.ui.snapCam=true; S.ui.deathQuote=''; input.press=false;
   $('msg').textContent='STAGE '+(i+1);
   updateLifeUI();
   setHud(true);

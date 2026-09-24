@@ -159,9 +159,9 @@ const STAGES=[
     // Stage 1 trapdoor spot is honest this time. The landing spot is not.
     F.TrapFloor({x:470,w:140,dir:'lr',delay:0.03,speed:900}),
     F.Laser({x:965,y0:90,y1:G,always:true,onT:0.8,offT:0.95,phase:0}),
-    F.Crusher({x:1030,w:80,h:150,period:2.4,phase:0.0,fallSpeed:950,hold:0.3,riseSpeed:520}),
-    F.Crusher({x:1110,w:80,h:150,period:2.4,phase:0.3,fallSpeed:950,hold:0.3,riseSpeed:520}),
-    F.Crusher({x:1190,w:80,h:150,period:2.4,phase:0.6,fallSpeed:950,hold:0.3,riseSpeed:520}),
+    F.Crusher({x:1030,w:80,h:150,ceil:39,period:2.4,phase:0.0,fallSpeed:950,hold:0.3,riseSpeed:520}),
+    F.Crusher({x:1110,w:80,h:150,ceil:39,period:2.4,phase:0.3,fallSpeed:950,hold:0.3,riseSpeed:520}),
+    F.Crusher({x:1190,w:80,h:150,ceil:39,period:2.4,phase:0.6,fallSpeed:950,hold:0.3,riseSpeed:520}),
     F.ChaseWall({startX:1520,w:54,h:170,when:w=>w.P.x>=1345,riseSpeed:900,speed:520,minX:1275,flag:'wall10'}),
     F.Deco({type:'fakecrack',x:1560,w:70}),
     F.Light({x:1700,y:370,r:170,warm:true,doorGlow:true})

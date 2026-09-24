@@ -375,6 +375,11 @@ P.DropFloor.prototype.draw=function(g,w,T){
 };
 P.Crusher.prototype.draw=function(g,w,T){
   const c=this.ceil;
+  if(this.period){
+    // periodic presses are honest: their housing is visible
+    rect(g,'#23202a',this.x-6,0,this.w+12,c+3);
+    for(let y=6;y<c;y+=10) rect(g,'#e8c23a',this.x-6,y,this.w+12,3);
+  }
   g.save(); g.beginPath(); g.rect(this.x-4,c-2,this.w+8,WH); g.clip();
   const x=this.x,y=this.y,W_=this.w,h=this.h;
   if(this.style==='bell'){
@@ -498,8 +503,10 @@ P.ChaseWall.prototype.draw=function(g,w,T){
 P.Lightning.prototype.draw=function(g,w,T){
   if(this.st==='aim'&&this.target!==undefined){
     const locked=this.tm>=this.lock;
-    const a=locked?0.5+0.4*Math.sin(w.t*50):0.25;
-    g.fillStyle=`rgba(180,210,255,${a})`; g.beginPath(); g.ellipse(this.target,this.floorY(w)-2,22,5,0,0,TAU); g.fill();
+    const a=locked?0.65+0.35*Math.sin(w.t*50):0.4;
+    const fy=this.floorY(w);
+    g.fillStyle=`rgba(180,210,255,${a*0.18})`; g.fillRect(this.target-this.width/2,0,this.width,fy);
+    g.fillStyle=`rgba(200,225,255,${a})`; g.beginPath(); g.ellipse(this.target,fy-2,26,6,0,0,TAU); g.fill();
   }
   if(this.st==='strike'&&this.tm<0.2){
     const x=this.target, fy=this.floorY(w);
