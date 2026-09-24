@@ -210,7 +210,7 @@ function syncMercyUI(){
   S.ui.known=k;
 }
 function startStage(i,fresh){
-  if(fresh!==false && (fresh || S.stage!==i)){ M.deaths=0; M.known=new Map(); M.cpOn=false; M.cpReached=false; }
+  if(fresh!==false && (fresh || S.stage!==i)){ M.deaths=0; M.known=new Map(); M.cpOn=false; M.cpReached=false; R.trail=null; }
   S.stage=i;
   S.world=new E.World(STAGES[i],spawnOpts());
   R.ghosts=[]; R.parts=[];

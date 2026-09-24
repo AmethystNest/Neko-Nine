@@ -806,10 +806,13 @@ const R={
     if(T.rain) this.drawRain(g,w,v,cam,dt);
     g.restore();
 
-    const dk=w.def.dusk?this.duskAt(w):0;
-    if(dk>0.01){
-      // the last hallway: the darkness of stage 9 thins out the closer you get to the door
-      this.drawDark(w,v,cam,sx,sy,{alpha:dk,holes:this.duskHoles(w),motes:false});
+    if(w.def.dusk){
+      // the last hallway: the darkness of stage 9 lifts from every place the cat has walked
+      const tr=this.trailOf(w);
+      tr.max=Math.max(tr.max,w.P.x);
+      tr.reveal+=(tr.max-tr.reveal)*Math.min(1,dt*1.6);
+      const dk=this.duskAt(w,tr.max);
+      if(dk>0.01) this.drawDark(w,v,cam,sx,sy,{alpha:dk,clearTo:tr.reveal,holes:this.duskHoles(w),motes:false});
     }
     if(w.def.memories){
       g.save(); g.translate(sx,v.oy+sy); g.scale(v.scale,v.scale); g.translate(-cam,0);
@@ -930,9 +933,15 @@ const R={
     g.drawImage(sp,Math.round(-dw/2),Math.round(-dh),Math.round(dw),Math.round(dh));
     g.restore();
   },
-  duskAt(w){
-    const d=w.def.dusk, k=clamp((w.P.x-d.x0)/(d.x1-d.x0),0,1);
-    return d.from*(1-k*k*(3-2*k));
+  // Progress through the stage survives deaths; main.js clears it when a stage starts fresh.
+  trailOf(w){
+    if(!this.trail||this.trail.def!==w.def) this.trail={def:w.def,max:w.P.x,reveal:w.P.x,memA:[],memSeen:[]};
+    return this.trail;
+  },
+  // darkness still ahead: thins a little as the cat gets closer to home
+  duskAt(w,x){
+    const d=w.def.dusk, k=clamp((x-d.x0)/(d.x1-d.x0),0,1);
+    return d.from*(1-0.45*k*k*(3-2*k));
   },
   duskHoles(w){
     const out=[];
@@ -949,8 +958,7 @@ const R={
   // Lines of the owner's voice written faintly along the wall; they surface as the cat passes.
   drawMemories(g,w,dt){
     const P=w.P;
-    if(!this.mem||this.mem.w!==w) this.mem={w,a:[],seen:[]};
-    const M=this.mem;
+    const tr=this.trailOf(w), M={a:tr.memA,seen:tr.memSeen};
     g.save(); g.textAlign='center'; g.textBaseline='middle';
     g.font="500 21px 'Shippori Mincho','Hiragino Mincho ProN','Yu Mincho',serif";
     w.def.memories.forEach((m,i)=>{
@@ -975,9 +983,17 @@ const R={
     const d=c.getContext('2d');
     d.setTransform(1,0,0,1,0,0);
     d.globalCompositeOperation='source-over';
-    d.fillStyle=`rgba(2,2,6,${o.alpha===undefined?0.965:o.alpha})`; d.fillRect(0,0,c.width,c.height);
+    const A=o.alpha===undefined?0.965:o.alpha;
+    if(o.clearTo===undefined){ d.fillStyle=`rgba(2,2,6,${A})`; d.fillRect(0,0,c.width,c.height); }
+    else d.clearRect(0,0,c.width,c.height);
     d.setTransform(this.dpr,0,0,this.dpr,0,0);
     d.translate(sx,v.oy+sy); d.scale(v.scale,v.scale); d.translate(-cam,0);
+    if(o.clearTo!==undefined){
+      // clear behind (the way already walked), dark ahead, with a soft edge
+      const gr=d.createLinearGradient(o.clearTo-260,0,o.clearTo+20,0);
+      gr.addColorStop(0,'rgba(2,2,6,0)'); gr.addColorStop(1,`rgba(2,2,6,${A})`);
+      d.fillStyle=gr; d.fillRect(cam-200,-400,v.viewW+400,WH+800);
+    }
     d.globalCompositeOperation='destination-out';
     const hole=(x,y,r,a)=>{ const gr=d.createRadialGradient(x,y,0,x,y,r); gr.addColorStop(0,`rgba(0,0,0,${a})`); gr.addColorStop(0.6,`rgba(0,0,0,${a*0.7})`); gr.addColorStop(1,'rgba(0,0,0,0)'); d.fillStyle=gr; d.fillRect(x-r,y-r,r*2,r*2); };
     const P=w.P;
