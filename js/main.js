@@ -146,7 +146,10 @@ function setHud(on){ document.body.classList.toggle('nohud',!on); }
 // ---------------------------------------------------------------------------
 // Story overlay
 // ---------------------------------------------------------------------------
-let storyDone=null, storyTimers=[], storyStage=0;
+let storyDone=null, storyTimers=[], storyStage=0, storyOpenedAt=0, storyInstant=false;
+// a press right as the story opens (a jump still held from play, a tap on the retry button) is not a skip
+const STORY_SKIP_GUARD=700;
+function skipStory(){ if(storyDone && performance.now()-storyOpenedAt>=STORY_SKIP_GUARD) storyDone(); }
 function clearStoryTimers(){ storyTimers.forEach(clearTimeout); storyTimers=[]; }
 function showStory(lines,card,then){
   const el=$('story');
@@ -155,8 +158,10 @@ function showStory(lines,card,then){
   const box=document.createElement('div');
   el.appendChild(box);
   const skip=document.createElement('div'); skip.className='skip'; skip.textContent=(IS_TOUCH()?'TAP':'CLICK')+' ▶'; el.appendChild(skip);
+  // coming from an opaque screen (title, game over), cover at once so nothing old shows through
+  el.classList.toggle('instant',storyInstant); storyInstant=false;
   el.classList.add('show');
-  storyStage=0;
+  storyStage=0; storyOpenedAt=performance.now();
   const nodes=lines.map(t=>{ const d=document.createElement('div'); d.className='line'; d.textContent=t; box.appendChild(d); return d; });
   let i=0;
   const showNext=()=>{ if(i<nodes.length){ nodes[i++].classList.add('on'); storyTimers.push(setTimeout(showNext,1500)); } else storyTimers.push(setTimeout(toCard,2200)); };
@@ -176,22 +181,31 @@ function showStory(lines,card,then){
     },500));
   };
   const finish=()=>{ clearStoryTimers(); storyDone=null; el.classList.remove('show'); then&&then(); };
-  storyDone=()=>{ if(storyStage===0){ nodes.forEach(n=>n.classList.add('on')); i=nodes.length; toCard(); } else finish(); };
+  storyDone=()=>{
+    if(storyStage===0){
+      // first press shows every line at once and leaves them up briefly; the next press moves on
+      if(i<nodes.length){ clearStoryTimers(); nodes.forEach(n=>n.classList.add('on')); i=nodes.length; storyTimers.push(setTimeout(toCard,1800)); }
+      else toCard();
+    } else finish();
+  };
   if(nodes.length) storyTimers.push(setTimeout(showNext,500)); else toCard();
 }
-$('story').addEventListener('pointerdown',e=>{ e.preventDefault(); if(storyDone) storyDone(); });
+$('story').addEventListener('pointerdown',e=>{ e.preventDefault(); skipStory(); });
 
 // ---------------------------------------------------------------------------
 // Stage flow
 // ---------------------------------------------------------------------------
 function enterStage(i,withStory){
+  storyInstant=withStory==='retry'||S.mode==='title';
   S.mode='story';
   setHud(false);
   AU.setRain(0);
   const def=STAGES[i];
-  const go=()=>startStage(i,!!withStory);
+  // a retry keeps this stage's mercy (checkpoint, trap hints); a new stage starts fresh
+  const go=()=>startStage(i,withStory==='retry'?false:!!withStory);
   const card={no:'STAGE '+(i+1),name:def.name};
-  if(withStory==='prologue') showStory(PROLOGUE,null,()=>setTimeout(()=>showStory(def.story,card,go),700));
+  // chain straight into the stage story so the screen never drops to the old stage in between
+  if(withStory==='prologue') showStory(PROLOGUE,null,()=>showStory(def.story,card,go));
   else if(withStory) showStory(def.story,card,go);
   else showStory([],card,go);
 }
@@ -223,6 +237,7 @@ function startStage(i,fresh){
   AU.music(STAGES[i].music||STAGES[i].theme);
   writeSave({stage:i,deaths:S.deaths});
   S.mode='play';
+  if(M.toastOnStart){ const t=M.toastOnStart; M.toastOnStart=null; setTimeout(()=>toast(t),600); }
 }
 function onDeath(ev){
   S.lives=Math.max(0,S.lives-1);
@@ -304,14 +319,15 @@ $('retryBtn').addEventListener('click',e=>{
   msg.querySelector('.first').innerHTML=nextRetryQuote().split('\n').map(l=>l.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))).join('<br>');
   over.classList.add('retryMoment'); msg.classList.add('show'); msg.setAttribute('aria-hidden','false');
   goTimers.push(setTimeout(()=>{
-    over.classList.remove('show','lifeCount','retryMoment'); over.setAttribute('aria-hidden','true');
-    msg.classList.remove('show'); msg.setAttribute('aria-hidden','true');
     S.lives=LIVES;
     if(RESTART_FROM_STAGE1){ S.stage=0; }
     const firstMercy=!M.cpOn && !!STAGES[S.stage].checkpoint;
     M.cpOn=true;
-    enterStage(S.stage,false);
-    if(firstMercy) setTimeout(()=>toast('失くした命が、道しるべを残していった。'),2900);
+    if(firstMercy) M.toastOnStart='失くした命が、道しるべを残していった。';
+    enterStage(S.stage,'retry');
+    // the story screen is already fully up, so nothing of the old stage shows through
+    over.classList.remove('show','lifeCount','retryMoment'); over.setAttribute('aria-hidden','true');
+    msg.classList.remove('show'); msg.setAttribute('aria-hidden','true');
   },3900));
 });
 
@@ -536,7 +552,7 @@ addEventListener('keydown',e=>{
   if(e.key==='Enter'||e.code==='Space'){
     if(S.mode==='splash'){ $('splash').dispatchEvent(new PointerEvent('pointerup')); }
     else if(S.mode==='title'){ const sv=loadSave(); AU.unlock(); AU.play('start'); beginGame(sv.stage>0?sv.stage:0); }
-    else if(S.mode==='story'&&storyDone) storyDone();
+    else if(S.mode==='story') skipStory();
     else if(S.mode==='credits'){ $('credits').classList.remove('show'); toTitle(); }
   }
 });
