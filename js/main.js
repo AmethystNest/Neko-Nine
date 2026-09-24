@@ -343,7 +343,7 @@ function toTitle(){
   t.style.display='';
   t.classList.remove('play'); void t.offsetWidth;
   requestAnimationFrame(()=>{ t.classList.remove('hide'); t.classList.add('play'); });
-  if(AU.ready){ AU.music('title'); AU.setRain(0.45); }
+  if(AU.ready){ AU.music('title'); AU.setRain(sv.cleared?0:0.45); }
 }
 function beginGame(fromStage){
   const sv=loadSave();
@@ -375,7 +375,7 @@ $('splash').addEventListener('pointerup',e=>{
   AU.unlock();
   requestFs();
   $('splash').classList.add('hide');
-  AU.music('title'); AU.setRain(0.45);
+  AU.music('title'); AU.setRain(loadSave().cleared?0:0.45);
   toTitle();
 });
 

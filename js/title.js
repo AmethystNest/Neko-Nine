@@ -121,10 +121,11 @@ const T={
     // Nine on the sill, seen from behind, looking up at the moon
     if(this.cleared){
       // after the ending: you and Nine, together at the window
-      const ox=wx+ww*0.5, oy=wy+wh*0.78;
-      const os=wh*0.78/220;
-      this.ownerBack(g,ox,oy,wh*0.78);
-      this.catBack(g,ox+60*os,oy-12*os,wh*0.28,true);
+      // you on the left, Nine sitting on the sill beside you, both facing the moon
+      const os=wh/250;
+      const ox=wx+ww*0.42, oy=sy+40*os;
+      this.ownerBack(g,ox,oy,os);
+      this.catBack(g,ox+118*os,sy,136*os);
     }else{
       this.catBack(g,wx+ww*0.64,sy,wh*0.5);
     }
@@ -158,43 +159,72 @@ const T={
     g.drawImage(C,px,py); g.drawImage(B,px,py);
     g.restore();
   },
-  // You, seen from behind: a wolf cut and an oversized hoodie, Nine on your shoulder.
-  ownerBack(g,x,y,h){
-    const s=h/220, t=this.t;
-    const br=Math.sin(t*1.1)*0.8;
-    this.lit(g,x,y,s,'owner',[-110,-150,110,220],c=>{
-      // hoodie body, soft shoulders
+  // You, seen from behind: shoulders relaxed, head tilted toward Nine, a wolf cut.
+  // Units: shoulder line near y=-96, crown at y=-182; s = pixels per unit.
+  ownerBack(g,x,y,s){
+    const t=this.t, br=Math.sin(t*1.1)*0.7, tilt=0.09;
+    const neck=[0,-96];
+    const headPath=c=>{
+      // wolf cut outline: a full, rounded crown; tucked at the ears; soft layered
+      // strands flaring out at the jaw; a longer tapered nape
       c.beginPath();
-      c.moveTo(-96,220); c.bezierCurveTo(-100,120,-96,40,-78,12+br);
-      c.bezierCurveTo(-60,-8,-34,-18,-14,-22+br);
-      c.lineTo(14,-22+br);
-      c.bezierCurveTo(34,-18,60,-8,78,12+br);
-      c.bezierCurveTo(96,40,100,120,96,220); c.closePath(); c.fill();
-      // hood lying on the upper back
-      c.beginPath(); c.ellipse(0,-6+br,40,20,0,0,TAU); c.fill();
-      // neck
-      c.fillRect(-11,-40,22,26);
-      // head, tilted toward Nine
-      c.save(); c.translate(3,-72+br); c.rotate(0.14); c.scale(1.1,1.1);
-      c.beginPath(); c.ellipse(0,0,26,29,0,0,TAU); c.fill();
-      // wolf cut: a rounded crown, soft choppy layers, a longer nape
+      c.moveTo(0,-183);
+      c.bezierCurveTo(28,-183,46,-166,46,-142);
+      c.bezierCurveTo(46,-127,41,-119,38,-111);
+      c.bezierCurveTo(42,-106,45,-101,45,-95);
+      c.bezierCurveTo(41,-97,38,-98,35,-98);
+      c.bezierCurveTo(40,-92,41,-86,39,-80);
+      c.bezierCurveTo(35,-82,32,-83,29,-83);
+      c.bezierCurveTo(32,-78,31,-72,27,-66);
+      c.bezierCurveTo(23,-69,19,-70,16,-69);
+      c.bezierCurveTo(16,-63,13,-58,9,-53);
+      c.bezierCurveTo(6,-57,3,-59,0,-59);
+      c.bezierCurveTo(-3,-59,-6,-57,-9,-53);
+      c.bezierCurveTo(-13,-58,-16,-63,-16,-69);
+      c.bezierCurveTo(-19,-70,-23,-69,-27,-66);
+      c.bezierCurveTo(-31,-72,-32,-78,-29,-83);
+      c.bezierCurveTo(-32,-83,-35,-82,-39,-80);
+      c.bezierCurveTo(-41,-86,-40,-92,-35,-98);
+      c.bezierCurveTo(-38,-98,-41,-97,-45,-95);
+      c.bezierCurveTo(-45,-101,-42,-106,-38,-111);
+      c.bezierCurveTo(-41,-119,-46,-127,-46,-142);
+      c.bezierCurveTo(-46,-166,-28,-183,0,-183);
+      c.closePath();
+    };
+    const tiltAt=(c)=>{ c.translate(neck[0],neck[1]); c.rotate(tilt); c.translate(-neck[0],-neck[1]); };
+    this.lit(g,x,y,s,'owner',[-100,-190,100,130],c=>{
+      // neck, shoulders and back in an oversized knit
       c.beginPath();
-      c.moveTo(-31,-2);
-      c.bezierCurveTo(-36,-40,36,-40,31,-2);
-      const locks=[[36,14],[29,11],[38,30],[27,25],[31,45],[20,37],[17,60],[8,47],[1,66],[-7,47],[-16,60],[-20,37],[-30,45],[-27,25],[-38,30],[-29,11],[-36,14],[-31,-2]];
-      let px=31, py=-2;
-      for(const [lx,ly] of locks){ c.quadraticCurveTo((px+lx)/2+(ly>py?2:-2)*Math.sign(lx||1),(py+ly)/2,lx,ly); px=lx; py=ly; }
+      c.moveTo(-15,-100); c.lineTo(15,-100);
+      c.bezierCurveTo(17,-86,23,-77,36,-71+br);
+      c.bezierCurveTo(60,-63,78,-54,84,-30+br);
+      c.bezierCurveTo(90,-4,92,40,92,130);
+      c.lineTo(-92,130);
+      c.bezierCurveTo(-92,40,-90,-4,-84,-30+br);
+      c.bezierCurveTo(-78,-54,-60,-63,-36,-71+br);
+      c.bezierCurveTo(-23,-77,-17,-86,-15,-100);
       c.closePath(); c.fill();
-      // a few soft flyaway tufts on the crown
-      for(const [tx,ty,r,a] of [[-18,-27,5,-0.7],[20,-26,5,0.7]]){ c.beginPath(); c.ellipse(tx,ty,r*0.7,r,a,0,TAU); c.fill(); }
-      c.restore();
-      // shoulder seam where Nine sits
-      c.beginPath(); c.ellipse(58,-4+br,26,10,0.15,0,TAU); c.fill();
+      c.save(); tiltAt(c); headPath(c); c.fill(); c.restore();
     },'rgba(175,155,255,.5)');
-    // hoodie drawstrings catching the moonlight
+    // details on top of the silhouette: hair flow, the sweater's neckline
     g.save(); g.translate(x,y); g.scale(s,s);
-    g.strokeStyle='rgba(190,180,240,.35)'; g.lineWidth=1.4;
-    g.beginPath(); g.moveTo(-26,-8+br); g.quadraticCurveTo(-30,4,-28,14); g.stroke();
+    g.save(); tiltAt(g); headPath(g); g.clip();
+    g.lineCap='round';
+    const flow=[[-6,-176,-30,-150,-40,-104],[4,-177,-18,-148,-24,-80],[10,-176,4,-140,-4,-70],[14,-175,22,-140,20,-78],
+                [18,-172,38,-150,40,-100],[-14,-172,-34,-150,-30,-80],[0,-170,-8,-120,6,-62],[24,-168,44,-132,30,-86]];
+    for(const [x0,y0,cx,cy,x1,y1] of flow){
+      g.strokeStyle='rgba(185,170,245,.16)'; g.lineWidth=1.3;
+      g.beginPath(); g.moveTo(x0,y0); g.quadraticCurveTo(cx,cy,x1,y1); g.stroke();
+    }
+    // crown highlight where the moonlight lands
+    const hg=g.createRadialGradient(-18,-160,2,-18,-160,34); hg.addColorStop(0,'rgba(190,175,255,.22)'); hg.addColorStop(1,'rgba(190,175,255,0)');
+    g.fillStyle=hg; g.fillRect(-60,-200,120,90);
+    g.restore();
+    g.strokeStyle='rgba(185,170,245,.22)'; g.lineWidth=2;
+    g.beginPath(); g.moveTo(-34,-70+br); g.quadraticCurveTo(0,-58+br,34,-70+br); g.stroke();
+    // a knit texture hint across the back
+    g.strokeStyle='rgba(150,140,220,.06)'; g.lineWidth=1;
+    for(let yy=-50;yy<130;yy+=9){ g.beginPath(); g.moveTo(-80,yy); g.quadraticCurveTo(0,yy+4,80,yy); g.stroke(); }
     g.restore();
   },
   // Nine seen from behind: the scarf-wearing design, looking up at the moon.
