@@ -3,8 +3,8 @@
 (function(root){
 'use strict';
 const W=44, H=30, OX=2, OY=2;
-const PAL=[null,'#1c1926','#4d4868','#9fdcff','#3f8fe0','#ffffff','#f39bb2','#5a2a44','#3d86f0','#f5c542','#2c2838','#a8ceff'];
-// 1 body  2 rim light  3 eye light  4 eye deep  5 glint  6 pink  7 blush  8 blue cloth  9 bell  10 shade  11 cloth light
+const PAL=[null,'#1c1926','#4d4868','#9fdcff','#3f8fe0','#ffffff','#f39bb2','#5a2a44','#3d86f0','#f5c542','#2c2838','#a8ceff','#9aa5c8'];
+// 1 body  2 rim light  3 eye light  4 eye deep  5 glint  6 pink  7 blush  8 blue cloth  9 bell  10 shade  11 cloth light  12 whisker
 
 // ---------------------------------------------------------------------------
 // Character designs. Eyes and neckwear are blue in every design.
@@ -17,8 +17,8 @@ const DESIGNS={
     body:[16,17.5,10.5,4.6], neck:[24,13,3.4], head:[29,8.5,6.2,5.6], ear:11.5, legs:[[8,12,20,23],6,2],
     tail:[[6,16],[-1,8],[5,1],1.05], eye:'almond', acc:'tag'},
   mafu:{name:'マフラー',desc:'ふわっと丸い体。青いマフラーの端が風になびく。',
-    body:[17,17.5,11,6.4], neck:[24,14,4.6], head:[29,10.5,7.6,6.8], ear:9.5, legs:[[9,13,21,25],4,3],
-    tail:[[7,15],[0,12],[2,5],1.7], eye:'round', acc:'scarf'},
+    body:[17,17.5,11,6.4], neck:[24,14,4.6], head:[29,11,7.6,6.8], ear:12, earW:1.25, legs:[[9,13,21,25],4,3],
+    tail:[[7,15],[0,12],[2,5],1.7], eye:'oval', acc:'scarf', noPink:true, whiskers:true},
   koneko:{name:'こねこ',desc:'頭の大きな子猫。大きな瞳と青いリボン。',
     body:[17,19,9,5], neck:[23,15,4], head:[28.5,10,8.6,7.6], ear:9, legs:[[10,13.5,20,23.5],4,3],
     tail:[[9,17],[3,14],[4,7],1.3], eye:'big', acc:'ribbon'}
@@ -58,16 +58,29 @@ function rim(g){
   g.set(out);
 }
 function ears(g,D,HX,HY){
-  const h=D.ear, rx=D.head[2];
-  tri(g,[HX-rx*0.84,HY-3],[HX-rx*0.66,HY-h],[HX-rx*0.16,HY-rx*0.7],1);
-  tri(g,[HX+rx*0.2,HY-rx*0.72],[HX+rx*0.7,HY-h],[HX+rx*0.92,HY-2.2],1);
-  set(g,HX-rx*0.62,HY-h*0.7,6); set(g,HX-rx*0.62,HY-h*0.6,6); set(g,HX+rx*0.62,HY-h*0.7,6);
+  const h=D.ear, rx=D.head[2], w=D.earW||1;
+  tri(g,[HX-rx*0.9*w,HY-2.5],[HX-rx*0.66,HY-h],[HX-rx*0.1,HY-rx*0.72],1);
+  tri(g,[HX+rx*0.12,HY-rx*0.74],[HX+rx*0.7,HY-h],[HX+rx*0.98*w,HY-2],1);
+  const inner=D.noPink?2:6;
+  if(D.noPink){
+    // inner ear: a lighter triangle so the ears read clearly
+    tri(g,[HX-rx*0.62,HY-4.5],[HX-rx*0.63,HY-h+2.2],[HX-rx*0.3,HY-5.6],inner);
+    tri(g,[HX+rx*0.4,HY-5.8],[HX+rx*0.68,HY-h+2.2],[HX+rx*0.78,HY-4],inner);
+  }else{
+    set(g,HX-rx*0.62,HY-h*0.7,6); set(g,HX-rx*0.62,HY-h*0.6,6); set(g,HX+rx*0.62,HY-h*0.7,6);
+  }
 }
 function face(g,D,HX,HY,blink){
-  const far=D.eye==='big'?5:D.eye==='almond'?4:5;
+  const far=D.eye==='big'?5:D.eye==='almond'?4:D.eye==='oval'?5:5;
   if(blink){
     for(const x of [HX-1,HX,HX+1]) set(g,x,HY,2);
     for(const x of [HX+far-1,HX+far]) set(g,x,HY,2);
+  }else if(D.eye==='oval'){
+    // rounder eyes: 4x4 near eye and 3x4 far eye with clipped corners
+    for(let y=HY-2;y<=HY+1;y++) for(let x=HX-2;x<=HX+1;x++){ const corner=(y===HY-2||y===HY+1)&&(x===HX-2||x===HX+1); if(!corner) set(g,x,y,y<HY?3:4); }
+    set(g,HX-1,HY-1,5);
+    for(let y=HY-2;y<=HY+1;y++) for(let x=HX+far-2;x<=HX+far;x++){ const corner=(y===HY-2||y===HY+1)&&(x===HX+far-2||x===HX+far); if(!corner) set(g,x,y,y<HY?3:4); }
+    set(g,HX+far-1,HY-1,5);
   }else if(D.eye==='almond'){
     for(const x of [HX-1,HX,HX+1]) set(g,x,HY-1,3);
     for(const x of [HX-1,HX,HX+1]) set(g,x,HY,4);
@@ -85,18 +98,24 @@ function face(g,D,HX,HY,blink){
     for(let y=HY-2;y<=HY+1;y++) for(let x=HX+far-1;x<=HX+far;x++) set(g,x,y,y<HY?3:4);
     set(g,HX+far-1,HY-2,5);
   }
-  set(g,HX+Math.round(D.head[2]*0.8),HY+2,6);       // nose
-  set(g,HX-1,HY+3,7); set(g,HX,HY+3,7);             // blush
+  if(!D.noPink){
+    set(g,HX+Math.round(D.head[2]*0.8),HY+2,6);       // nose
+    set(g,HX-1,HY+3,7); set(g,HX,HY+3,7);             // blush
+  }
+  if(D.whiskers){
+    const mx=HX+Math.round(D.head[2])-1;
+    set(g,mx,HY+2,12); set(g,mx+1,HY+2,12); set(g,mx+2,HY+1,12); set(g,mx+3,HY+1,12);
+    set(g,mx,HY+3,12); set(g,mx+1,HY+4,12); set(g,mx+2,HY+4,12); set(g,mx+3,HY+5,12);
+  }
 }
 function neckwear(g,D,HX,HY,flutter){
   const x=HX-Math.round(D.head[2]*0.8), y=HY+Math.round(D.head[3]*0.66);
   if(D.acc==='scarf'){
-    // a soft wrap around the neck, knotted at the back, two short ends hanging
-    for(let i=0;i<6;i++){ set(g,x+i,y-1+(i>1&&i<5?1:0),8); set(g,x+i,y+(i>1&&i<5?1:0),i%2?11:8); }
+    // a thick knitted wrap around the neck, two ends hanging down the back
     const f=flutter||0;
-    set(g,x-1,y,8); set(g,x-1,y+1,8);
-    thick(g,[[x-1,y+1],[x-3,y+3+f*0.5]],0.6,8);
-    thick(g,[[x,y+2],[x-1,y+4+f*0.5],[x-2,y+5]],0.6,11);
+    for(let i=-1;i<7;i++) for(let r=-1;r<=1;r++){ const yy=y+r+(i>1&&i<5?1:0); set(g,x+i,yy,(i+r)%3===0?11:8); }
+    thick(g,[[x-1,y+1],[x-2,y+4],[x-3+f*0.5,y+6]],0.9,8);
+    thick(g,[[x+1,y+2],[x+1,y+5],[x+f*0.5,y+7]],0.9,11);
   }else if(D.acc==='ribbon'){
     for(let i=0;i<6;i++) set(g,x+i-1,y+(i>1&&i<4?1:0),8);
     // bow on the near side
@@ -163,7 +182,7 @@ function toCanvas(g){
   return c;
 }
 
-let current='maru';
+let current='mafu';
 function build(id){
   const D=DESIGNS[id||current]||DESIGNS.maru;
   const n=D.legs[1];

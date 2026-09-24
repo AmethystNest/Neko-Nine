@@ -12,6 +12,7 @@ const T={
     this.city=[]; for(let i=0;i<140;i++) this.city.push({x:r(),y:0.55+r()*0.35,r:2+r()*7,c:r()<0.7?[255,196,120]:[190,210,255],a:0.25+r()*0.5,p:r()*TAU});
     this.motes=[]; for(let i=0;i<30;i++) this.motes.push({x:r(),y:r(),v:0.004+r()*0.008,p:r()*TAU});
     this.stars=[]; for(let i=0;i<150;i++){ const big=r()<0.08; this.stars.push({x:r(),y:r()*0.85,r:big?2.2:1+r()*1.2,a:0.35+r()*0.6,s:0.6+r()*2,p:r()*TAU,big}); }
+    this.fur=[]; for(let i=0;i<160;i++){ const fx=-36+r()*72, fy=-105+r()*105; const ang=Math.atan2(fy+60,fx)*0.15; this.fur.push([fx,fy,Math.sin(ang)*2+(fx<0?-0.6:0.6),1.5+r()*2]); }
     this.clouds=[]; for(let i=0;i<14;i++) this.clouds.push({x:r()*1.4-0.2,y:0.35+r()*0.6,r:0.12+r()*0.22,v:0.004+r()*0.006,
       a:0.10+r()*0.16,col:r()<0.5?'205,180,230':(r()<0.5?'240,200,225':'150,140,210')});
     this.resize();
@@ -62,6 +63,23 @@ const T={
     m.fillStyle='#fff4dc'; m.beginPath(); m.arc(ms/2,ms/2,mr,0,TAU); m.fill();
     m.globalCompositeOperation='destination-out'; m.beginPath(); m.arc(ms/2+mr*0.45,ms/2-mr*0.3,mr*0.92,0,TAU); m.fill(); m.globalCompositeOperation='source-over';
     g.drawImage(mc,mx-ms/2,my-ms/2);
+    // rain outside
+    g.strokeStyle='rgba(200,195,245,.22)'; g.lineWidth=1; g.beginPath();
+    for(const r of this.streaks){
+      r.y+=dt*1.25*r.s; if(r.y>1.05){ r.y=-0.05; r.x=Math.random(); }
+      const x=wx+r.x*ww, y=wy+r.y*wh; g.moveTo(x,y); g.lineTo(x-2.5,y+15*r.s);
+    }
+    g.stroke();
+    // drops on the glass
+    for(let i=0;i<this.drops.length;i++){
+      const d=this.drops[i];
+      if(d.stick>0) d.stick-=dt; else d.y+=d.v*dt*2;
+      if(d.y>1.02){ this.drops[i]=this.newDrop(false); continue; }
+      const x=wx+d.x*ww, y=wy+d.y*wh, r=d.r*ww;
+      if(d.stick<=0){ g.strokeStyle='rgba(220,210,255,.08)'; g.lineWidth=r*0.9; g.beginPath(); g.moveTo(x,y); g.lineTo(x,y-r*7); g.stroke(); }
+      g.fillStyle='rgba(225,215,255,.2)'; g.beginPath(); g.arc(x,y,r,0,TAU); g.fill();
+      g.fillStyle='rgba(255,255,255,.45)'; g.beginPath(); g.arc(x-r*0.3,y-r*0.3,r*0.3,0,TAU); g.fill();
+    }
     // a faint reflection on the glass
     g.fillStyle='rgba(255,255,255,.035)'; g.beginPath(); g.moveTo(wx+ww*0.62,wy); g.lineTo(wx+ww*0.8,wy); g.lineTo(wx+ww*0.5,wy+wh); g.lineTo(wx+ww*0.32,wy+wh); g.fill();
     g.restore();
@@ -87,40 +105,90 @@ const T={
       g.fillStyle=`rgba(220,230,255,${0.12+0.1*Math.sin(this.t+m.p)})`; g.fillRect(x,y,2,2);
     }
     // Nine on the sill, seen from behind, looking up at the moon
-    this.catBack(g,wx+ww*0.62,sy,wh*0.46);
+    this.catBack(g,wx+ww*0.64,sy,wh*0.5);
     // vignette
     const vg=g.createRadialGradient(W*0.55,H*0.45,H*0.2,W*0.5,H*0.5,H*1.1);
     vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,.65)');
     g.fillStyle=vg; g.fillRect(0,0,W,H);
   },
+  // Nine seen from behind: the scarf-wearing design, looking up at the moon.
   catBack(g,x,y,h){
-    const s=h/110;
-    const path=()=>{
-      g.beginPath();
-      g.moveTo(-26,0);
-      g.bezierCurveTo(-36,-22,-30,-54,-12,-66);
-      g.bezierCurveTo(-16,-74,-17,-86,-12,-93);
-      g.lineTo(-17,-111); g.lineTo(-2,-100);
-      g.bezierCurveTo(1,-100,5,-100,8,-98);
-      g.lineTo(19,-109); g.lineTo(17,-90);
-      g.bezierCurveTo(19,-84,17,-73,12,-66);
-      g.bezierCurveTo(30,-54,36,-22,28,0);
-      g.closePath();
+    const s=h/112, t=this.t;
+    const BASE='#0f0d1c';
+    const breathe=1+0.008*Math.sin(t*1.6);
+    // Build the silhouette once per frame on offscreen layers so shading and rim light
+    // follow the real outline (no seams between head, body and tail).
+    const d=this.dpr, pad=50;
+    const cw=Math.ceil((130+pad*2)*s*d), chh=Math.ceil((125+pad)*s*d);
+    const L=this.layers||(this.layers=[0,1,2].map(()=>document.createElement('canvas')));
+    for(const c of L){ if(c.width!==cw||c.height!==chh){ c.width=cw; c.height=chh; } }
+    const ox=(45+pad)*s*d, oy=(118)*s*d;
+    const sil=(c,col)=>{
+      c.save(); c.setTransform(1,0,0,1,0,0); c.clearRect(0,0,cw,chh);
+      c.translate(ox,oy); c.scale(s*d,s*d*breathe);
+      c.fillStyle=col; c.strokeStyle=col;
+      c.beginPath();
+      c.moveTo(-31,0);
+      c.bezierCurveTo(-41,-16,-37,-44,-24,-57); c.bezierCurveTo(-18,-62,-14,-66,-11,-71);
+      c.lineTo(12,-71);
+      c.bezierCurveTo(14,-66,18,-62,24,-57); c.bezierCurveTo(37,-44,41,-16,31,0);
+      c.closePath(); c.fill();
+      const sw=Math.sin(t*0.9)*3;
+      c.lineWidth=9; c.lineCap='round'; c.beginPath();
+      c.moveTo(22,-5); c.bezierCurveTo(46,4,70,4,80,-6); c.bezierCurveTo(86,-13,84+sw,-22,78+sw,-26); c.stroke();
+      c.translate(-2,-82); c.rotate(-0.2);
+      c.beginPath(); c.ellipse(0,0,19,16.5,0,0,TAU); c.fill();
+      c.beginPath(); c.ellipse(0,6,21,10.5,0,0,TAU); c.fill();
+      c.beginPath(); c.moveTo(-19,-2); c.quadraticCurveTo(-21,-20,-16,-32); c.quadraticCurveTo(-7,-24,-1,-14); c.closePath(); c.fill();
+      c.beginPath(); c.moveTo(1,-14); c.quadraticCurveTo(8,-25,17,-32); c.quadraticCurveTo(22,-20,19,-2); c.closePath(); c.fill();
+      c.restore();
     };
-    g.save(); g.translate(x,y); g.scale(s,s);
-    // soft glow from the moon behind the silhouette
-    this.glow(g,-10,-70,90,'rgba(200,180,255,A)',0.10);
-    // tail along the sill
-    g.strokeStyle='#0d0b17'; g.lineWidth=7; g.lineCap='round';
-    g.beginPath(); g.moveTo(22,-3); g.bezierCurveTo(50,4,72,2,78,-8); g.bezierCurveTo(82,-16,80,-24,76,-26); g.stroke();
-    path(); g.fillStyle='#0d0b17'; g.fill();
-    // rim light where the moonlight touches (upper left)
-    g.save(); path(); g.clip();
-    g.strokeStyle='rgba(190,175,240,.55)'; g.lineWidth=3; g.translate(3,2); path(); g.stroke();
+    const [A,Bc,Cc]=L;
+    const a=A.getContext('2d'), b=Bc.getContext('2d'), c2=Cc.getContext('2d');
+    sil(a,BASE);
+    // shading: moonlight from the upper left + soft fur strokes
+    sil(c2,BASE);
+    c2.save(); c2.globalCompositeOperation='source-atop';
+    const lg=c2.createLinearGradient(0,0,cw*0.8,chh);
+    lg.addColorStop(0,'rgba(150,135,230,.38)'); lg.addColorStop(0.4,'rgba(80,72,150,.12)'); lg.addColorStop(1,'rgba(0,0,0,0)');
+    c2.fillStyle=lg; c2.fillRect(0,0,cw,chh);
+    c2.translate(ox,oy); c2.scale(s*d,s*d);
+    c2.strokeStyle='rgba(125,115,200,.07)'; c2.lineWidth=0.7;
+    for(const f of this.fur){ c2.beginPath(); c2.moveTo(f[0],f[1]); c2.lineTo(f[0]+f[2],f[1]+f[3]); c2.stroke(); }
+    c2.restore();
+    // rim light: silhouette minus itself shifted away from the moon
+    sil(b,'rgba(215,200,255,.75)');
+    b.save(); b.globalCompositeOperation='destination-out'; b.drawImage(A,1.4*s*d,1.6*s*d);
+    b.globalCompositeOperation='destination-in'; const fg=b.createLinearGradient(0,0,cw*0.9,chh*0.9); fg.addColorStop(0,'rgba(0,0,0,1)'); fg.addColorStop(0.55,'rgba(0,0,0,.5)'); fg.addColorStop(1,'rgba(0,0,0,0)'); b.fillStyle=fg; b.fillRect(0,0,cw,chh); b.restore();
+
+    g.save();
+    g.setTransform(1,0,0,1,0,0);
+    const px=x*d-ox, py=y*d-oy;
+    g.shadowColor='rgba(175,155,255,.6)'; g.shadowBlur=22*s*d;
+    g.drawImage(A,px,py);
+    g.shadowBlur=0;
+    g.drawImage(Cc,px,py);
+    g.drawImage(Bc,px,py);
     g.restore();
-    // blue collar and a tiny glint of the bell
-    g.strokeStyle='#3d86f0'; g.lineWidth=3.2; g.beginPath(); g.moveTo(-12,-67); g.quadraticCurveTo(0,-62,12,-67); g.stroke();
-    g.strokeStyle='rgba(168,206,255,.8)'; g.lineWidth=1; g.beginPath(); g.moveTo(-10,-68); g.quadraticCurveTo(0,-64,4,-66); g.stroke();
+
+    g.save(); g.translate(x,y); g.scale(s,s*breathe);
+    // whiskers peeking out from the cheeks
+    g.save(); g.translate(-2,-82); g.rotate(-0.2);
+    g.strokeStyle='rgba(200,195,240,.55)'; g.lineWidth=0.9;
+    for(const [a,b,c,d] of [[-20,6,-38,2],[-20,9,-37,11],[20,6,38,2],[20,9,37,11]]){ g.beginPath(); g.moveTo(a,b); g.quadraticCurveTo((a+c)/2,(b+d)/2-2,c,d); g.stroke(); }
+    g.restore();
+
+    // blue knitted scarf: a wrap and two ends down the back
+    const sw=Math.sin(t*1.3)*1.6;
+    const blue=g.createLinearGradient(-16,-76,16,-60); blue.addColorStop(0,'#5d9cff'); blue.addColorStop(1,'#2d5fc8');
+    g.fillStyle=blue;
+    g.beginPath(); g.moveTo(-16,-76); g.quadraticCurveTo(0,-67,16,-76); g.lineTo(17,-65); g.quadraticCurveTo(0,-56,-17,-65); g.closePath(); g.fill();
+    g.strokeStyle='rgba(170,205,255,.45)'; g.lineWidth=0.8;
+    for(let i=-14;i<=14;i+=4){ g.beginPath(); g.moveTo(i,-73+Math.abs(i)*0.18); g.lineTo(i+1,-63+Math.abs(i)*0.2); g.stroke(); }
+    g.strokeStyle=blue; g.lineCap='round';
+    g.lineWidth=7.5; g.beginPath(); g.moveTo(-5,-62); g.bezierCurveTo(-7+sw,-53,-3+sw,-46,-6+sw*1.4,-38); g.stroke();
+    g.lineWidth=6; g.beginPath(); g.moveTo(3,-62); g.bezierCurveTo(5+sw,-54,2+sw,-49,4+sw*1.2,-42); g.stroke();
+    g.fillStyle='#8fbaff'; for(const [fx,fy] of [[-6+sw*1.4,-36],[4+sw*1.2,-40]]) for(let k=-2;k<=2;k++){ g.fillRect(fx+k*1.3-0.4,fy,0.8,3); }
     g.restore();
   },
   mix(a,b){ const k=this.warm; const pa=a.match(/\w\w/g).map(h=>parseInt(h,16)), pb=b.match(/\w\w/g).map(h=>parseInt(h,16)); return 'rgb('+pa.map((v,i)=>Math.round(v+(pb[i]-v)*k)).join(',')+')'; },

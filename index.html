@@ -67,8 +67,9 @@ body.nohud .controls button{pointer-events:none}
 .titleText{position:absolute;left:max(7vw,calc(env(safe-area-inset-left) + 24px));top:50%;transform:translateY(-54%);color:#efe6d6;max-width:42vw}
 .tagline{font:500 clamp(12px,1.9vw,17px)/1.6 var(--serif);letter-spacing:.14em;opacity:0}
 .titleName{margin:.18em 0 0;font:italic 600 clamp(52px,11vw,120px)/.9 var(--display);letter-spacing:.01em;color:#f6eee0;
-  text-shadow:0 0 28px rgba(255,214,160,.18);opacity:0}
-.titleName em{font-style:italic;color:#cbbcff;text-shadow:0 0 30px rgba(190,170,255,.35)}
+  background:linear-gradient(105deg,#8fd3ff 0%,#6f9dff 38%,#8b7dff 70%,#b99bff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 22px rgba(120,140,255,.28));opacity:0}
+.titleName em{font-style:italic}
 .titleSub{margin-top:.7em;font:500 clamp(12px,1.7vw,15px)/1.4 var(--serif);letter-spacing:.32em;opacity:0;color:#cfc3ae}
 .titleMenu{margin-top:clamp(20px,5vh,40px);display:flex;flex-direction:column;align-items:flex-start;gap:6px;opacity:0}
 .titleMenu button{background:none;border:0;padding:6px 2px;color:#efe6d6;font:700 clamp(15px,2.2vw,19px)/1.3 var(--serif);letter-spacing:.2em;cursor:pointer;position:relative}
@@ -80,7 +81,8 @@ body.nohud .controls button{pointer-events:none}
 .titleClear{margin-top:14px;font:600 11px/1 var(--serif);letter-spacing:.3em;color:#cbbcff;opacity:.8;display:none}
 #titleScreen.cleared .titleClear{display:block}
 #titleScreen.play .tagline{animation:rise 1.6s ease .3s forwards}
-#titleScreen.play .titleName{animation:rise 1.8s ease .7s forwards}
+#titleScreen.play .titleName{animation:riseLogo 1.8s ease .7s forwards}
+@keyframes riseLogo{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 #titleScreen.play .titleSub{animation:rise 1.6s ease 1.2s forwards}
 #titleScreen.play .titleMenu{animation:rise 1.4s ease 1.7s forwards}
 @keyframes rise{from{opacity:0;transform:translateY(8px);filter:blur(4px)}to{opacity:1;transform:none;filter:none}}
@@ -209,7 +211,6 @@ body.nohud .controls button{pointer-events:none}
   <div class="titleText">
     <div class="tagline">猫には、九つの命があるという。</div>
     <h1 class="titleName">Neko <em>Nine</em></h1>
-    <div class="titleSub">九つの命と、ひとつの帰り道</div>
     <div class="titleMenu">
       <button id="btnStart" class="primary" type="button">はじめる</button>
       <button id="btnContinue" class="primary" type="button" hidden>つづきから</button>
