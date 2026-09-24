@@ -99,7 +99,7 @@ const STAGES=[
   goal:{x:915,y:430},
   deathY:600,
   ents:F=>[
-    F.Lightning({lock:0.5,strike:0.78,predict:true,width:34,when:w=>w.P.x>=150&&w.P.x<360}),
+    F.Lightning({lock:0.5,strike:1.0,predict:true,width:34,when:w=>w.P.x>=150&&w.P.x<360}),
     F.DropFloor({x:530,w:60,y:400,thick:14,delay:0.04,gravity:1800,style:'glass',se:'floorbreak'}),
     F.Wind({x0:600,x1:840,v:-175,onT:1.3,offT:1.7,phase:0}),
     F.Shot({from:'right',y:430-20,w:34,h:18,speed:620,delay:0.15,style:'crow',se:'trap',warnSE:'warn',lockGoal:true,when:w=>w.P.ground&&w.P.x>=800})
@@ -183,7 +183,7 @@ const STAGES=[
     // 5: the long jump lands right on a rising arc. Hop short and let it pass.
     F.Arc({x:1700,w:28,maxH:G-60,tx:1545,delay:0.2,riseSpeed:600,hold:0.35}),
     // 6: lightning that aims where you are going, twice.
-    F.Lightning({lock:0.5,strike:0.78,predict:true,width:34,count:2,interval:0.75,when:w=>w.P.x>=1820&&w.P.x<2080}),
+    F.Lightning({lock:0.5,strike:1.0,predict:true,width:34,count:2,interval:0.75,when:w=>w.P.x>=1820&&w.P.x<2080}),
     // 8: the clock tower's blade.
     F.Pendulum({px:2240,py:90,len:290,amp:0.72,period:2.2,phase:0,r:20}),
     // 4: floor spikes that wait for you to come close.
