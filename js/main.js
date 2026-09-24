@@ -264,7 +264,10 @@ function toast(text){
   clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('on'),2600);
 }
 function onClear(){
-  S.clearAt=S.clock+1.7;
+  const last=!!STAGES[S.stage].final;
+  // the last door opens onto light: give it time, and let the music and rain go quiet
+  S.clearAt=S.clock+(last?3.2:1.7);
+  if(last){ AU.stopMusic(2.4); AU.setRain(0); setHud(false); }
 }
 
 // ---------------------------------------------------------------------------
@@ -317,11 +320,12 @@ $('retryBtn').addEventListener('click',e=>{
 // ---------------------------------------------------------------------------
 const END={t:0,catX:110,catWalking:true,door:0,light:0,lookUp:0,rainStop:0,fade:1,lines:[],idx:-1,lineAt:0,phase:'enter'};
 function startEnding(){
+  const fromDoor=S.mode==='play';
   S.mode='ending';
   setHud(false);
   AU.setRain(0.6);
   writeSave({cleared:true,stage:0,deaths:0});
-  Object.assign(END,{t:0,catX:40,catWalking:true,door:0,light:0,lookUp:0,rainStop:0,fade:1,idx:-1,lineAt:0,phase:'enter'});
+  Object.assign(END,{t:0,catX:40,catWalking:true,door:0,light:0,lookUp:0,rainStop:0,fade:1,white:fromDoor?1:0,idx:-1,lineAt:0,phase:'enter'});
   const d=S.deaths, left=Math.max(1,S.lives);
   END.lines=[
     ['you','……ナイン？',()=>END.lookUp=1],
@@ -343,6 +347,7 @@ function startEnding(){
 function endingStep(dt){
   const e=END; e.t+=dt;
   e.fade=Math.max(0,e.fade-dt*0.7);
+  e.white=Math.max(0,(e.white||0)-dt*0.9);
   if(e.phase==='enter'){
     e.door=Math.min(1,e.t/1.0);
     if(e.t>1.1){ e.catX+=dt*110; }

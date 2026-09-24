@@ -799,6 +799,8 @@ const R={
     for(const e of w.ents) if(e.draw && !e.front && e.kind!=='fakedoor') e.draw(g,w,T);
     if(ui.cp) drawCheckpoint(g,ui.cp,w.t,this.whiteOf(this.imgs.sit));
     if(ui.known && ui.known.size){ for(const e of w.ents){ if(!ui.known.has(e.idx)||!e.hintRect) continue; const r=e.hintRect(w); if(r) drawHint(g,r,w.t); } }
+    const homeT=(w.def.final&&w.cleared)?w.clearT:-1;
+    if(homeT>=0) this.drawHomeLight(g,w,homeT,dt);
     this.drawGhosts(g,w,dt);
     this.drawCat(g,w,ui);
     for(const e of w.ents) if(e.draw && e.front) e.draw(g,w,T);
@@ -811,7 +813,7 @@ const R={
       const tr=this.trailOf(w);
       tr.max=Math.max(tr.max,w.P.x);
       tr.reveal+=(tr.max-tr.reveal)*Math.min(1,dt*1.6);
-      const dk=this.duskAt(w,tr.max);
+      const dk=this.duskAt(w,tr.max)*(homeT>=0?Math.max(0,1-homeT/1.1):1);
       if(dk>0.01) this.drawDark(w,v,cam,sx,sy,{alpha:dk,clearTo:tr.reveal,holes:this.duskHoles(w),motes:false});
     }
     if(w.def.memories){
@@ -933,6 +935,36 @@ const R={
     g.drawImage(sp,Math.round(-dw/2),Math.round(-dh),Math.round(dw),Math.round(dh));
     g.restore();
   },
+  // The last door: it swings open and warm light floods the hallway.
+  drawHomeLight(g,w,t,dt){
+    const d=w.goal, x=d.x, y=d.y||G, dw=42, dh=82, top=y-dh;
+    const open=Math.min(1,t/0.7), e=1-Math.pow(1-open,3);
+    // light pouring out: soft rays that fade with distance, kept above the floor
+    g.save();
+    g.beginPath(); g.rect(x-2000,0,2000+dw,y); g.clip();
+    g.globalCompositeOperation='lighter';
+    const len=240+t*700, a=Math.min(1,t/0.6)*0.16, oy=y-dh*0.5;
+    for(let i=0;i<5;i++){
+      const ang=Math.PI+(-0.36+i*0.15)+Math.sin(w.t*0.7+i*1.7)*0.025, spread=0.06+0.025*(i%2);
+      const gr=g.createRadialGradient(x,oy,0,x,oy,len);
+      gr.addColorStop(0,`rgba(255,226,170,${a})`); gr.addColorStop(1,'rgba(255,210,150,0)');
+      g.fillStyle=gr;
+      g.beginPath(); g.moveTo(x,oy);
+      g.lineTo(x+Math.cos(ang-spread)*len,oy+Math.sin(ang-spread)*len);
+      g.lineTo(x+Math.cos(ang+spread)*len,oy+Math.sin(ang+spread)*len);
+      g.closePath(); g.fill();
+    }
+    g.restore();
+    glow(g,x,y-40,120+t*260,'rgba(255,225,170,A)',0.5*Math.min(1,t/0.4));
+    // warm light spilling across the floor
+    glow(g,x-40,y,160+t*240,'rgba(255,220,160,A)',0.35*Math.min(1,t/0.5));
+    // the doorway, then the door swinging inward on its left hinge
+    rect(g,'#fff4de',x-dw/2,top,dw,dh);
+    const pw=dw*(1-e);
+    if(pw>0.5){ rect(g,'#7a5e45',x-dw/2,top,pw,dh); rect(g,'rgba(0,0,0,.25)',x-dw/2+pw-2,top,2,dh); }
+    // motes drifting out of the light
+    if(t<2.6 && Math.random()<dt*40) this.part(x+(Math.random()-0.5)*30,y-Math.random()*70,-40-Math.random()*120,-20-Math.random()*60,'rgba(255,235,190,.9)',2+Math.random()*2,1.6,-30);
+  },
   // Progress through the stage survives deaths; main.js clears it when a stage starts fresh.
   trailOf(w){
     if(!this.trail||this.trail.def!==w.def) this.trail={def:w.def,max:w.P.x,reveal:w.P.x,memA:[],memSeen:[]};
@@ -965,7 +997,9 @@ const R={
       const near=clamp(1-(Math.abs(P.x-m.x)-80)/260,0,1);
       if(near>0.6) M.seen[i]=true;
       // once read, a line stays behind as a faint trace; hidden while the death line is up
-      const target=P.dead?0:Math.max(near,M.seen[i]?0.16:0);
+      let target=P.dead?0:Math.max(near,M.seen[i]?0.16:0);
+      // at the door every remembered line glows once, then melts into the light
+      if(w.def.final&&w.cleared&&M.seen[i]) target=Math.max(target,0.7*clamp(1.6-w.clearT,0,1));
       const cur=M.a[i]=(M.a[i]||0)+(target-(M.a[i]||0))*Math.min(1,dt*(P.dead?8:2.5));
       if(cur<0.02) return;
       const y=m.y||250, rise=(1-Math.min(1,cur*1.4))*8;
@@ -1060,7 +1094,17 @@ const R={
       g.fillText(ui.deathQuote,this.W/2,this.H/2);
       g.globalAlpha=1;
     }
-    if(w.cleared){
+    if(homeT>=0){
+      const d=w.goal, px=sx+(d.x-cam)*v.scale, py=v.oy+sy+(G-40)*v.scale;
+      const r=this.H*(0.3+homeT*0.9);
+      const gr=g.createRadialGradient(px,py,0,px,py,r);
+      const a=Math.min(1,homeT/1.2);
+      gr.addColorStop(0,`rgba(255,246,226,${0.85*a})`); gr.addColorStop(0.45,`rgba(255,214,160,${0.35*a})`); gr.addColorStop(1,'rgba(255,200,140,0)');
+      g.fillStyle=gr; g.fillRect(0,0,this.W,this.H);
+      const white=clamp((homeT-1.5)/1.4,0,1);
+      if(white>0){ g.fillStyle=`rgba(255,247,232,${white*white*(3-2*white)})`; g.fillRect(0,0,this.W,this.H); }
+    }
+    else if(w.cleared){
       const ms=w.clearT*1000;
       const t=Math.min(1,ms/650), pop=Math.min(1,ms/260), eased=1-Math.pow(1-pop,3);
       g.save();
@@ -1141,6 +1185,7 @@ const R={
     g.restore();
     // letterbox fade
     if(st.fade>0){ g.fillStyle=`rgba(0,0,0,${st.fade})`; g.fillRect(0,0,this.W,this.H); }
+    if(st.white>0){ g.fillStyle=`rgba(255,247,232,${st.white})`; g.fillRect(0,0,this.W,this.H); }
   }
 };
 
