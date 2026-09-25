@@ -24,6 +24,9 @@ const CP10={spawn:{x:1430,y:420}};
 const windOn=w=>{ const ph=w.ents[6].tm%2.8; return ph>0.3&&ph<0.4; };
 const windCalm=w=>{ const ph=w.ents[6].tm%2.8; return ph>1.6&&ph<1.7; };
 const LT=w=>w.ents[8];
+// the alley: hop onto the backing truck's roof, ride it, then jump the roadworks plate
+const S2_OPEN=[walk(X(215)),wait(0.7),walk(X(335)),...jumpR(0.6),walk(X(600)),wait(0.05),walk(X(645))];
+const S2_RIDE=[{until:w=>w.ents[2].st==='move'&&w.ents[2].x<w.P.x+150},{j:1,p:1,t:0.5},{until:GR},{until:w=>w.ents[2].st==='stop'}];
 const S10_START=[walk(X(455)),...jumpR(0.6),walk(X(670)),{r:1,j:1,p:1,t:0.14},{l:1,j:1,until:GR},wait(0.2),
   {r:1,until:w=>w.P.x>=w.ents[1].px-70},wait(0.3),{r:1,until:w=>w.P.x>=w.ents[1].px-14},...jumpR(0.6),{until:GR}];
 // the lamps clear a walking cat: just walk
@@ -43,8 +46,9 @@ const cases={
 2:[
   ['naive walk',            'dead', [walk(X(2000))]],
   ['stop for pot, jump pit, walk','dead',[walk(X(215)),wait(0.7),walk(X(335)),...jumpR(0.6),walk(X(2000))]],
-  ['solution',              'clear',[walk(X(215)),wait(0.7),walk(X(335)),...jumpR(0.6),walk(X(600)),wait(0.05),walk(X(645)),
-                                      {r:0,j:1,p:1,t:0.08},{j:1,until:GR},wait(0.9),{r:1,j:1,p:1,t:0.6},{r:1,until:GR},walk(X(2000))]],
+  ['let the truck push you','dead', [...S2_OPEN,wait(3)]],
+  ['step down onto the plate','dead',[...S2_OPEN,...S2_RIDE,walk(X(2000))]],
+  ['solution',              'clear',[...S2_OPEN,...S2_RIDE,walk(X(725)),...jumpR(0.6),{l:1,until:XL(905)},wait(0.3)]],
 ],
 3:[
   ['naive walk',            'dead', [walk(X(2000))]],

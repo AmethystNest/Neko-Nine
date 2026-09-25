@@ -10,23 +10,40 @@ const S10_1=[walk(X(250)),wait(1.0),walk(w=>w.ents[0].st!=='run'||w.ents[0].x<w.
 const S10_2=[{r:1,j:1,p:1,t:0.2},{r:1,until:X(725)},{until:GR},walk(X(790)),{r:1,j:1,p:1,t:0.6},{r:1,until:X(860)},{until:GR},walk(X(1000)),{until:GR}];
 const S10_3=[walk(X(1045)),{l:1,until:X(1168)},{l:1,j:1,p:1,t:0.25},{l:1,until:GR},{until:GR},wait(0.1),walk(X(1385))];
 const S10_4=[{until:w=>w.ents[3].lit&&w.ents[3].tm%3.3<0.7},walk(X(1640))];
+// the notifications: hop from one to the next, jumping up past each fake
+const hopTo=(x0,t,xl)=>[walk(X(x0)),{r:1,j:1,p:1,t},{r:1,until:X(xl)},{until:GR}];
+const S2_A=hopTo(235,0.2,300), S2_B=hopTo(392,0.3,430), S2_C=hopTo(495,0.4,575), S2_D=hopTo(632,0.15,705), S2_E=hopTo(735,0.4,815);
 // lap 2 helpers
 const hops=n=>{ const s=[]; for(let i=0;i<n;i++) s.push({l:1,until:XL(30)},{r:1,until:X(120)}); return s; };
-// freeze while the scan beam is near; hop the lift only while the beam is far ahead of it
-const S5_BOT=(w,inp)=>{ const sc=w.ents[0], P=w.P; inp.right=false; inp.jump=false;
-  if(w._j>0){ w._j-=1/120; inp.jump=true; inp.right=true; return; }
-  if(!P.ground){ inp.right=true; return; }
-  if(sc.bx!==null&&sc.bx>P.x-120&&sc.bx<P.x+40) return;
-  if(P.x>=300&&P.x<335){ if(sc.phase_==='sweep'&&sc.bx>P.x+60){ inp.press=true; inp.jump=true; inp.right=true; w._j=0.6; } return; }
+// the lab: the first night's route, freezing whenever a scan pass comes by
+const beamNear=(w,ahead)=>{ const sc=w.ents[0]; if(sc.bx===null){ return sc.phase_==='warn'&&ahead>0; } const d=sc.bx-w.P.x; return sc.rev?(d>-40&&d<ahead+200):(d<40&&d>-(ahead+200)); };
+const S5_BOT=(w,inp)=>{ const P=w.P, E=w.ents; inp.right=inp.left=inp.jump=false;
+  if(w._j>0){ w._j-=1/120; inp.jump=true; inp.right=w._jr; return; }
+  if(!P.ground){ inp.right=w._jr; return; }
+  if(beamNear(w,0)) return;
+  const L=E[1];
+  if(P.x<235){ if(P.x<150){ inp.right=true; return; } if(!w._lg){ if(!(L.st==='cycle'&&!L.on&&L.tm%1.34>0.72&&L.tm%1.34<0.8)) return; w._lg=true; } inp.right=true; return; }
+  // the lift jump sets off everything after it (arc, blocks): start it just as a pass ends
+  if(P.x>=300&&P.x<330){ const sc=E[0], cyc=sc.warn+sc.sweep+sc.rest, ph=sc.tm%cyc; if(sc.phase_==='rest'&&ph<sc.warn+sc.sweep+0.15){ inp.press=inp.jump=true; w._j=0.6; w._jr=true; } return; }
+  const B1=E[5], B2=E[6], SH=E[7], AR=E[4];
+  if(P.x<600&&AR.st!=='done'&&AR.st!=='idle') return;
+  // the blocks launch when you reach 540: only go right after a pass has finished
+  if(B1.st==='idle'&&P.x>=500){ const sc=E[0]; if(!(sc.phase_==='rest'&&!w._go)) { if(!w._go) return; } w._go=true; }
+  if(B1.st==='fly'&&B1.x<P.x+110&&B1.x>P.x){ inp.press=inp.jump=true; w._j=0.5; w._jr=false; return; }
+  if(B1.st==='wait'||(B1.st==='fly'&&B1.x>P.x)) return;
+  if(B2.st!=='done'&&B2.st!=='idle'&&P.x<700) return;
+  if(P.x>=720&&SH.st!=='done'&&SH.st!=='idle') return;
   inp.right=true; };
 const S6_GUST=w=>{ const p=w.ents[1].tm%4.8; return p>=0.1&&p<0.15; };
-const S6_LAND={fn:(w,inp)=>{ inp.right=w.P.x<940; inp.left=w.P.x>946; },until:w=>w.cleared};
+const S6_LAND={fn:(w,inp)=>{ inp.right=w.P.x<945; inp.left=w.P.x>951; },until:w=>w.cleared};
+const S6_GLIDE=[walk(X(150)),{until:S6_GUST},walk(X(248)),{r:1,j:1,p:1,t:0.6},{r:1,until:GR}];
+const S6_HOP1=[{until:w=>w.ents[2].st==='fly'&&w.ents[2].x>w.P.x-110},{j:1,p:1,t:0.08},{until:w=>w.ents[2].st==='fly'&&w.ents[2].x>w.P.x+40}];
 const S7_HOP=(w,inp)=>{ const c=w.ents[2]; inp.right=inp.left=false;
   if(w._j>0){ w._j-=1/120; inp.jump=true; return; }
   if(!w.P.ground) return;
   if(c.people.some(p=>p.s.on&&p.s.x<w.P.x+48&&p.s.x+26>w.P.x-10)){ inp.press=true; inp.jump=true; w._j=0.6; } };
-const S7_PASSED=w=>w.ents[2].n>=4&&w.ents[2].people.every(p=>!p.s.on||p.s.x+26<w.P.x-12);
-const S7_REST=[walk(X(555)),{until:w=>w.ents[1].tm>2.2},walk(X(602)),{l:1,until:XL(560)},{until:w=>w.ents[1].st==='done'},walk(X(975)),...jumpR(0.6),walk(X(1300)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(2000)),{l:1,until:XL(1520)}];
+const S7_PASSED=w=>w.ents[2].n>=6&&w.ents[2].people.every(p=>!p.s.on||p.s.x+26<w.P.x-12);
+const S7_REST=[walk(X(555)),{until:w=>w.ents[1].tm>2.2},walk(X(602)),{l:1,until:XL(560)},{until:w=>w.ents[1].st==='done'},walk(X(990)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(1300)),{r:1,j:1,p:1,t:0.02},{r:1,until:GR},walk(X(2000)),{l:1,until:XL(1520)}];
 const dodge=(w,inp)=>{ inp.right=true; if(w._jt>0){ w._jt-=1/120; inp.jump=w._jt>0; return; } if(!w.P.ground) return;
   for(const e of w.ents){ if(e.kind!=='pendulum') continue; const dx=e.bx()-w.P.x; if(e.by()>320&&dx>-10&&dx<130){ inp.press=true; inp.jump=true; w._jt=0.6; } } };
 const S8_LEDGE=[{fn:dodge,until:X(570)},{until:GR},{l:1,until:XL(640)},wait(0.3),{until:w=>w.ents[1].ang<-0.3},walk(X(655)),{r:1,j:1,p:1,until:X(840)},{j:1,until:GR}];
@@ -41,9 +58,10 @@ const cases={
   ['walk under its hops',   'clear',[walk(X(250)),wait(1.1),walk(w=>w.ents[0].x<w.P.x-30),walk(X(560)),wait(1.1),walk(X(2000))]],
 ],
 2:[
-  ['walk onto the next one','dead', [walk(X(262)),{r:1,j:1,p:1,t:0.2},{r:1,until:X(345)},{until:GR},wait(0.1),walk(X(395)),{r:1,j:1,p:1,t:0.3},{r:1,until:X(505)},{until:GR},walk(X(2000))]],
-  ['wait too long',         'dead', [walk(X(262)),{r:1,j:1,p:1,t:0.2},{r:1,until:X(345)},{until:GR},wait(4)]],
-  ['jump up past it',       'clear',[walk(X(262)),{r:1,j:1,p:1,t:0.2},{r:1,until:X(345)},{until:GR},wait(0.1),walk(X(395)),{r:1,j:1,p:1,t:0.3},{r:1,until:X(505)},{until:GR},wait(0.3),walk(X(560)),{r:1,j:1,p:1,t:0.6},{r:1,until:X(700)},{until:GR},walk(X(790)),{until:GR},walk(X(2000))]],
+  ['walk onto the first fake','dead',[...S2_A,...S2_B,walk(X(2000))]],
+  ['walk onto the second',  'dead', [...S2_A,...S2_B,...S2_C,...S2_D,walk(X(2000))]],
+  ['wait too long',         'dead', [...S2_A,wait(4)]],
+  ['jump up past both',     'clear',[...S2_A,...S2_B,...S2_C,...S2_D,...S2_E,{fn:(w,i)=>{ i.right=w.P.x<972; i.left=w.P.x>978; },until:w=>w.cleared}]],
 ],
 3:[
   ['press on at the wrong beat','dead',[walk(X(240)),wait(0.95),walk(X(252)),{l:1,until:X(588)}]],
@@ -52,20 +70,25 @@ const cases={
 ],
 4:[
   ['walk straight across',  'dead', [walk(X(2000))]],
-  ['from the checkpoint',   'clear',[{until:w=>w.ents[1].lit&&w.ents[1].tm%3.4<0.6},walk(X(2000))],{spawn:{x:530,y:420}}],
-  ['wait out the dark',     'clear',[walk(X(280)),wait(0.45),walk(X(525)),wait(0.6),walk(X(2000))]],
+  ['go as the tube relights','dead',[walk(X(262)),wait(0.2),walk(X(485)),wait(1.2),walk(X(2000))]],
+  ['from the checkpoint',   'clear',[wait(2.25),walk(X(2000))],{spawn:{x:485,y:420}}],
+  ['read both rhythms',     'clear',[walk(X(262)),wait(0.2),walk(X(485)),wait(0.35),walk(X(2000))]],
 ],
 5:[
-  ['walk through the scan', 'dead', [walk(X(300)),...jumpR(0.6),walk(X(2000))]],
-  ['hold still as it passes','clear',[{fn:S5_BOT,until:X(730)},{until:w=>w.ents[3].st==='done'},{fn:S5_BOT,until:w=>w.cleared}]],
+  ['the first night\'s route','dead',[walk(X(150)),wait(0.05),{until:w=>w.ents[1].st==='cycle'&&!w.ents[1].on&&w.ents[1].tm%(1.34)>0.72&&w.ents[1].tm%1.34<0.8},walk(X(300)),...jumpR(0.6),{until:GR},{until:w=>w.ents[5].x<680},{j:1,p:1,t:0.5},{until:GR},{until:w=>w.ents[6].x<440},walk(X(740)),{until:w=>w.ents[7].st==='done'},walk(X(2000))]],
+  ['hold still as it passes','clear',[{fn:S5_BOT,until:w=>w.cleared}]],
 ],
 6:[
-  ['run and jump at once',  'dead', [walk(X(318)),...jumpR(0.6),S6_LAND]],
-  ['wait at the edge',      'dead', [walk(X(310)),wait(3),{r:1,until:GR},S6_LAND]],
-  ['jump on the gust',      'clear',[walk(X(150)),{until:S6_GUST},walk(X(318)),...jumpR(0.6),S6_LAND]],
+  ['run and jump at once',  'dead', [walk(X(248)),...jumpR(0.6),S6_LAND]],
+  ['wait at the edge',      'dead', [walk(X(245)),wait(3),{r:1,until:GR},S6_LAND]],
+  ['stand when you land',   'dead', [...S6_GLIDE,wait(3)]],
+  ['hop the second crow too','dead',[...S6_GLIDE,...S6_HOP1,{until:GR},{until:w=>w.ents[3].st==='fly'&&w.ents[3].x<w.P.x+110},{j:1,p:1,t:0.1},{until:GR},wait(1.5)]],
+  ['hop once, then stay down','clear',[...S6_GLIDE,...S6_HOP1,{until:GR},{until:w=>w.ents[3].st==='done'||(w.ents[3].st==='fly'&&w.ents[3].x<w.P.x-60)},S6_LAND]],
 ],
 7:[
   ['stand in the crowd',    'dead', [walk(X(270)),...jumpR(0.6),walk(X(430)),wait(8)]],
+  ['wait at the platform edge','dead',[walk(X(270)),...jumpR(0.6),walk(X(430)),{fn:S7_HOP,until:S7_PASSED},walk(X(555)),{until:w=>w.ents[1].tm>2.2},walk(X(602)),{l:1,until:XL(560)},{until:w=>w.ents[1].st==='done'},walk(X(960)),wait(4)]],
+  ['full jump into the ad', 'dead', [walk(X(270)),...jumpR(0.6),walk(X(430)),{fn:S7_HOP,until:S7_PASSED},walk(X(555)),{until:w=>w.ents[1].tm>2.2},walk(X(602)),{l:1,until:XL(560)},{until:w=>w.ents[1].st==='done'},walk(X(975)),...jumpR(0.6),walk(X(2000))]],
   ['hop and let them pass', 'clear',[walk(X(270)),...jumpR(0.6),walk(X(430)),{fn:S7_HOP,until:S7_PASSED},...S7_REST]],
 ],
 8:[

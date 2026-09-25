@@ -58,6 +58,12 @@ function floorPainter(o){
 }
 
 // Door painter.
+// Large outlined text for in-world signs, readable on a phone screen.
+function bigLabel(g,text,x,y,col,align){
+  g.save(); g.font='900 26px system-ui,-apple-system,sans-serif'; g.textAlign=align||'center'; g.textBaseline='middle';
+  g.lineJoin='round'; g.lineWidth=6; g.strokeStyle='rgba(10,12,20,.9)'; g.strokeText(text,x,y);
+  g.fillStyle=col; g.fillText(text,x,y); g.restore();
+}
 function drawDoor(g,x,y,pal,t,opts){
   const w=42,h=82,top=y-h;
   opts=opts||{};
@@ -525,6 +531,33 @@ P.Shutter.prototype.draw=function(g,w,T){
   for(let x=this.x;x<this.x+this.w;x+=16){ g.fillStyle='#e8c23a'; g.fillRect(x,y1-10,8,10); g.fillStyle='#222'; g.fillRect(x+8,y1-10,8,10); }
   rect(g,'#30353a',this.x-4,this.top-6,this.w+8,6);
 };
+P.Truck.prototype.draw=function(g,w,T){
+  if(this.st==='idle') return;
+  const x=this.x, bw=this.bw, bh=this.bh, cw=this.cw, ch=this.ch, top=G-bh, t=w.t;
+  const bob=this.st==='move'?Math.sin(t*30)*0.8:0;
+  g.save(); g.translate(0,bob);
+  // chassis
+  rect(g,'#23252b',x-6,G-30,bw+cw+8,10);
+  // cargo box with rear doors facing the way it backs
+  rect(g,'#e6e8ec',x,top,bw,bh-28); rect(g,'#c4c8cf',x,top,bw,7);
+  g.strokeStyle='rgba(0,0,0,.18)'; g.lineWidth=2;
+  for(let i=1;i<5;i++){ g.beginPath(); g.moveTo(x+i*bw/5,top+10); g.lineTo(x+i*bw/5,G-34); g.stroke(); }
+  rect(g,'#b9bec6',x,top,8,bh-28); line(g,'#7a7f88',3,[x+4,top+30,x+4,G-50]);
+  rect(g,'#3a8ad8',x+30,top+40,bw-60,26); g.fillStyle='#fff'; g.font='bold 18px system-ui,sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('ネコ便',x+bw/2,top+54);
+  // cab: window, door, headlight
+  const cx=x+bw+2, ctop=G-ch;
+  g.fillStyle='#d64a3a'; g.beginPath(); g.moveTo(cx,G-30); g.lineTo(cx,ctop); g.lineTo(cx+cw-26,ctop); g.lineTo(cx+cw-4,ctop+38); g.lineTo(cx+cw-4,G-30); g.fill();
+  g.fillStyle='#9fc4e6'; g.beginPath(); g.moveTo(cx+cw-28,ctop+8); g.lineTo(cx+cw-12,ctop+38); g.lineTo(cx+10,ctop+38); g.lineTo(cx+10,ctop+8); g.fill();
+  line(g,'rgba(0,0,0,.3)',2,[cx+8,ctop+44,cx+8,G-34]); rect(g,'#f3e9a8',cx+cw-10,G-58,6,10);
+  // wheels
+  for(const wx of [x+36,x+bw-40,x+bw+cw-26]){ circ(g,'#141519',wx,G-14,14); circ(g,'#8a8f99',wx,G-14,6); }
+  // reversing lights and the beeper
+  const blink=(t*3|0)%2===0;
+  rect(g,blink?'#ff5a4a':'#7a2a24',x-4,G-64,7,14); rect(g,'#fff2c0',x-4,G-48,7,8);
+  glow(g,x,G-58,46,'rgba(255,80,60,A)',blink?0.4:0.1);
+  g.restore();
+  if(this.st==='move'&&blink){ bigLabel(g,'バックします',x-12,top-18,'#ffcf7a','right'); }
+};
 P.ChaseWall.prototype.draw=function(g,w,T){
   if(this.rise<=0) return;
   if(this.style==='truck'){
@@ -595,8 +628,8 @@ P.Bonk.prototype.draw=function(g,w,T){
     // a hanging advertisement you didn't see until your head found it
     line(g,'#555',1.5,[s.x+8,0,s.x+8,s.y]); line(g,'#555',1.5,[s.x+s.w-8,0,s.x+s.w-8,s.y]);
     rect(g,'#f2efe6',s.x,s.y,s.w,s.h); rect(g,'#3a8ad8',s.x,s.y,s.w,7);
-    g.save(); g.fillStyle='#333'; g.font='bold 11px system-ui,sans-serif'; g.textAlign='center'; g.textBaseline='middle';
-    g.fillText(s.w>90?'がんばる あなたに。':'今夜も終電で。',s.x+s.w/2,s.y+s.h/2+3); g.restore();
+    g.save(); g.fillStyle='#222'; g.font='900 15px system-ui,sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+    g.fillText(s.w>90?'がんばる君へ':'終電へ急げ',s.x+s.w/2,s.y+s.h/2+4); g.restore();
     return;
   }
   rect(g,'#9a5a3a',s.x,s.y,s.w,s.h); g.strokeStyle='rgba(0,0,0,.35)'; g.lineWidth=2; g.strokeRect(s.x+1,s.y+1,s.w-2,s.h-2);
@@ -750,8 +783,9 @@ P.AlarmClock.prototype.draw=function(g,w,T){
 };
 P.Banners.prototype.draw=function(g,w,T){
   this.solids.forEach((s,i)=>{
-    if(!s.on) return;
-    const b=this.items[i], bl=this.blink(i);
+    const b=this.items[i];
+    if(!s.on && !(b.falling&&!b.gone)) return;
+    const bl=this.blink(i);
     if(bl>0 && ((w.t*14|0)%2===0)) return;
     const x=s.x, y=s.y, W_=s.w;
     g.save(); g.globalAlpha=0.95;
@@ -760,8 +794,8 @@ P.Banners.prototype.draw=function(g,w,T){
     // app icon + two lines of text; the fake one is marked "既読" in red
     rect(g,b.fake?'#d8483a':'#3a8ad8',x+5,y+4,14,14);
     rect(g,'#9aa0ad',x+24,y+5,W_-34,3); rect(g,'#c4c8d2',x+24,y+12,W_-46,3);
-    if(b.fake){ g.fillStyle='#d8483a'; g.font='bold 8px system-ui,sans-serif'; g.fillText('既読',x+W_-20,y+18); }
     g.restore();
+    if(b.fake) bigLabel(g,'既読',x+W_/2,y-14,'#ff8a7a');
   });
 };
 P.Dizzy.prototype.draw=function(g,w,T){
@@ -789,10 +823,9 @@ P.Scanner.prototype.drawBody=function(g,w,T){
   rect(g,'rgba(120,190,210,.25)',this.x0,92,this.x1-this.x0,3);
   if(this.phase_==='warn'){
     const on=(w.t*6|0)%2===0;
-    circ(g,on?'#7fe8ff':'#2a4a55',this.x0,100,5);
-    if(Math.abs(w.P.x-this.x0)<900){ const tx=Math.max(this.x0+12,w.P.x-120);
-      g.fillStyle='rgba(15,25,35,.75)'; g.fillRect(tx-6,108,248,20);
-      g.fillStyle=`rgba(127,232,255,${on?1:0.6})`; g.font='bold 13px system-ui,sans-serif'; g.fillText('スキャンします。動かないでください',tx,123); }
+    const cyc=this.warn+this.sweep+this.rest, fromR=this.both&&Math.floor(this.tm/cyc)%2===1;
+    circ(g,on?'#7fe8ff':'#2a4a55',fromR?this.x1:this.x0,100,6);
+    if(Math.abs(w.P.x-(this.x0+this.x1)/2)<900 && on) bigLabel(g,'スキャン中は 動かないで',Math.min(Math.max(w.P.x,this.x0+170),this.x1-170),128,'#7fe8ff');
   }
   if(this.bx===null) return;
   const x=this.bx, moving=this.moving(w)&&Math.abs(w.P.x-x)<60;
@@ -803,11 +836,7 @@ P.Scanner.prototype.drawBody=function(g,w,T){
   line(g,`rgba(${col},.95)`,2,[x,95,x,G]);
   rect(g,'#cfd8dc',x-8,88,16,8);
   // over the cat, the verdict
-  if(Math.abs(w.P.x-x)<50){
-    const tx=w.P.x-28, ty=w.P.y-76;
-    g.fillStyle='rgba(15,25,35,.8)'; g.fillRect(tx-4,ty,64,18);
-    g.fillStyle=`rgba(${col},1)`; g.font='bold 12px system-ui,sans-serif'; g.fillText(moving?'異常あり':'異常なし',tx+4,ty+13);
-  }
+  if(Math.abs(w.P.x-x)<50) bigLabel(g,moving?'異常あり':'異常なし',w.P.x,w.P.y-80,moving?'#ff7a7a':'#7fe8ff');
 };
 P.Umbrella.prototype.draw=function(g,w,T){
   if(this.held) return;
@@ -822,7 +851,9 @@ P.Crowd.prototype.draw=function(g,w,T){
   for(const p of this.people){
     const s=p.s; if(!s.on) continue;
     const x=s.x, y=s.y, bob=Math.abs(Math.sin(w.t*5+p.bob))*2;
-    const fade=Math.min(1,(s.x-this.endX)/40);
+    const fade=Math.min(1,(this.dir>0?this.endX-(s.x+26):s.x-this.endX)/40);
+    const flip=this.dir>0;
+    if(flip){ g.save(); g.translate(x*2+26,0); g.scale(-1,1); }
     g.save(); g.globalAlpha=Math.max(0,fade);
     g.fillStyle='#1c1d26';
     // head, suit, briefcase: a commuter walking left
@@ -833,6 +864,7 @@ P.Crowd.prototype.draw=function(g,w,T){
     rect(g,'#2e2a24',x-6,y+s.h*0.48,10,12);
     rect(g,'rgba(255,255,255,.08)',x+3,y+18-bob,20,3);
     g.restore();
+    if(flip) g.restore();
   }
 };
 P.Shadow.prototype.draw=function(g,w,T){

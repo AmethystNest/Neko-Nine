@@ -943,7 +943,10 @@ class Banners extends Ent{
       if(b.fake && P.ground && P.ref===s && !b.trip){ b.trip=this.clock; w.se('trapdoor'); }
       if(b.trip!==undefined && this.clock-b.trip>0.12) b.fall=(b.fall||0)+dt;
       if(!b.fake && age>=b.life){ b.gone=true; s.on=false; return; }
-      if(b.fall!==undefined){ b.vy=(b.vy||0)+2200*dt; s.y+=b.vy*dt; if(s.y>600){ b.gone=true; s.on=false; return; } }
+      if(b.fall!==undefined){
+        // it drops out from under you: no longer something to stand on, just a thing falling
+        b.vy=(b.vy||0)+2200*dt; s.y+=b.vy*dt; s.on=false; b.falling=true;
+        if(s.y>600){ b.gone=true; } return; }
       else s.y=b.y-Math.max(0,1-age/0.14)*26;
       s.on=true;
     });
@@ -974,10 +977,17 @@ class LightFloor extends Ent{
   }
   update(w,dt){
     this.tm+=dt;
-    const ph=this.tm%(this.onT+this.offT);
     const was=this.lit;
-    this.lit=ph<this.onT;
-    this.flicker=this.lit&&ph>this.onT-0.55?((ph*16|0)%2===0):false;
+    if(this.seq){
+      // a failing tube: an irregular rhythm [[on,off],...] that repeats
+      const tot=this.seq.reduce((a,c)=>a+c[0]+c[1],0); let p=this.tm%tot, on=false, left=0;
+      for(const [a,b] of this.seq){ if(p<a){ on=true; left=a-p; break; } p-=a; if(p<b){ on=false; break; } p-=b; }
+      this.lit=on; this.flicker=on&&left<0.4?((this.tm*16|0)%2===0):false;
+    }else{
+      const ph=this.tm%(this.onT+this.offT);
+      this.lit=ph<this.onT;
+      this.flicker=this.lit&&ph>this.onT-0.55?((ph*16|0)%2===0):false;
+    }
     this.s.on=this.lit;
     if(was!==this.lit && Math.abs(w.P.x-(this.x+this.w/2))<500) w.se(this.lit?'shutter':'trapdoor');
   }
@@ -1011,7 +1021,8 @@ class Crowd extends Ent{
       this.people.push({s,h,bob:this.n*1.7}); this.solids.push(s); this.n++;
       this.next=this.gaps[(this.n-1)%this.gaps.length];
     }
-    for(const p of this.people){ if(p.s.on) p.s.x-=this.speed*dt; if(p.s.x<this.endX){ p.s.on=false; } }
+    const d=this.dir||-1;
+    for(const p of this.people){ if(p.s.on) p.s.x+=d*this.speed*dt; if(d<0?p.s.x<this.endX:p.s.x+26>this.endX){ p.s.on=false; } }
   }
 }
 
@@ -1045,7 +1056,11 @@ class Scanner extends Ent{
     const cyc=this.warn+this.sweep+this.rest, ph=this.tm%cyc;
     const was=this.phase_;
     if(ph<this.warn){ this.phase_='warn'; this.bx=null; }
-    else if(ph<this.warn+this.sweep){ this.phase_='sweep'; const k=(ph-this.warn)/this.sweep; this.bx=this.x0+(this.x1-this.x0)*k; }
+    else if(ph<this.warn+this.sweep){
+      this.phase_='sweep'; const k=(ph-this.warn)/this.sweep;
+      // alternate: every other pass runs back from the right
+      this.rev=this.both&&Math.floor(this.tm/cyc)%2===1;
+      this.bx=this.rev?this.x1-(this.x1-this.x0)*k:this.x0+(this.x1-this.x0)*k; }
     else { this.phase_='rest'; this.bx=null; }
     if(was!==this.phase_ && this.phase_==='warn' && Math.abs(w.P.x-(this.x0+this.x1)/2)<700) w.se('warn');
     if(was!==this.phase_ && this.phase_==='sweep') w.se('lasercharge');
@@ -1057,9 +1072,32 @@ class Scanner extends Ent{
   }
 }
 
+// A delivery truck backing down the alley. Its body is two solids (cargo box and cab)
+// that match what you see: it shoves you, and its roof is somewhere to stand.
+class Truck extends Ent{
+  init(w){
+    this.kind='truck'; this.x=this.startX;
+    this.bw=this.bw||200; this.bh=this.bh||150; this.cw=this.cw||72; this.ch=this.ch||112;
+    this.box={x:this.x,y:G-this.bh,w:this.bw,h:this.bh,kin:true,kind:'truck',on:false};
+    this.cab={x:this.x+this.bw,y:G-this.ch,w:this.cw,h:this.ch,kin:true,kind:'truck',on:false};
+    this.solids=[this.box,this.cab];
+  }
+  update(w,dt){
+    if(this.st==='idle'){ if(this.triggered(w)){ this.st='move'; w.se('warn'); } }
+    else if(this.st==='move'){
+      this.x=Math.max(this.minX,this.x-this.speed*dt);
+      if(Math.floor(w.t*3)!==this.beep){ this.beep=Math.floor(w.t*3); w.se('warn'); }
+      if(this.x<=this.minX){ this.st='stop'; w.se('crusher'); w.shake(5); w.flags[this.flag||'wallDone']=true; }
+    }
+    const on=this.st!=='idle';
+    this.box.on=on; this.cab.on=on;
+    this.box.x=this.x; this.cab.x=this.x+this.bw;
+  }
+}
+
 const K={Block,TrapFloor,ShiftPit,DropFloor,Crusher,FallBlock,Spikes,Shot,Laser,Lift,Arc,Shutter,ChaseWall,
   Lightning,Wind,Conveyor,Bonk,Spring,Pendulum,Crossing,DarkChase,Mover,SpikeRow,Deco,FakeDoor,Light,
-  AlarmClock,Banners,Dizzy,LightFloor,Umbrella,Crowd,Shadow,Scanner};
+  AlarmClock,Banners,Dizzy,LightFloor,Umbrella,Crowd,Shadow,Scanner,Truck};
 // Factory helpers: K.trapdoor({...}) etc.
 const F={};
 for(const k in K){ F[k]=o=>new K[k](o); }

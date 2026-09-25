@@ -31,15 +31,15 @@ const STAGES=[
   name:'雨の路地', theme:'alley', rain:1,
   story:['外の世界は、つめたくて、うるさい。','君はいつも、こんな雨の中を帰ってきていたんだね。'],
   storyYou:['傘をさす気力も、もう残っていなかった。','雨の音だけが、やけにやさしかった。'],
-  floors:[[0,350],[500,680],[820,1000]],
+  floors:[[0,350],[500,680],[880,1000]],
   checkpoint:{x:590},
   goal:{x:905},
   ents:F=>[
     F.Deco({type:'window',x:304,y:150}),
     F.FallBlock({x:292,w:24,h:24,y0:130,tx:205,delay:0,gravity:3000,style:'pot',landSE:'floorbreak',shadow:true}),
     // a delivery truck backs down the alley; the steel plate over the roadworks is the second joke
-    F.ChaseWall({startX:780,w:54,h:170,when:w=>w.P.x>=640&&w.P.x<760,riseSpeed:4000,speed:560,minX:500,style:'truck'}),
-    F.TrapFloor({x:680,w:140,dir:'lr',delay:0.08,speed:900,style:'plate',armed:w=>!!w.flags.wallDone})
+    F.Truck({startX:1010,minX:470,speed:520,when:w=>w.P.x>=640&&w.P.x<760}),
+    F.TrapFloor({x:680,w:200,dir:'mid',delay:0.05,speed:900,style:'plate',armed:w=>!!w.flags.wallDone})
   ]
 },
 // ---------------------------------------------------------------- 3
@@ -237,15 +237,19 @@ const LOOP2={
         F.AlarmClock({from:'right',x0:860,drop:true,speed:150,hopH:104,hopT:0.74,when:w=>w.P.x>=520&&(A.st==='idle'||A.x<w.P.x-40)})];
     }},
   // 2: notifications pop up over the gap, one after another. One of them isn't real.
-  // one gap, nothing to split: no checkpoint here, only the hints
-  1:{floors:[[0,300],[860,1000]],checkpoint:null,
+  // 2: notifications pop up over a long gap, one after another, and don't stay long.
+  //    Twice, the one lined up where you'd walk on is already read: it drops.
+  //    (one gap, nothing to split: no checkpoint here, only the hints)
+  1:{floors:[[0,260],[960,1000]],checkpoint:null,goal:{x:975},
     ents:F=>[
-      F.Banners({tx:240,items:[
-        {x:330,y:G-10,at:0,life:3.6},
-        {x:488,y:G-62,at:0.7,life:3.4},
-        // the next one lines up right where you'd walk on... it's the fake
-        {x:600,y:G-62,at:1.2,fake:true},
-        {x:688,y:G-160,at:1.4,life:3.6}]})
+      F.Banners({tx:200,items:[
+        {x:290,y:G-10,at:0,life:2.8},
+        {x:420,y:G-70,at:0.5,life:2.6},
+        {x:530,y:G-70,at:0.9,fake:true},
+        {x:556,y:G-170,at:1.0,life:2.5,w:120},
+        {x:700,y:G-110,at:1.6,life:2.4,w:110},
+        {x:818,y:G-110,at:2.0,fake:true},
+        {x:810,y:G-210,at:2.1,life:2.6,w:120}]})
     ]},
   // 3: the presses, on a dizzy head: left and right trade places until the edge
   2:{ents:F=>[
@@ -256,25 +260,39 @@ const LOOP2={
       F.Shot({from:'right',y:G-22,w:54,h:8,speed:900,delay:0.0,style:'bolt',tx:800})
     ]},
   // 4: the lamps flicker, and the walkway over the water is only there while they're lit
-  // the middle stretch is solid stone: a place to catch your breath, and the checkpoint
-  3:{floors:[[0,300],[450,610],[760,1000]],checkpoint:{x:530},
+  // 4: the walkway over the water is only there while its lamp is lit. Past the stone,
+  //    two failing tubes flicker out of step with each other: read their rhythm.
+  //    (the stone in the middle is a place to catch your breath, and the checkpoint)
+  3:{floors:[[0,280],[430,540],[900,1000]],checkpoint:{x:485},
     ents:F=>[
-      F.LightFloor({x:300,w:150,onT:2.2,offT:1.2,phase:0}),
-      F.LightFloor({x:610,w:150,onT:2.2,offT:1.2,phase:0.4})
+      F.LightFloor({x:280,w:150,onT:1.8,offT:1.2,phase:0}),
+      F.LightFloor({x:540,w:180,seq:[[1.1,0.6],[0.35,0.3],[1.5,0.7],[0.25,0.35]],phase:0}),
+      F.LightFloor({x:720,w:180,seq:[[0.8,0.9],[1.3,0.4],[0.3,0.3],[0.9,0.5]],phase:0.7})
     ]},
-  // 5: the lab is a check-up now. A scan sweeps the room: hold still while it passes
-  //    ("大丈夫です" is only true if you don't move). Jumping the lift inside the beam is the catch.
+  // 5: the lab is a check-up now: every trap of the first night, and a scan that sweeps from
+  //    both sides. Hold still while it passes ("大丈夫です" is only true if you don't move).
   4:{ents:F=>[
-      F.Scanner({x0:40,x1:980,bw:26,warn:0.7,sweep:1.3,rest:1.3,tx:130}),
+      F.Scanner({x0:40,x1:980,bw:26,warn:0.7,sweep:1.3,rest:1.0,both:true,tx:130}),
+      F.Laser({x:250,y0:90,y1:G,tx:150,warm:0.28,onT:0.72,offT:0.62}),
       F.Lift({x:335,w:100,rise:272,speed:440}),
       F.SpikeRow({x:335,w:100,y:90,h:38,dirn:'down'}),
+      F.Arc({x:585,w:28,maxH:G-60,tx:470,delay:0.22,riseSpeed:560,hold:0.3}),
+      F.Shot({from:'right',y:G-21,w:74,h:42,speed:760,tx:540,delay:0.35,style:'block',se:'wallmove'}),
+      F.Shot({from:'right',y:G-150,w:74,h:42,speed:760,tx:540,delay:1.6,style:'block',se:'wallmove'}),
       F.Shutter({x:766,w:58,top:90,tx:735,delay:0.05,dropSpeed:1350,holdClosed:1.6,riseSpeed:520,gap:70})
     ]},
   // 6: an umbrella by the parapet. Held open, you drift down slowly and the gusts carry you
-  5:{floors:[[0,330,420],[880,1000,430]],checkpoint:null,goal:{x:940,y:430},
+  5:{floors:[[0,260,420],[900,1000,430]],checkpoint:null,goal:{x:945,y:430},
     ents:F=>[
-      F.Umbrella({x:236,y:420,boost:230}),
-      F.Wind({x0:300,x1:900,v:200,onT:1.8,offT:3.0,phase:1.15})
+      F.Umbrella({x:200,y:420,boost:70}),
+      F.Wind({x0:240,x1:920,v:90,onT:1.8,offT:3.0,phase:1.15}),
+      // the crows want the umbrella. The first swoops in low from behind the moment you land:
+      // hop it (the umbrella makes the hop float)...
+      F.Shot({from:'left',x0:720,y:430-20,w:34,h:18,speed:620,delay:0.2,style:'crow',se:'trap',warnSE:'warn',
+        when:w=>w.P.ground&&w.P.x>=900}),
+      // ...and the second follows from the front at the height of that floating hop. Stay down.
+      F.Shot({from:'right',y:350,w:34,h:24,speed:700,delay:1.1,style:'crow',se:'trap',warnSE:'warn',
+        when:w=>w.ents[2].st==='fly'&&w.ents[2].x>w.P.x+40})
     ]},
   // 7: rush hour walks toward you and shoves you back toward the tracks
   6:{ents:F=>[
@@ -282,13 +300,19 @@ const LOOP2={
       F.Crossing({x0:600,x1:820,tx:530,trains:[{at:1.1,dur:0.75},{enter:2.0,delay:0.6,dur:0.75}],bells:[[0,2.0]]}),
       // off the last train, the crowd comes up from the crossing toward you. Get shoved all the way back and
       // you're pinned against the vending machine.
-      F.Crowd({tx:380,spawnX:582,endX:352,speed:95,count:4,heights:[76,84,70,82,74],gaps:[1.7,2.1,1.6,1.9]}),
+      F.Crowd({tx:380,spawnX:582,endX:352,speed:130,count:6,heights:[76,84,70,82,74,86],gaps:[1.25,1.6,1.1,1.45,1.3]}),
+      // past the crossing, the next wave comes up behind you, heading for the same train:
+      // it shoves you toward the edge of the platform (and the hanging ad is still over the gap)
+      F.Crowd({dir:1,when:w=>w.P.x>=880,spawnX:835,endX:1050,speed:125,count:4,heights:[80,74,86,78],gaps:[0.9,1.1,0.8]}),
+      F.Bonk({x:990,y:G-180,w:80,h:36,style:'ad'}),
       F.Conveyor({x:1120,w:300,v:140,rx:1290,rv:-430}),
       F.Bonk({x:1288,y:G-176,w:110,h:34,style:'ad'})
     ]},
   // 8: the clock tower's time runs only while you walk. Waiting won't help; pace back and forth where it's safe.
   7:{ents:F=>{
       const es=STAGES[7].ents(F);
+      // a third blade between the two, out of step with both
+      es.push(F.Pendulum({px:362,py:90,len:290,amp:0.72,period:2.2,phase:1.65,r:20}));
       for(const e of es) if(e.constructor.name==='Pendulum'){ e.superhot=true; }
       return es;
     }},
