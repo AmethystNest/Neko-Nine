@@ -235,15 +235,17 @@ const PROLOGUE2=[
 ];
 const LOOP2={
   // 1: an alarm clock hops down the hall. Jump it and it jumps with you; walk under its hop.
-  0:{floors:[[0,1000]],checkpoint:{x:420},
+  0:{floors:[[0,1000]],checkpoint:{x:520},
     ents:F=>{
-      const A=F.AlarmClock({from:'right',x0:1040,speed:170,hopH:112,hopT:0.8,tx:180});
+      // (starting again from the checkpoint, only the second one is left)
+      const A=F.AlarmClock({from:'right',x0:1040,speed:170,hopH:112,hopT:0.8,when:w=>w.P.x>=180&&w.P.x<500});
       return [A,
         // the snooze: a second one drops in front of the door once the first has gone by
-        F.AlarmClock({from:'right',x0:860,drop:true,speed:150,hopH:104,hopT:0.74,when:w=>w.P.x>=520&&A.x<w.P.x-40})];
+        F.AlarmClock({from:'right',x0:860,drop:true,speed:150,hopH:104,hopT:0.74,when:w=>w.P.x>=520&&(A.st==='idle'||A.x<w.P.x-40)})];
     }},
   // 2: notifications pop up over the gap, one after another. One of them isn't real.
-  1:{floors:[[0,300],[860,1000]],checkpoint:{x:230},
+  // one gap, nothing to split: no checkpoint here, only the hints
+  1:{floors:[[0,300],[860,1000]],checkpoint:null,
     ents:F=>[
       F.Banners({tx:240,items:[
         {x:330,y:G-10,at:0,life:3.6},
@@ -254,17 +256,17 @@ const LOOP2={
     ]},
   // 3: the presses, on a dizzy head: left and right trade places until the edge
   2:{ents:F=>[
-      F.Dizzy({x0:250,x1:600}),
+      F.Dizzy({x0:250,x1:600,off:545}),
       F.Crusher({x:320,w:90,h:150,ceil:39,period:1.9,phase:0,fallSpeed:1000,hold:0.3,riseSpeed:560}),
       F.Crusher({x:445,w:90,h:150,ceil:39,period:1.9,phase:0.55,fallSpeed:1000,hold:0.3,riseSpeed:560}),
       F.DropFloor({x:600,w:140,delay:0.14,speed:520}),
       F.Shot({from:'right',y:G-22,w:54,h:8,speed:900,delay:0.0,style:'arrow',tx:800})
     ]},
   // 4: the lamps flicker, and the walkway over the water is only there while they're lit
-  3:{floors:[[0,300],[760,1000]],checkpoint:{x:200},
+  // the middle stretch is solid stone: a place to catch your breath, and the checkpoint
+  3:{floors:[[0,300],[450,610],[760,1000]],checkpoint:{x:530},
     ents:F=>[
       F.LightFloor({x:300,w:150,onT:2.2,offT:1.2,phase:0}),
-      F.LightFloor({x:450,w:160,onT:2.2,offT:1.2,phase:1.5}),
       F.LightFloor({x:610,w:150,onT:2.2,offT:1.2,phase:0.4})
     ]},
   // 5: the lab's exit runs from you. Stand still and it comes back.
@@ -275,7 +277,7 @@ const LOOP2={
       F.ShyDoor({near:200,flee:340,creep:80,min:560,max:975})
     ]},
   // 6: an umbrella by the parapet. Held open, you drift down slowly and the gusts carry you
-  5:{floors:[[0,330,420],[880,1000,430]],checkpoint:{x:250,y:420},goal:{x:940,y:430},
+  5:{floors:[[0,330,420],[880,1000,430]],checkpoint:null,goal:{x:940,y:430},
     ents:F=>[
       F.Umbrella({x:236,y:420,boost:230}),
       F.Wind({x0:300,x1:900,v:200,onT:1.8,offT:3.0,phase:1.15})

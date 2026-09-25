@@ -43,6 +43,7 @@ const cases={
 1:[
   ['jump over the clock',   'dead', [walk(w=>w.ents[0].st==='run'&&w.ents[0].x-w.P.x<110),{r:1,j:1,p:1,t:0.5},{r:1,until:GR},walk(X(2000))]],
   ['walk straight',         'dead', [walk(X(2000))]],
+  ['from the checkpoint',   'clear',[walk(X(560)),wait(1.1),walk(X(2000))],{spawn:{x:520,y:420}}],
   ['walk under its hops',   'clear',[walk(X(250)),wait(1.1),walk(w=>w.ents[0].x<w.P.x-30),walk(X(560)),wait(1.1),walk(X(2000))]],
 ],
 2:[
@@ -52,10 +53,12 @@ const cases={
 ],
 3:[
   ['press on at the wrong beat','dead',[walk(X(240)),wait(0.95),walk(X(252)),{l:1,until:X(588)}]],
-  ['solution',              'clear',[walk(X(240)),wait(0.45),walk(X(252)),{l:1,until:X(588)},{l:1,j:1,p:1,until:X(606)},{r:1,j:1,until:GR},walk(X(812)),...jumpR(0.6),{l:1,until:XL(921)},wait(0.2)]],
+  ['keep reversing past the presses','dead',[walk(X(240)),wait(0.45),walk(X(252)),{l:1,until:X(546)},{l:1,t:1.5}]],
+  ['solution',              'clear',[walk(X(240)),wait(0.45),walk(X(252)),{l:1,until:X(546)},walk(X(590)),...jumpR(0.6),walk(X(812)),...jumpR(0.6),{l:1,until:XL(921)},wait(0.2)]],
 ],
 4:[
   ['walk straight across',  'dead', [walk(X(2000))]],
+  ['from the checkpoint',   'clear',[{until:w=>w.ents[1].lit&&w.ents[1].tm%3.4<0.6},walk(X(2000))],{spawn:{x:530,y:420}}],
   ['wait out the dark',     'clear',[walk(X(280)),wait(0.45),walk(X(525)),wait(0.6),walk(X(2000))]],
 ],
 5:[

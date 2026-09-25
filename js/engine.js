@@ -956,7 +956,10 @@ class Banners extends Ent{
 class Dizzy extends Ent{
   init(){ this.kind='dizzy'; this.alwaysUpdate=true; this.k=0; }
   update(w,dt){
-    const P=w.P, inside=!P.dead && P.x>=this.x0 && P.x<=this.x1;
+    const P=w.P;
+    // once you're past the last press, your head clears for good
+    if(this.off!==undefined && !P.dead && P.x>=this.off) this.over=true;
+    const inside=!this.over && !P.dead && P.x>=this.x0 && P.x<=this.x1;
     this.k+=((inside?1:0)-this.k)*Math.min(1,dt*4);
     w.flags.dizzy=inside;
     w.flags.sway=this.k;
