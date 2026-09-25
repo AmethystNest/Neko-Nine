@@ -76,6 +76,25 @@ const HAIR={
     c.moveTo(20,-84); c.arc(0,-84,20,0,Math.PI*2);
   }
 };
+// Hair drawn as locks. len(u): where the tips fall (u=-1 left edge .. 1 right edge).
+const HAIR_STYLE={
+  wolf:{width:44,layers:[
+    {n:9,w:10,len:u=>-60-42*u*u,flare:10,flick:10,rough:6,seed:1},
+    {n:7,w:9.5,len:u=>-106-6*u*u,flare:7,flick:8,rough:4,seed:2}]},
+  shortwolf:{width:42,layers:[
+    {n:8,w:10,len:u=>-78-26*u*u,flare:6,flick:6,rough:4,seed:3},
+    {n:7,w:9.5,len:u=>-112,flare:5,flick:5,rough:3,seed:4}]},
+  longwolf:{width:45,layers:[
+    {n:10,w:10.5,len:u=>-12-26*u*u,flare:16,flick:12,rough:8,seed:5},
+    {n:8,w:9.5,len:u=>-80-18*u*u,flare:10,flick:9,rough:6,seed:6}]},
+  bob:{width:47,layers:[
+    {n:10,w:10.5,len:u=>-66-3*u*u,flare:4,flick:-2,rough:1.5,seed:7}]},
+  mash:{width:50,layers:[
+    {n:9,w:11,len:u=>-80-22*u*u,flare:6,flick:4,rough:3,seed:8},
+    {n:8,w:11,len:u=>-106-4*u*u,flare:8,flick:2,rough:2,seed:9}]},
+  bun:{width:43,gather:true,layers:[
+    {n:9,w:9.5,len:u=>-92,flare:0,flick:0,rough:1,seed:10}]}
+};
 const HAIR_NAMES={wolf:'ウルフ（現在）',shortwolf:'ショートウルフ',longwolf:'ロングウルフ',bob:'切りっぱなしボブ',mash:'マッシュウルフ',bun:'ゆるいお団子'};
 const T={
   init(canvas,sprites){
@@ -217,31 +236,62 @@ const T={
     // blue stars on the sill: the flower you set by the window the morning you chose to rest.
     // One more bloom for every time the night has been walked to its end.
     if(DK>0.01){
-      const px=wx+ww*0.08, pw=wh*0.075, ph=wh*0.065, n=Math.min(7,1+(this.clears||2));
-      g.globalAlpha=DK;
+      const px=wx+ww*0.08, pw=wh*0.1, ph=wh*0.075, n=Math.min(7,1+(this.clears||2));
+      const T=this.t, pulse=0.5+0.5*Math.sin(T*1.6);
+      g.save(); g.globalAlpha=DK;
+      // a slow breathing glow around the whole plant
+      this.glow(g,px,sy-ph-pw*0.9,pw*(2.6+0.5*pulse),'rgba(130,190,255,A)',0.22+0.16*pulse);
       // stems and leaves
-      g.strokeStyle='#557a52'; g.lineWidth=1.6; g.lineCap='round';
+      g.strokeStyle='#5f8a5a'; g.lineWidth=1.8; g.lineCap='round';
       const heads=[];
       for(let i=0;i<n;i++){
-        const a=(i/(n-1||1)-0.5)*1.1, len=pw*(1.05+0.35*Math.sin(i*2.3)), sway=Math.sin(this.t*0.8+i)*1.5;
+        const a=(i/(n-1||1)-0.5)*1.15, len=pw*(1.05+0.3*Math.sin(i*2.3)), sway=Math.sin(T*0.8+i)*1.6;
         const hx=px+Math.sin(a)*len+sway, hy=sy-ph-4-Math.cos(a)*len;
-        g.beginPath(); g.moveTo(px+(i-n/2)*1.2,sy-ph-3); g.quadraticCurveTo(px+Math.sin(a)*len*0.4,hy+len*0.5,hx,hy); g.stroke();
+        g.beginPath(); g.moveTo(px+(i-n/2)*1.4,sy-ph-3); g.quadraticCurveTo(px+Math.sin(a)*len*0.4,hy+len*0.5,hx,hy); g.stroke();
         heads.push([hx,hy,i]);
       }
-      g.fillStyle='#5f8d59';
-      for(const k of [-1,1]){ g.save(); g.translate(px+k*3,sy-ph-6); g.rotate(k*0.9); g.beginPath(); g.ellipse(0,-pw*0.22,pw*0.09,pw*0.24,0,0,TAU); g.fill(); g.restore(); }
-      // five-petalled pale-blue stars
+      g.fillStyle='#6a9a62';
+      for(const k of [-1,1]){ g.save(); g.translate(px+k*4,sy-ph-6); g.rotate(k*0.95); g.beginPath(); g.ellipse(0,-pw*0.24,pw*0.1,pw*0.26,0,0,TAU); g.fill(); g.restore(); }
+      // five-petalled stars that shimmer
+      const glint=Math.floor(T/1.3)%n, gk=(T%1.3)/1.3;
       for(const [hx,hy,i] of heads){
-        const r=pw*0.2*(0.9+0.15*Math.sin(i*1.7));
-        this.glow(g,hx,hy,r*3,'rgba(160,210,255,A)',0.25*DK);
-        g.fillStyle='#9fd0ff';
-        for(let k=0;k<5;k++){ const a=k/5*TAU+i; g.beginPath(); g.ellipse(hx+Math.cos(a)*r*0.55,hy+Math.sin(a)*r*0.55,r*0.52,r*0.3,a,0,TAU); g.fill(); }
-        g.fillStyle='#e8f4ff'; g.beginPath(); g.arc(hx,hy,r*0.22,0,TAU); g.fill();
+        const r=pw*0.22*(0.92+0.12*Math.sin(i*1.7)), b=0.5+0.5*Math.sin(T*2.2+i*1.3);
+        this.glow(g,hx,hy,r*3.4,'rgba(150,205,255,A)',0.35+0.25*b);
+        const pg=g.createRadialGradient(hx,hy,0,hx,hy,r);
+        pg.addColorStop(0,'#e9f6ff'); pg.addColorStop(0.45,'#a9d8ff'); pg.addColorStop(1,'#6fb2ff');
+        g.fillStyle=pg;
+        for(let k=0;k<5;k++){ const a=k/5*TAU+i+Math.sin(T*0.5+i)*0.05; g.beginPath(); g.ellipse(hx+Math.cos(a)*r*0.55,hy+Math.sin(a)*r*0.55,r*0.54,r*0.31,a,0,TAU); g.fill(); }
+        g.fillStyle='#ffffff'; g.beginPath(); g.arc(hx,hy,r*0.2,0,TAU); g.fill();
+        // one flower at a time throws a small cross of light
+        if(i===glint){
+          const k=Math.sin(Math.PI*gk), L=r*(1.6+2.2*k);
+          g.strokeStyle=`rgba(235,248,255,${0.85*k})`; g.lineWidth=1.3;
+          g.beginPath(); g.moveTo(hx-L,hy); g.lineTo(hx+L,hy); g.moveTo(hx,hy-L); g.lineTo(hx,hy+L); g.stroke();
+          this.glow(g,hx,hy,r*2.2,'rgba(255,255,255,A)',0.5*k);
+        }
       }
+      // specks of light drifting up, and now and then a petal floating down
+      this.sparks=this.sparks||[]; this.petals=this.petals||[];
+      if(Math.random()<dt*4){ const h=heads[Math.floor(Math.random()*heads.length)]; this.sparks.push({x:h[0],y:h[1],vx:(Math.random()-0.5)*10,vy:-12-Math.random()*16,t:0,life:1.8+Math.random()*1.4,star:Math.random()<0.35}); }
+      if(Math.random()<dt*0.25){ const h=heads[Math.floor(Math.random()*heads.length)]; this.petals.push({x:h[0],y:h[1],t:0,life:4,rot:Math.random()*TAU}); }
+      for(const p of this.sparks){
+        p.t+=dt; p.x+=p.vx*dt+Math.sin(T*2+p.y*0.05)*0.3; p.y+=p.vy*dt;
+        const a=Math.sin(Math.PI*Math.min(1,p.t/p.life));
+        if(p.star){ const L=3+2*a; g.strokeStyle=`rgba(220,240,255,${0.9*a})`; g.lineWidth=1; g.beginPath(); g.moveTo(p.x-L,p.y); g.lineTo(p.x+L,p.y); g.moveTo(p.x,p.y-L); g.lineTo(p.x,p.y+L); g.stroke(); }
+        else { g.fillStyle=`rgba(190,225,255,${0.85*a})`; g.beginPath(); g.arc(p.x,p.y,1.4,0,TAU); g.fill(); }
+      }
+      this.sparks=this.sparks.filter(p=>p.t<p.life);
+      for(const p of this.petals){
+        p.t+=dt; p.y=Math.min(sy-2,p.y+dt*14); p.x+=Math.sin(p.t*1.8)*0.5; p.rot+=dt*1.2;
+        const a=Math.min(1,p.t)*Math.max(0,1-(p.t-p.life+1));
+        g.save(); g.translate(p.x,p.y); g.rotate(p.rot); g.fillStyle=`rgba(160,210,255,${0.8*a})`; g.beginPath(); g.ellipse(0,0,pw*0.1,pw*0.055,0,0,TAU); g.fill(); g.restore();
+      }
+      this.petals=this.petals.filter(p=>p.t<p.life);
       // the pot
-      g.fillStyle='#b98a6a'; g.beginPath(); g.moveTo(px-pw/2,sy-ph); g.lineTo(px+pw/2,sy-ph); g.lineTo(px+pw*0.38,sy); g.lineTo(px-pw*0.38,sy); g.fill();
-      g.fillStyle='#a07558'; g.fillRect(px-pw*0.55,sy-ph-4,pw*1.1,5);
-      g.globalAlpha=1;
+      g.fillStyle='#c09172'; g.beginPath(); g.moveTo(px-pw/2,sy-ph); g.lineTo(px+pw/2,sy-ph); g.lineTo(px+pw*0.38,sy); g.lineTo(px-pw*0.38,sy); g.fill();
+      g.fillStyle='#a67a5c'; g.fillRect(px-pw*0.56,sy-ph-4,pw*1.12,5);
+      g.fillStyle='rgba(255,230,200,.18)'; g.fillRect(px-pw*0.42,sy-ph+2,pw*0.12,ph-4);
+      g.restore();
     }
     // Nine on the sill, seen from behind, looking up at the moon
     if(this.cleared){
@@ -291,9 +341,8 @@ const T={
   ownerBack(g,x,y,s){
     const t=this.t, br=Math.sin(t*1.1)*0.7, tilt=0.09;
     const neck=[0,-96];
-    const headPath=c=>{ c.beginPath(); (HAIR[this.hair]||HAIR.wolf)(c); c.closePath(); };
     const tiltAt=(c)=>{ c.translate(neck[0],neck[1]); c.rotate(tilt); c.translate(-neck[0],-neck[1]); };
-    this.lit(g,x,y,s,'owner',[-100,-190,100,130],c=>{
+    const body=c=>{
       // neck, shoulders and back in an oversized knit
       c.beginPath();
       c.moveTo(-15,-100); c.lineTo(15,-100);
@@ -305,37 +354,95 @@ const T={
       c.bezierCurveTo(-78,-54,-60,-63,-36,-71+br);
       c.bezierCurveTo(-23,-77,-17,-86,-15,-100);
       c.closePath(); c.fill();
-      c.save(); tiltAt(c); headPath(c); c.fill(); c.restore();
-    },'rgba(175,155,255,.5)');
-    // details on top of the silhouette: hair flow, the sweater's neckline
+    };
+    const locks=this.hairLocks(this.hair,t);
+    const mass=c=>this.hairMass(c,this.hair);
+    const hairShape=c=>{ c.save(); tiltAt(c); c.beginPath(); mass(c); for(const L of locks) this.lockPath(c,L); c.fill(); c.restore(); };
+    // body, then hair, each as a moonlit silhouette (shading + rim that follow the real outline)
+    this.lit(g,x,y,s,'ownerBody',[-100,-110,100,130],body,'rgba(175,155,255,.45)');
+    // the sweater's neckline and a knit texture hint across the back
     g.save(); g.translate(x,y); g.scale(s,s);
-    g.save(); tiltAt(g); headPath(g); g.clip();
-    g.lineCap='round';
-    const flow=[[-6,-176,-30,-150,-40,-104],[4,-177,-18,-148,-24,-80],[10,-176,4,-140,-4,-70],[14,-175,22,-140,20,-78],
-                [18,-172,38,-150,40,-100],[-14,-172,-34,-150,-30,-80],[0,-170,-8,-120,6,-62],[24,-168,44,-132,30,-86]];
-    for(const [x0,y0,cx,cy,x1,y1] of flow){
-      g.strokeStyle='rgba(185,170,245,.16)'; g.lineWidth=1.3;
-      g.beginPath(); g.moveTo(x0,y0); g.quadraticCurveTo(cx,cy,x1,y1); g.stroke();
-    }
-    // crown highlight where the moonlight lands
-    const hg=g.createRadialGradient(-18,-160,2,-18,-160,34); hg.addColorStop(0,'rgba(190,175,255,.22)'); hg.addColorStop(1,'rgba(190,175,255,0)');
-    g.fillStyle=hg; g.fillRect(-60,-200,120,90);
-    g.restore();
-    if(this.hair==='bun'){
-      // the knot catches the light along its top edge
-      g.save(); tiltAt(g);
-      g.strokeStyle='rgba(195,180,255,.4)'; g.lineWidth=1.8;
-      g.beginPath(); g.arc(0,-84,20,Math.PI*1.05,Math.PI*1.95); g.stroke();
-      g.strokeStyle='rgba(185,170,245,.18)'; g.lineWidth=1.2;
-      for(const a of [-0.6,0,0.6]){ g.beginPath(); g.arc(0,-84,12,Math.PI*1.2+a,Math.PI*1.7+a); g.stroke(); }
-      g.restore();
-    }
     g.strokeStyle='rgba(185,170,245,.22)'; g.lineWidth=2;
     g.beginPath(); g.moveTo(-34,-70+br); g.quadraticCurveTo(0,-58+br,34,-70+br); g.stroke();
-    // a knit texture hint across the back
     g.strokeStyle='rgba(150,140,220,.06)'; g.lineWidth=1;
     for(let yy=-50;yy<130;yy+=9){ g.beginPath(); g.moveTo(-80,yy); g.quadraticCurveTo(0,yy+4,80,yy); g.stroke(); }
     g.restore();
+    this.lit(g,x,y,s,'ownerHair',[-80,-195,80,0],hairShape,'rgba(175,155,255,.5)');
+    const warm=this.dk||0;
+    const rim=warm>0.5?'255,205,160':'200,185,255';
+    // strand detail: every lock gets a soft lit edge and a darker parting
+    g.save(); g.translate(x,y); g.scale(s,s); tiltAt(g);
+    g.save(); g.beginPath(); mass(g); for(const L of locks) this.lockPath(g,L); g.clip();
+    g.lineCap='round';
+    for(const L of locks){
+      const P=L.pts, n=P.length;
+      g.strokeStyle=`rgba(${rim},${0.05+0.08*L.light})`; g.lineWidth=1;
+      g.beginPath(); for(let k=2;k<n-1;k++){ const [px,py,wd,nx,ny]=P[k]; const q=[px-nx*wd*0.3,py-ny*wd*0.3]; k===2?g.moveTo(q[0],q[1]):g.lineTo(q[0],q[1]); } g.stroke();
+      g.strokeStyle='rgba(6,4,14,.22)'; g.lineWidth=1.4;
+      g.beginPath(); for(let k=4;k<n;k++){ const [px,py,wd,nx,ny]=P[k]; const q=[px+nx*wd*0.85,py+ny*wd*0.85]; k===4?g.moveTo(q[0],q[1]):g.lineTo(q[0],q[1]); } g.stroke();
+    }
+    // a sheen band across the crown ("angel ring"), broken by the locks
+    const sh=g.createRadialGradient(-10,-166,4,-10,-166,40);
+    sh.addColorStop(0,`rgba(${rim},.16)`); sh.addColorStop(1,`rgba(${rim},0)`);
+    g.fillStyle=sh; g.fillRect(-60,-200,120,80);
+    g.restore();
+    if(this.hair==='bun'){
+      // the knot: a coil of hair at the nape
+      g.fillStyle='#120f22'; g.beginPath(); g.arc(0,-84,19,0,TAU); g.fill();
+      g.strokeStyle=`rgba(${rim},.4)`; g.lineWidth=1.8; g.beginPath(); g.arc(0,-84,19,Math.PI*1.05,Math.PI*1.95); g.stroke();
+      g.strokeStyle=`rgba(${rim},.18)`; g.lineWidth=1.2;
+      for(const a of [-0.9,-0.2,0.5]){ g.beginPath(); g.arc(0,-84,11,Math.PI*1.1+a,Math.PI*1.8+a); g.stroke(); }
+    }
+    g.restore();
+  },
+  // Hair as locks: each lock rises from the crown, follows the curve of the head
+  // and falls to a tip set by the style's length profile. Outer locks are drawn
+  // first so the inner ones lie over them, the way hair layers from behind.
+  hairLocks(style,t){
+    const S=HAIR_STYLE[style]||HAIR_STYLE.wolf;
+    const out=[];
+    for(const layer of S.layers){
+      const n=layer.n;
+      const order=[...Array(n).keys()].sort((a,b)=>Math.abs(b-(n-1)/2)-Math.abs(a-(n-1)/2));
+      for(const i of order){
+        const u=(i/(n-1))*2-1;                       // -1 left .. 1 right
+        const jit=Math.sin(i*12.9898+layer.seed)*0.5; // stable per-lock variation
+        const root=[u*16+jit*2,-176+u*u*6];
+        const over=[u*(S.width+8)+jit*2,-150+u*u*6];
+        let tipY=layer.len(u)+jit*layer.rough, tipX=u*(S.width+layer.flare)+Math.sign(u)*layer.flick*Math.abs(u)**1.5;
+        if(S.gather){ tipX*=0.25; tipY=Math.min(tipY,-90); }
+        tipX+=Math.sin(t*0.9+i)*0.6*Math.abs(u);
+        const pts=[], N=10;
+        for(let k=0;k<=N;k++){
+          const q=k/N, a=(1-q)*(1-q), b=2*(1-q)*q, c=q*q;
+          const px=a*root[0]+b*over[0]+c*tipX, py=a*root[1]+b*over[1]+c*tipY;
+          const dx=2*(1-q)*(over[0]-root[0])+2*q*(tipX-over[0]), dy=2*(1-q)*(over[1]-root[1])+2*q*(tipY-over[1]);
+          const l=Math.hypot(dx,dy)||1, nx=-dy/l, ny=dx/l;
+          // full body, then a soft taper over the last third (tips stay rounded, never needle-sharp)
+          const wd=layer.w*(q<0.62?0.8+0.35*Math.sin(Math.PI*q/0.62*0.5):Math.max(0.18,1-(q-0.62)/0.38*0.82)*1.15);
+          pts.push([px,py,wd,nx,ny]);
+        }
+        out.push({pts,light:0.5+0.5*Math.cos(u*1.3+1.1)});
+      }
+    }
+    return out;
+  },
+  // The body of the hair under the locks: follows the longest layer, a little
+  // shorter, so the gaps between tapering tips never show daylight.
+  hairMass(c,style){
+    const S=HAIR_STYLE[style]||HAIR_STYLE.wolf, len=S.layers[0].len, W=S.width-2;
+    c.moveTo(-W,-142);
+    c.bezierCurveTo(-W,-176,-24,-188,0,-188); c.bezierCurveTo(24,-188,W,-176,W,-142);
+    for(let k=10;k>=-10;k--){ const u=k/10; const y=S.gather?-100+14*(1-u*u)-34*u*u:Math.max(-140,len(u)-(S.layers[0].rough+16)); c.lineTo(u*W*(S.gather?0.8:0.92),y); }
+    c.closePath();
+  },
+  lockPath(c,L){
+    const P=L.pts;
+    // same winding as the hair mass, so overlapping shapes union instead of cutting holes
+    c.moveTo(P[0][0]-P[0][3]*P[0][2],P[0][1]-P[0][4]*P[0][2]);
+    for(let k=1;k<P.length;k++){ const [px,py,wd,nx,ny]=P[k]; c.lineTo(px-nx*wd,py-ny*wd); }
+    for(let k=P.length-1;k>=0;k--){ const [px,py,wd,nx,ny]=P[k]; c.lineTo(px+nx*wd,py+ny*wd); }
+    c.closePath();
   },
   // Nine seen from behind: the scarf-wearing design, looking up at the moon.
   catBack(g,x,y,h,onShoulder){
