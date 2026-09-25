@@ -671,6 +671,105 @@ P.Light.prototype.draw=function(g,w,T){
 };
 
 // ---------------------------------------------------------------------------
+// Second-lap kinds
+// ---------------------------------------------------------------------------
+P.AlarmClock.prototype.draw=function(g,w,T){
+  if(this.st==='idle'||this.st==='done') return;
+  const x=this.x, y=this.y-15, sh=this.st==='run'?(this.ring?1.5:-1.5):0;
+  // shadow on the floor, smaller the higher it hops
+  const k=Math.max(0,1-(G-this.y)/200);
+  g.fillStyle=`rgba(0,0,0,${0.12+0.2*k})`; g.beginPath(); g.ellipse(x,G-1,10+6*k,3,0,0,TAU); g.fill();
+  g.save(); g.translate(x+sh,y);
+  // bells and hammer
+  circ(g,'#c8ccd4',-9,-12,6); circ(g,'#c8ccd4',9,-12,6); rect(g,'#8a8f99',-1,-19,2,6);
+  rect(g,'#6a4a30',-9,11,3,5); rect(g,'#6a4a30',6,11,3,5);
+  circ(g,'#d8483a',0,0,14); circ(g,'#f4efe4',0,0,10.5);
+  const a=w.t*6; line(g,'#222',2,[0,0,Math.sin(a)*6,-Math.cos(a)*6]); line(g,'#222',2,[0,0,4,1]);
+  g.restore();
+  if(this.st==='run'&&this.ring){ g.strokeStyle='rgba(255,230,160,.8)'; g.lineWidth=1.5;
+    for(const d of [-1,1]){ g.beginPath(); g.arc(x,y-10,20,d<0?Math.PI*1.05:-Math.PI*0.25,d<0?Math.PI*1.25:-Math.PI*0.05); g.stroke(); } }
+};
+P.Banners.prototype.draw=function(g,w,T){
+  this.solids.forEach((s,i)=>{
+    if(!s.on) return;
+    const b=this.items[i], bl=this.blink(i);
+    if(bl>0 && ((w.t*14|0)%2===0)) return;
+    const x=s.x, y=s.y, W_=s.w;
+    g.save(); g.globalAlpha=0.95;
+    g.fillStyle='rgba(20,22,30,.35)'; g.fillRect(x+3,y+4,W_,s.h+8);
+    g.fillStyle='#f3f4f8'; g.beginPath(); g.roundRect?g.roundRect(x,y,W_,s.h+8,5):g.rect(x,y,W_,s.h+8); g.fill();
+    // app icon + two lines of text; the fake one is marked "既読" in red
+    rect(g,b.fake?'#d8483a':'#3a8ad8',x+5,y+4,14,14);
+    rect(g,'#9aa0ad',x+24,y+5,W_-34,3); rect(g,'#c4c8d2',x+24,y+12,W_-46,3);
+    if(b.fake){ g.fillStyle='#d8483a'; g.font='bold 8px system-ui,sans-serif'; g.fillText('既読',x+W_-20,y+18); }
+    g.restore();
+  });
+};
+P.Dizzy.prototype.draw=function(g,w,T){
+  // a faint swirl marks where the floor starts to tilt
+  const k=0.25+0.15*Math.sin(w.t*2);
+  g.strokeStyle=`rgba(190,150,255,${k})`; g.lineWidth=2;
+  for(let i=0;i<3;i++){ g.beginPath(); g.arc(this.x0+14,G-70,8+i*7,w.t*2+i,w.t*2+i+4.2); g.stroke(); }
+};
+P.LightFloor.prototype.draw=function(g,w,T){
+  const x=this.x, lx=x+this.w/2;
+  // lamp on its cord
+  line(g,'#2a2a2a',2,[lx,0,lx,G-230]);
+  rect(g,'#3a3a40',lx-12,G-232,24,8);
+  const on=this.lit&&!this.flicker;
+  if(on){ glow(g,lx,G-222,150,'rgba(255,220,150,A)',0.45); g.fillStyle='rgba(255,225,160,.08)'; g.beginPath(); g.moveTo(lx-10,G-224); g.lineTo(lx+10,G-224); g.lineTo(x+this.w+10,G); g.lineTo(x-10,G); g.fill(); }
+  circ(g,on?'#fff1c0':'#555',lx,G-222,5);
+  if(this.lit){ g.save(); if(this.flicker) g.globalAlpha=0.55; T.floor(g,x,G,this.w,WH+60-G); g.restore(); }
+  else { g.setLineDash([6,6]); g.strokeStyle='rgba(200,210,255,.18)'; g.lineWidth=1.5; g.strokeRect(x+1,G+1,this.w-2,12); g.setLineDash([]); }
+};
+P.ShyDoor.prototype.draw=function(g,w,T){
+  const d=w.goal; if(!d) return;
+  if(Math.abs(this.v)>40){
+    // speed lines behind the running door
+    const dir=Math.sign(this.v);
+    g.strokeStyle='rgba(255,255,255,.35)'; g.lineWidth=2;
+    for(let i=0;i<4;i++){ const y=G-70+i*16; g.beginPath(); g.moveTo(d.x-dir*26,y); g.lineTo(d.x-dir*(46+i*6),y); g.stroke(); }
+  }
+  if(this.st==='creep'&&Math.abs(this.v)>10){ g.fillStyle='rgba(255,255,255,.7)'; g.font='bold 14px system-ui,sans-serif'; g.fillText('…',d.x-6,G-94); }
+};
+P.Umbrella.prototype.draw=function(g,w,T){
+  if(this.held) return;
+  // leaning on the parapet, closed
+  g.save(); g.translate(this.x,this.y); g.rotate(-0.25);
+  line(g,'#3a3a44',2,[0,0,0,-44]); g.fillStyle='#4a7ad8'; g.beginPath(); g.moveTo(0,-44); g.lineTo(-6,-14); g.lineTo(0,-8); g.lineTo(6,-14); g.fill();
+  g.strokeStyle='#3a3a44'; g.lineWidth=2; g.beginPath(); g.arc(-4,0,4,0,Math.PI); g.stroke();
+  g.restore();
+  glow(g,this.x,this.y-24,26,'rgba(160,200,255,A)',0.25+0.1*Math.sin(w.t*3));
+};
+P.Crowd.prototype.draw=function(g,w,T){
+  for(const p of this.people){
+    const s=p.s; if(!s.on) continue;
+    const x=s.x, y=s.y, bob=Math.abs(Math.sin(w.t*5+p.bob))*2;
+    const fade=Math.min(1,(s.x-this.endX)/40);
+    g.save(); g.globalAlpha=Math.max(0,fade);
+    g.fillStyle='#1c1d26';
+    // head, suit, briefcase: a commuter walking left
+    circ(g,'#1c1d26',x+13,y+9-bob,8);
+    g.beginPath(); g.moveTo(x+3,y+18-bob); g.lineTo(x+23,y+18-bob); g.lineTo(x+25,y+s.h*0.62); g.lineTo(x+1,y+s.h*0.62); g.fill();
+    const st=Math.sin(w.t*6+p.bob)*4;
+    rect(g,'#1c1d26',x+6+st,y+s.h*0.6,6,s.h*0.4); rect(g,'#1c1d26',x+14-st,y+s.h*0.6,6,s.h*0.4);
+    rect(g,'#2e2a24',x-6,y+s.h*0.48,10,12);
+    rect(g,'rgba(255,255,255,.08)',x+3,y+18-bob,20,3);
+    g.restore();
+  }
+};
+P.Shadow.prototype.draw=function(g,w,T){
+  if(!this.pos) return;
+  const [ ,x,y,f,fr,gr]=this.pos, im=R.imgs;
+  const sp=gr?(fr?im.walk[fr]:im.idle):im.jump.apex;
+  const dk=R.darkOf(sp), SC=window.NEKO_SPRITES.SCALE, dw=sp.width*SC, dh=sp.height*SC;
+  g.save(); g.translate(Math.round(x),Math.round(y)); if(f<0) g.scale(-1,1);
+  g.globalAlpha=0.8; g.shadowColor='rgba(150,60,200,.8)'; g.shadowBlur=10;
+  g.drawImage(dk,-dw/2,-dh,dw,dh); g.restore();
+};
+P.Shadow.prototype.drawOver=P.Shadow.prototype.draw;
+
+// ---------------------------------------------------------------------------
 // Mercy hints: faint outlines of traps that already took two lives.
 // ---------------------------------------------------------------------------
 P.TrapFloor.prototype.hintRect=function(){ return this.st==='idle'?{x:this.x,y:this.y-4,w:this.w,h:14}:null; };
@@ -727,6 +826,13 @@ const R={
     this.cv.width=Math.round(this.W*this.dpr); this.cv.height=Math.round(this.H*this.dpr);
     this.cv.style.width=this.W+'px'; this.cv.style.height=this.H+'px';
     this.cacheKey='';
+  },
+  darkOf(im){
+    this.dark=this.dark||new Map();
+    let c=this.dark.get(im); if(c) return c;
+    c=document.createElement('canvas'); c.width=im.width; c.height=im.height;
+    const x=c.getContext('2d'); x.drawImage(im,0,0); x.globalCompositeOperation='source-in'; x.fillStyle='#120818'; x.fillRect(0,0,c.width,c.height);
+    this.dark.set(im,c); return c;
   },
   whiteOf(im){
     let c=this.white.get(im); if(c) return c;
@@ -849,6 +955,20 @@ const R={
       g.restore();
     }
 
+    // dizziness: a swaying double image
+    const sway=w.flags.sway||0;
+    if(sway>0.02){
+      const ox=Math.sin(w.t*2.3)*9*sway*this.dpr, oy=Math.cos(w.t*1.7)*5*sway*this.dpr;
+      g.save(); g.setTransform(1,0,0,1,0,0); g.globalAlpha=0.28*sway; g.drawImage(g.canvas,ox,oy); g.restore();
+      g.fillStyle=`rgba(150,90,220,${0.1*sway})`; g.fillRect(0,0,this.W,this.H);
+    }
+    // the clock tower: when you stand, time stands with you
+    if(w.ents.some(e=>e.superhot)){
+      const still=1-(w.flags.rate===undefined?1:w.flags.rate);
+      this.still=(this.still||0)+(still-(this.still||0))*Math.min(1,dt*6);
+      if(this.still>0.02){ g.fillStyle=`rgba(110,130,175,${0.32*this.still})`; g.fillRect(0,0,this.W,this.H);
+        const vg2=g.createRadialGradient(this.W/2,this.H/2,this.H*0.3,this.W/2,this.H/2,this.H*0.9); vg2.addColorStop(0,'rgba(0,0,0,0)'); vg2.addColorStop(1,`rgba(10,15,35,${0.45*this.still})`); g.fillStyle=vg2; g.fillRect(0,0,this.W,this.H); }
+    }
     // lightning flash
     this.flashA=Math.max(0,this.flashA-dt*3.2);
     if(T.lightning){ this.bolt=(this.bolt||0)-dt; if(this.bolt<0){ this.bolt=3+Math.random()*4; this.flashA=Math.max(this.flashA,0.35); ui.thunder&&ui.thunder(); } }
@@ -874,7 +994,8 @@ const R={
       g.restore();
     }
     if(T===TH.clock){
-      const t=w.t;
+      // in the second lap the tower's clock keeps your time, not the world's
+      const t=w.ents.some(e=>e.superhot)?(w.stime||0):w.t;
       g.save(); g.translate(520,250);
       g.rotate(t*0.05); rect(g,'#2d2016',-3,-80,6,88); g.rotate(-t*0.05);
       g.rotate(t*0.6); rect(g,'#2d2016',-2,-108,4,116); g.restore();
@@ -955,6 +1076,15 @@ const R={
     g.translate(Math.round(P.x),Math.round(P.y+pad));
     if(P.facing<0) g.scale(-1,1);
     g.drawImage(sp,Math.round(-dw/2),Math.round(-dh),Math.round(dw),Math.round(dh));
+    if(P.glide){
+      // the umbrella, held open over the head
+      const tilt=(w.flags.wind||0)*0.25;
+      g.save(); g.translate(2,-dh+6); g.rotate(tilt);
+      line(g,'#3a3a44',2,[0,0,0,-30]);
+      g.fillStyle='#4a7ad8'; g.beginPath(); g.moveTo(-26,-26); g.quadraticCurveTo(0,-54,26,-26);
+      for(let i=0;i<4;i++){ const a=-26+i*13; g.quadraticCurveTo(a+19.5,-31,a+13,-26); }
+      g.fill(); rect(g,'rgba(255,255,255,.18)',-18,-36,10,3); g.restore();
+    }
     // once in a while, falling into a pit, the cat really does try to fly
     if(w.flap && !P.ground && P.vy>0 && P.y>G+4){
       const k=Math.sin(w.t*38)*0.8;

@@ -14,6 +14,7 @@ const CFG={
   halfW:9, bodyH:46,
   hurtHalfW:6.5, hurtHead:13, hurtTop:40, hurtBottom:3,
   coyote:0.08, jumpBuffer:0.11,
+  glideFall:120,
   walkFPS:10
 };
 const HW=CFG.halfW, BH=CFG.bodyH;
@@ -130,7 +131,10 @@ class World{
     for(const s of this.S){ s.px=s.x; s.py=s.y; }
     // any trap guarding the exit may lock the door this frame
     if(this.goal) this.goal.locked=false;
-    for(const e of this.ents) e.update && e.update(this,dt);
+    // some things in the clock tower only move while you do
+    this.flags.rate=this.timeRate();
+    this.stime=(this.stime||0)+dt*this.flags.rate;
+    for(const e of this.ents) e.update && e.update(this,e.superhot?dt*this.flags.rate:dt);
     this.S=this.collect();
     for(const s of this.S){
       if(s.px===undefined){ s.px=s.x; s.py=s.y; }
@@ -178,6 +182,8 @@ class World{
     let dir=0;
     if(inp.left&&!inp.right) dir=-1;
     if(inp.right&&!inp.left) dir=1;
+    // dizziness: left and right trade places
+    if(this.flags.dizzy) dir=-dir;
     if(inp.press){ P.jbuf=CFG.jumpBuffer; }
     inp.press=false;
 
@@ -202,7 +208,7 @@ class World{
     if(!P.ground){
       if(P.vy>=0) P.boost=false;
       if(!inp.jump && !P.boost && P.vy<-180) P.vy+=CFG.gravity*CFG.cutGravity*dt;
-      P.vy=Math.min(CFG.maxFall,P.vy+CFG.gravity*dt);
+      P.vy=Math.min(P.glide?CFG.glideFall:CFG.maxFall,P.vy+CFG.gravity*dt);
       P.jumpT+=dt; P.air+=dt;
     }else{
       P.air=0;
@@ -285,6 +291,12 @@ class World{
     this.animate(dt,dir);
   }
 
+  // how fast time runs for things marked superhot: it follows how fast you walk, and stops when you do
+  timeRate(){
+    const P=this.P;
+    if(P.dead) return 1;
+    return clamp(Math.abs(P.vx)/CFG.speed,0,1);
+  }
   animate(dt,dir){
     const P=this.P;
     P.land=Math.max(0,P.land-dt);
@@ -879,8 +891,170 @@ class FakeDoor extends Ent{ init(){ this.kind='fakedoor'; } }
 // A lamp / light source (for dark stages) - decoration with a light radius.
 class Light extends Ent{ init(){ this.kind='light'; } }
 
+
+// ---------------------------------------------------------------------------
+// Second-lap kinds
+// ---------------------------------------------------------------------------
+// Alarm clock hopping along the floor toward the cat. It answers a jump with a
+// jump of its own, so leaping over it is the one thing that never works.
+class AlarmClock extends Ent{
+  init(w){
+    this.kind='clock';
+    this.dir=this.from==='left'?1:-1;
+    this.x=this.x0!==undefined?this.x0:(this.dir<0?w.W+40:-40);
+    this.y=this.drop?-40:G; this.ph=0; this.H=this.hopH||110; this.T=this.hopT||0.8; this.big=false;
+  }
+  update(w,dt){
+    const P=w.P;
+    if(this.st==='idle'){ if(this.triggered(w)){ this.st=this.drop?'drop':'run'; this.tm=0; w.se('warn'); } return; }
+    if(this.st==='drop'){ this.y=Math.min(G,this.y+900*dt); if(this.y>=G){ this.st='run'; w.se('land'); w.shake(2); } return; }
+    if(this.st!=='run') return;
+    this.tm+=dt; this.ring=(this.tm*14|0)%2;
+    // the cat takes off nearby: the clock takes off with it
+    if(!this.big && !P.dead && !P.ground && P.jumpT<0.06 && P.vy<-400 && Math.abs(P.x-this.x)<240){ this.big=true; this.ph=0; w.se('trap'); }
+    const H=this.big?190:this.H, T=this.big?1.0:this.T;
+    this.ph+=dt;
+    if(this.ph>=T){ this.ph-=T; if(this.big){ this.big=false; this.ph=0; } w.se('land'); }
+    this.y=G-H*Math.abs(Math.sin(Math.PI*this.ph/T));
+    this.x+=this.dir*this.speed*dt;
+    if(this.x<-120||this.x>w.W+120) this.st='done';
+  }
+  hazards(){ return this.st==='run'||this.st==='drop'?[{x:this.x,y:this.y-15,r:13}]:null; }
+}
+
+// Notification banners: little platforms that pop in one after another over a gap
+// and vanish when their time is up. The fake one gives way the moment you land.
+class Banners extends Ent{
+  init(){
+    this.kind='banners'; this.clock=-1;
+    this.items=this.items.map(b=>Object.assign({w:92,h:14,life:3,fake:false},b));
+    this.solids=this.items.map(b=>({x:b.x,y:b.y,w:b.w,h:b.h,kin:true,kind:'banner',on:false}));
+  }
+  update(w,dt){
+    if(this.clock<0){ if(this.triggered(w)){ this.clock=0; } else return; }
+    this.clock+=dt;
+    const P=w.P;
+    this.items.forEach((b,i)=>{
+      const s=this.solids[i];
+      if(b.gone){ s.on=false; return; }
+      const age=this.clock-b.at;
+      if(age<0){ s.on=false; return; }
+      if(!b.shown){ b.shown=true; w.se('warn'); }
+      if(b.fake && P.ground && P.ref===s && !b.trip){ b.trip=this.clock; w.se('trapdoor'); }
+      if(b.trip!==undefined && this.clock-b.trip>0.12) b.fall=(b.fall||0)+dt;
+      if(!b.fake && age>=b.life){ b.gone=true; s.on=false; return; }
+      if(b.fall!==undefined){ b.vy=(b.vy||0)+2200*dt; s.y+=b.vy*dt; if(s.y>600){ b.gone=true; s.on=false; return; } }
+      else s.y=b.y-Math.max(0,1-age/0.14)*26;
+      s.on=true;
+    });
+  }
+  // how far a banner is into its last blinking moments (0..1), for drawing
+  blink(i){ const b=this.items[i], age=this.clock-b.at; return b.fake?0:Math.max(0,(age-(b.life-0.6))/0.6); }
+}
+
+// Dizziness: inside the zone left and right are swapped (the screen sways with it).
+class Dizzy extends Ent{
+  init(){ this.kind='dizzy'; this.alwaysUpdate=true; this.k=0; }
+  update(w,dt){
+    const P=w.P, inside=!P.dead && P.x>=this.x0 && P.x<=this.x1;
+    this.k+=((inside?1:0)-this.k)*Math.min(1,dt*4);
+    w.flags.dizzy=inside;
+    w.flags.sway=this.k;
+  }
+}
+
+// Floors that exist only while their lamp is lit. Lamps flicker before going out.
+class LightFloor extends Ent{
+  init(){
+    this.kind='lightfloor'; this.alwaysUpdate=true; this.tm=this.phase||0; this.lit=true;
+    this.s={x:this.x,y:G,w:this.w,h:40,kind:'lightfloor',on:true}; this.solids=[this.s];
+  }
+  update(w,dt){
+    this.tm+=dt;
+    const ph=this.tm%(this.onT+this.offT);
+    const was=this.lit;
+    this.lit=ph<this.onT;
+    this.flicker=this.lit&&ph>this.onT-0.55?((ph*16|0)%2===0):false;
+    this.s.on=this.lit;
+    if(was!==this.lit && Math.abs(w.P.x-(this.x+this.w/2))<500) w.se(this.lit?'shutter':'trapdoor');
+  }
+}
+
+// The exit that runs from you: it slides away when you come at it, wraps round
+// behind you at the wall, and edges back once you stand still.
+class ShyDoor extends Ent{
+  init(w){ this.kind='shydoor'; this.alwaysUpdate=false; this.still=0; this.v=0; this.min=this.min||120; this.max=this.max||w.W-40; }
+  update(w,dt){
+    const P=w.P, g=w.goal; if(!g) return;
+    const d=g.x-P.x, toward=Math.sign(P.vx)===Math.sign(d)&&Math.abs(P.vx)>40;
+    this.still=(Math.abs(P.vx)<10&&P.ground)?this.still+dt:0;
+    // right beside it, it has given up running
+    if(Math.abs(d)<this.near && Math.abs(d)>34 && toward){ this.v=Math.sign(d)*this.flee; this.st='flee'; }
+    else if(this.still>0.6 && Math.abs(d)>20){ this.v=-Math.sign(d)*this.creep; this.st='creep'; }
+    else this.v*=Math.max(0,1-dt*6);
+    g.x+=this.v*dt;
+    if(g.x>this.max){ g.x=this.min; this.v=0; w.se('warn'); w.emit('doorwrap',{}); }
+    if(g.x<this.min){ g.x=this.max; this.v=0; w.se('warn'); w.emit('doorwrap',{}); }
+    // it only lets you in while it isn't running
+    g.locked=Math.abs(this.v)>60;
+  }
+}
+
+// An umbrella leaning against the parapet. Pick it up and you fall slowly,
+// and the wind carries you much further.
+class Umbrella extends Ent{
+  init(){ this.kind='umbrella'; this.held=false; }
+  update(w,dt){
+    const P=w.P;
+    if(!this.held && !P.dead && Math.abs(P.x-this.x)<18 && P.y>=this.y-4){ this.held=true; P.glide=true; w.se('checkpoint'); }
+    if(P.dead) P.glide=false;
+  }
+  drift(w){ const P=w.P; return this.held&&!P.ground?(w.flags.wind||0)*this.boost:0; }
+}
+
+// Rush hour: silhouettes walking toward you in a stream. They shove you back;
+// you can jump over them, or ride a head for a while.
+class Crowd extends Ent{
+  init(){
+    this.kind='crowd'; this.people=[]; this.next=0; this.n=0;
+    this.solids=[];
+  }
+  update(w,dt){
+    if(this.st==='idle'){ if(this.triggered(w)){ this.st='walk'; this.next=0; } else return; }
+    this.next-=dt;
+    if(this.next<=0 && this.n<this.count){
+      const h=this.heights[this.n%this.heights.length];
+      const s={x:this.spawnX,y:G-h,w:26,h,kin:true,kind:'person',on:true};
+      this.people.push({s,h,bob:this.n*1.7}); this.solids.push(s); this.n++;
+      this.next=this.gaps[(this.n-1)%this.gaps.length];
+    }
+    for(const p of this.people){ if(p.s.on) p.s.x-=this.speed*dt; if(p.s.x<this.endX){ p.s.on=false; } }
+  }
+}
+
+// Your own shadow, walking the path you walked a moment ago. Stand still and it
+// catches up with you.
+class Shadow extends Ent{
+  init(w){ this.kind='shadow'; this.path=[]; this.clock=0; this.pos=null; }
+  update(w,dt){
+    const P=w.P;
+    if(this.st==='idle'){ if(this.triggered(w)){ this.st='follow'; this.clock=0; w.se('warn'); } else return; }
+    this.clock+=dt;
+    if(!P.dead) this.path.push([this.clock,P.x,P.y,P.facing,P.frame,P.ground]);
+    const t=this.clock-this.delay;
+    while(this.path.length>1 && this.path[1][0]<=t) this.path.shift();
+    this.pos=t>=0&&this.path.length?this.path[0]:null;
+  }
+  hazards(){
+    if(!this.pos) return null;
+    const [ ,x,y]=this.pos;
+    return [{x:x-5,y:y-30,w:10,h:24}];
+  }
+}
+
 const K={Block,TrapFloor,ShiftPit,DropFloor,Crusher,FallBlock,Spikes,Shot,Laser,Lift,Arc,Shutter,ChaseWall,
-  Lightning,Wind,Conveyor,Bonk,Spring,Pendulum,Crossing,DarkChase,Mover,SpikeRow,Deco,FakeDoor,Light};
+  Lightning,Wind,Conveyor,Bonk,Spring,Pendulum,Crossing,DarkChase,Mover,SpikeRow,Deco,FakeDoor,Light,
+  AlarmClock,Banners,Dizzy,LightFloor,ShyDoor,Umbrella,Crowd,Shadow};
 // Factory helpers: K.trapdoor({...}) etc.
 const F={};
 for(const k in K){ F[k]=o=>new K[k](o); }
