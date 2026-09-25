@@ -81,9 +81,9 @@ const HAIR_STYLE={
   wolf:{width:44,layers:[
     {n:9,w:10,len:u=>-60-42*u*u,flare:10,flick:10,rough:6,seed:1},
     {n:7,w:9.5,len:u=>-106-6*u*u,flare:7,flick:8,rough:4,seed:2}]},
-  shortwolf:{width:42,layers:[
-    {n:8,w:10,len:u=>-78-26*u*u,flare:6,flick:6,rough:4,seed:3},
-    {n:7,w:9.5,len:u=>-112,flare:5,flick:5,rough:3,seed:4}]},
+  shortwolf:{width:36,bulge:4,layers:[
+    {n:8,w:9.5,len:u=>-80-24*u*u,flare:1,flick:2,rough:4,seed:3},
+    {n:7,w:9,len:u=>-112,flare:1,flick:2,rough:3,seed:4}]},
   longwolf:{width:45,layers:[
     {n:10,w:10.5,len:u=>-12-26*u*u,flare:16,flick:12,rough:8,seed:5},
     {n:8,w:9.5,len:u=>-80-18*u*u,flare:10,flick:9,rough:6,seed:6}]},
@@ -95,11 +95,11 @@ const HAIR_STYLE={
   bun:{width:43,gather:true,layers:[
     {n:9,w:9.5,len:u=>-92,flare:0,flick:0,rough:1,seed:10}]}
 };
-const HAIR_NAMES={wolf:'ウルフ（現在）',shortwolf:'ショートウルフ',longwolf:'ロングウルフ',bob:'切りっぱなしボブ',mash:'マッシュウルフ',bun:'ゆるいお団子'};
+const HAIR_NAMES={wolf:'ウルフ',shortwolf:'ショートウルフ',longwolf:'ロングウルフ',bob:'切りっぱなしボブ',mash:'マッシュウルフ',bun:'ゆるいお団子'};
 const T={
   init(canvas,sprites){
     this.cv=canvas; this.g=canvas.getContext('2d');
-    this.sp=sprites; this.t=0; this.warm=0; this.cleared=false; this.dawn=false; this.dk=0; this.hair='wolf'; this.HAIR_NAMES=HAIR_NAMES;
+    this.sp=sprites; this.t=0; this.warm=0; this.cleared=false; this.dawn=false; this.dk=0; this.hair='shortwolf'; this.HAIR_NAMES=HAIR_NAMES;
     this.drops=[]; for(let i=0;i<70;i++) this.drops.push(this.newDrop(true));
     this.streaks=[]; for(let i=0;i<120;i++) this.streaks.push({x:Math.random(),y:Math.random(),s:0.6+Math.random()*0.6});
     const r=this.rand(21);
@@ -408,7 +408,7 @@ const T={
         const u=(i/(n-1))*2-1;                       // -1 left .. 1 right
         const jit=Math.sin(i*12.9898+layer.seed)*0.5; // stable per-lock variation
         const root=[u*16+jit*2,-176+u*u*6];
-        const over=[u*(S.width+8)+jit*2,-150+u*u*6];
+        const over=[u*(S.width+(S.bulge===undefined?8:S.bulge))+jit*2,-150+u*u*6];
         let tipY=layer.len(u)+jit*layer.rough, tipX=u*(S.width+layer.flare)+Math.sign(u)*layer.flick*Math.abs(u)**1.5;
         if(S.gather){ tipX*=0.25; tipY=Math.min(tipY,-90); }
         tipX+=Math.sin(t*0.9+i)*0.6*Math.abs(u);
