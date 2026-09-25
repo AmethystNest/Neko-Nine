@@ -28,7 +28,7 @@ const TRAP_QUOTES={
   'dropfloor:crumble':["ヒビには気づいてた。気づいてただけ。"],
   'dropfloor:glass':  ["ガラスの上に乗る猫、いる？ いた。"],
   'dropfloor:ledge':  ["扉だと思った？ ぼくも。"],
-  'crush':        ["薄型モデルじゃないです。","猫って液体だよね？","圧縮に失敗しました。"],
+  'crush':        ["薄型モデルじゃないです。","猫って液体だよね？","圧縮に失敗しました。","ねこふんじゃった。"],
   'fallblock:pot':["植木鉢、狙ってたよね？"],
   'fallblock:rock':["落石注意の看板、出しといて。"],
   'spike':        ["トゲって、生えるんだ。","針治療にしては刺しすぎ。"],
@@ -62,8 +62,8 @@ const TRAP_QUOTE_RATE=0.5;
 const COUNT_QUOTE_RATE=0.5;
 // Lines tied to how many lives are left (after this death).
 const COUNT_QUOTES={
-  3:["あと三つ。……急がなきゃ。"],
-  2:["あと、ふたつ。"],
+  3:["あと三つ。……急がなきゃ。","すでに満身創痍だ。"],
+  2:["あと、ふたつ。","すでに満身創痍だ。"],
   1:["あと、ひとつ。","これが最後の命。","……まだ、終われない。"]
 };
 const RETRY_QUOTES=[
