@@ -269,12 +269,13 @@ const LOOP2={
       F.LightFloor({x:300,w:150,onT:2.2,offT:1.2,phase:0}),
       F.LightFloor({x:610,w:150,onT:2.2,offT:1.2,phase:0.4})
     ]},
-  // 5: the lab's exit runs from you. Stand still and it comes back.
+  // 5: the lab is a check-up now. A scan sweeps the room: hold still while it passes
+  //    ("大丈夫です" is only true if you don't move). Jumping the lift inside the beam is the catch.
   4:{ents:F=>[
-      F.Laser({x:250,y0:90,y1:G,tx:150,warm:0.28,onT:0.72,offT:0.62}),
+      F.Scanner({x0:40,x1:980,bw:26,warn:0.7,sweep:1.3,rest:1.3,tx:130}),
       F.Lift({x:335,w:100,rise:272,speed:440}),
       F.SpikeRow({x:335,w:100,y:90,h:38,dirn:'down'}),
-      F.ShyDoor({near:200,flee:340,creep:80,min:560,max:975})
+      F.Shutter({x:766,w:58,top:90,tx:735,delay:0.05,dropSpeed:1350,holdClosed:1.6,riseSpeed:520,gap:70})
     ]},
   // 6: an umbrella by the parapet. Held open, you drift down slowly and the gusts carry you
   5:{floors:[[0,330,420],[880,1000,430]],checkpoint:null,goal:{x:940,y:430},
@@ -303,8 +304,10 @@ const LOOP2={
       const es=STAGES[8].ents(F).filter(e=>e.constructor.name!=='DarkChase');
       return [F.Shadow({tx:170,delay:1.8}),...es];
     }},
-  // 10: no wall this time; the dark is thinner and the voices are from tonight
-  9:{dusk:{from:0.62,x0:300,x1:2750},
+  // 10: the way home, told from your side: everything that weighed on those nights comes
+  //     back once more, lighter now. The dark thins and the voices are from tonight.
+  9:{floors:[[0,700],[960,1180],[1250,1400],[1600,3150]],checkpoint:{x:1330},
+    dusk:{from:0.62,x0:300,x1:2750},
     memories:[
       {x:300, text:'「ナイン……どこにいるの」'},
       {x:1130,text:'「会社に、電話しなきゃ。……休みますって」'},
@@ -313,12 +316,26 @@ const LOOP2={
       {x:2400,text:'「ドアの向こうで、小さな音がした」'},
       {x:2800,text:'「……ナイン？」'}
     ],
-    ents:F=>{
-      const base=STAGES[9].ents(F);
-      // drop the chasing wall, its arrow and the fake crack; keep the lamp by the door
-      const n=e=>e.constructor.name;
-      return base.filter(e=>n(e)!=='ChaseWall'&&!(n(e)==='Shot'&&e.style==='arrow')&&n(e)!=='Deco');
-    }}
+    ents:F=>[
+      // the alarm (stage 1)
+      F.AlarmClock({from:'right',x0:690,speed:160,hopH:110,hopT:0.8,when:w=>w.P.x>=160&&w.P.x<600}),
+      // the notifications (stage 2): the flush one is the fake again
+      F.Banners({tx:640,items:[
+        {x:712,y:G-24,at:0,life:3.6},
+        {x:822,y:G-24,at:0.5,fake:true},
+        {x:846,y:G-124,at:0.7,life:3.6}]}),
+      // the dizziness (stage 3), over a small gap this time
+      F.Dizzy({x0:1040,x1:1400,off:1290}),
+      // the lamps (stage 4)
+      F.LightFloor({x:1400,w:200,onT:2.2,offT:1.1,phase:0}),
+      // the check-up (stage 5)
+      F.Scanner({x0:1600,x1:2000,bw:26,warn:0.7,sweep:0.8,rest:1.4,tx:1620}),
+      // the clock that moves with you (stage 8)
+      F.Pendulum({px:2300,py:90,len:290,amp:0.72,period:2.2,phase:0,r:20,superhot:true}),
+      // and your shadow (stage 9), all the way to the door. Don't stop now.
+      F.Shadow({tx:2480,delay:1.8}),
+      F.Light({x:3050,y:370,r:170,warm:true,doorGlow:true})
+    ]}
 };
 for(const k in LOOP2) STAGES[k].loop2=LOOP2[k];
 

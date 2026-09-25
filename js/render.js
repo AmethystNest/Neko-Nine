@@ -722,15 +722,33 @@ P.LightFloor.prototype.draw=function(g,w,T){
   if(this.lit){ g.save(); if(this.flicker) g.globalAlpha=0.55; T.floor(g,x,G,this.w,WH+60-G); g.restore(); }
   else { g.setLineDash([6,6]); g.strokeStyle='rgba(200,210,255,.18)'; g.lineWidth=1.5; g.strokeRect(x+1,G+1,this.w-2,12); g.setLineDash([]); }
 };
-P.ShyDoor.prototype.draw=function(g,w,T){
-  const d=w.goal; if(!d) return;
-  if(Math.abs(this.v)>40){
-    // speed lines behind the running door
-    const dir=Math.sign(this.v);
-    g.strokeStyle='rgba(255,255,255,.35)'; g.lineWidth=2;
-    for(let i=0;i<4;i++){ const y=G-70+i*16; g.beginPath(); g.moveTo(d.x-dir*26,y); g.lineTo(d.x-dir*(46+i*6),y); g.stroke(); }
+P.Scanner.prototype.draw=function(g,w,T){
+  g.save(); g.textAlign='left'; g.textBaseline='alphabetic'; this.drawBody(g,w,T); g.restore();
+};
+P.Scanner.prototype.drawBody=function(g,w,T){
+  // the rail it runs along, under the ceiling
+  rect(g,'rgba(120,190,210,.25)',this.x0,92,this.x1-this.x0,3);
+  if(this.phase_==='warn'){
+    const on=(w.t*6|0)%2===0;
+    circ(g,on?'#7fe8ff':'#2a4a55',this.x0,100,5);
+    if(Math.abs(w.P.x-this.x0)<900){ const tx=Math.max(this.x0+12,w.P.x-120);
+      g.fillStyle='rgba(15,25,35,.75)'; g.fillRect(tx-6,108,248,20);
+      g.fillStyle=`rgba(127,232,255,${on?1:0.6})`; g.font='bold 13px system-ui,sans-serif'; g.fillText('スキャンします。動かないでください',tx,123); }
   }
-  if(this.st==='creep'&&Math.abs(this.v)>10){ g.fillStyle='rgba(255,255,255,.7)'; g.font='bold 14px system-ui,sans-serif'; g.fillText('…',d.x-6,G-94); }
+  if(this.bx===null) return;
+  const x=this.bx, moving=this.moving(w)&&Math.abs(w.P.x-x)<60;
+  const col=moving?'255,90,90':'127,232,255';
+  const gr=g.createLinearGradient(x-this.bw,0,x+this.bw,0);
+  gr.addColorStop(0,`rgba(${col},0)`); gr.addColorStop(0.5,`rgba(${col},.45)`); gr.addColorStop(1,`rgba(${col},0)`);
+  g.fillStyle=gr; g.fillRect(x-this.bw,95,this.bw*2,G-95);
+  line(g,`rgba(${col},.95)`,2,[x,95,x,G]);
+  rect(g,'#cfd8dc',x-8,88,16,8);
+  // over the cat, the verdict
+  if(Math.abs(w.P.x-x)<50){
+    const tx=w.P.x-28, ty=w.P.y-76;
+    g.fillStyle='rgba(15,25,35,.8)'; g.fillRect(tx-4,ty,64,18);
+    g.fillStyle=`rgba(${col},1)`; g.font='bold 12px system-ui,sans-serif'; g.fillText(moving?'異常あり':'異常なし',tx+4,ty+13);
+  }
 };
 P.Umbrella.prototype.draw=function(g,w,T){
   if(this.held) return;

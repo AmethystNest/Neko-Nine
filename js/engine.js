@@ -983,26 +983,6 @@ class LightFloor extends Ent{
   }
 }
 
-// The exit that runs from you: it slides away when you come at it, wraps round
-// behind you at the wall, and edges back once you stand still.
-class ShyDoor extends Ent{
-  init(w){ this.kind='shydoor'; this.alwaysUpdate=false; this.still=0; this.v=0; this.min=this.min||120; this.max=this.max||w.W-40; }
-  update(w,dt){
-    const P=w.P, g=w.goal; if(!g) return;
-    const d=g.x-P.x, toward=Math.sign(P.vx)===Math.sign(d)&&Math.abs(P.vx)>40;
-    this.still=(Math.abs(P.vx)<10&&P.ground)?this.still+dt:0;
-    // right beside it, it has given up running
-    if(Math.abs(d)<this.near && Math.abs(d)>34 && toward){ this.v=Math.sign(d)*this.flee; this.st='flee'; }
-    else if(this.still>0.6 && Math.abs(d)>20){ this.v=-Math.sign(d)*this.creep; this.st='creep'; }
-    else this.v*=Math.max(0,1-dt*6);
-    g.x+=this.v*dt;
-    if(g.x>this.max){ g.x=this.min; this.v=0; w.se('warn'); w.emit('doorwrap',{}); }
-    if(g.x<this.min){ g.x=this.max; this.v=0; w.se('warn'); w.emit('doorwrap',{}); }
-    // it only lets you in while it isn't running
-    g.locked=Math.abs(this.v)>60;
-  }
-}
-
 // An umbrella leaning against the parapet. Pick it up and you fall slowly,
 // and the wind carries you much further.
 class Umbrella extends Ent{
@@ -1055,9 +1035,31 @@ class Shadow extends Ent{
   }
 }
 
+// A check-up scan: a beam sweeps across the room. While it passes over you,
+// hold still ("please don't move"); moving or jumping inside it gives a shock.
+class Scanner extends Ent{
+  init(){ this.kind='scan'; this.alwaysUpdate=false; this.tm=this.phase||0; this.bx=null; this.x0=this.x0||0; this.x1=this.x1||1000; }
+  update(w,dt){
+    if(this.st==='idle'){ if(this.triggered(w)){ this.st='cycle'; } else return; }
+    this.tm+=dt;
+    const cyc=this.warn+this.sweep+this.rest, ph=this.tm%cyc;
+    const was=this.phase_;
+    if(ph<this.warn){ this.phase_='warn'; this.bx=null; }
+    else if(ph<this.warn+this.sweep){ this.phase_='sweep'; const k=(ph-this.warn)/this.sweep; this.bx=this.x0+(this.x1-this.x0)*k; }
+    else { this.phase_='rest'; this.bx=null; }
+    if(was!==this.phase_ && this.phase_==='warn' && Math.abs(w.P.x-(this.x0+this.x1)/2)<700) w.se('warn');
+    if(was!==this.phase_ && this.phase_==='sweep') w.se('lasercharge');
+  }
+  moving(w){ const P=w.P; return !P.ground || Math.abs(P.vx)>20; }
+  hazards(w){
+    if(this.bx===null || !this.moving(w)) return null;
+    return [{x:this.bx-this.bw/2,y:0,w:this.bw,h:G}];
+  }
+}
+
 const K={Block,TrapFloor,ShiftPit,DropFloor,Crusher,FallBlock,Spikes,Shot,Laser,Lift,Arc,Shutter,ChaseWall,
   Lightning,Wind,Conveyor,Bonk,Spring,Pendulum,Crossing,DarkChase,Mover,SpikeRow,Deco,FakeDoor,Light,
-  AlarmClock,Banners,Dizzy,LightFloor,ShyDoor,Umbrella,Crowd,Shadow};
+  AlarmClock,Banners,Dizzy,LightFloor,Umbrella,Crowd,Shadow,Scanner};
 // Factory helpers: K.trapdoor({...}) etc.
 const F={};
 for(const k in K){ F[k]=o=>new K[k](o); }
