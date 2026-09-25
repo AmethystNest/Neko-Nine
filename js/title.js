@@ -81,9 +81,12 @@ const HAIR_STYLE={
   wolf:{width:44,layers:[
     {n:9,w:10,len:u=>-60-42*u*u,flare:10,flick:10,rough:6,seed:1},
     {n:7,w:9.5,len:u=>-106-6*u*u,flare:7,flick:8,rough:4,seed:2}]},
-  shortwolf:{width:36,bulge:2,fit:true,layers:[
-    {n:8,w:9.5,len:u=>-80-24*u*u,flare:2,flick:5,rough:3,seed:3},
-    {n:7,w:9,len:u=>-110,flare:2,flick:4,rough:2,seed:4}]},
+  // two tiers like a real wolf cut: a rounded upper tier ending around the ears,
+  // and a narrow nape tail (drawn first, underneath) falling down the neck
+  shortwolf:{width:38,bulge:2,fit:true,layers:[
+    {tail:true,n:6,width:17,w:7,len:u=>-60-10*u*u,flare:1,flick:4,rough:12,seed:11},
+    {n:10,w:9.5,len:u=>-112+10*u*u,flare:3,flick:3.5,rough:9,seed:3},
+    {n:7,w:9,len:u=>-128+4*u*u,flare:2,flick:2.5,rough:5,seed:4}]},
   longwolf:{width:45,layers:[
     {n:10,w:10.5,len:u=>-12-26*u*u,flare:16,flick:12,rough:8,seed:5},
     {n:8,w:9.5,len:u=>-80-18*u*u,flare:10,flick:9,rough:6,seed:6}]},
@@ -387,6 +390,24 @@ const T={
       g.strokeStyle='rgba(6,4,14,.22)'; g.lineWidth=1.4;
       g.beginPath(); for(let k=4;k<n;k++){ const [px,py,wd,nx,ny]=P[k]; const q=[px+nx*wd*0.85,py+ny*wd*0.85]; k===4?g.moveTo(q[0],q[1]):g.lineTo(q[0],q[1]); } g.stroke();
     }
+    // tiered cuts: the upper tier casts a soft shadow onto the nape tail only
+    // (shape shifted down, minus the tier itself, kept where the tail is)
+    if(locks.some(L=>L.over)){
+      const oc=this.tierCv||(this.tierCv=document.createElement('canvas'));
+      if(oc.width!==g.canvas.width||oc.height!==g.canvas.height){ oc.width=g.canvas.width; oc.height=g.canvas.height; }
+      const o=oc.getContext('2d'), T=g.getTransform();
+      o.setTransform(1,0,0,1,0,0); o.clearRect(0,0,oc.width,oc.height); o.setTransform(T);
+      const upper=()=>{ o.beginPath(); mass(o); for(const L of locks) if(L.over) this.lockPath(o,L); };
+      // the tail catches a little light below the tier, then the tier's shadow falls across it
+      const tl=o.createLinearGradient(0,-118,0,-60);
+      tl.addColorStop(0,`rgba(${rim},.05)`); tl.addColorStop(1,`rgba(${rim},.13)`);
+      o.fillStyle=tl; o.beginPath(); for(const L of locks) if(!L.over) this.lockPath(o,L); o.fill();
+      o.globalCompositeOperation='source-atop'; o.fillStyle='rgba(3,2,10,.45)';
+      for(const dy of [2,4,6]){ o.save(); o.translate(0,dy); upper(); o.fill(); o.restore(); }
+      o.globalCompositeOperation='destination-out'; upper(); o.fill();
+      o.globalCompositeOperation='source-over';
+      g.save(); g.setTransform(1,0,0,1,0,0); g.drawImage(oc,0,0); g.restore();
+    }
     // a sheen band across the crown ("angel ring"), broken by the locks
     const sh=g.createRadialGradient(-10,-166,4,-10,-166,40);
     sh.addColorStop(0,`rgba(${rim},.16)`); sh.addColorStop(1,`rgba(${rim},0)`);
@@ -417,8 +438,9 @@ const T={
         // fit: keep each lock's outer edge on the crown's contour so the sides fall
         // straight from the dome instead of stepping out below it
         const inset=S.fit?layer.w*1.1:0;
-        const over=[u*(S.width+(S.bulge===undefined?8:S.bulge)-inset)+jit*(S.fit?0.6:2),-150+u*u*6];
-        let tipY=layer.len(u)+jit*layer.rough, tipX=u*(S.width+layer.flare-inset*0.8)+(S.fit?0:Math.sign(u)*layer.flick*Math.abs(u)**1.5);
+        const LW=layer.width||S.width;
+        const over=[u*(LW+(S.bulge===undefined?8:S.bulge)-inset)+jit*(S.fit?0.6:2),-150+u*u*6];
+        let tipY=layer.len(u)+jit*layer.rough, tipX=u*(LW+layer.flare-inset*0.8)+(S.fit?0:Math.sign(u)*layer.flick*Math.abs(u)**1.5);
         if(S.gather){ tipX*=0.25; tipY=Math.min(tipY,-90); }
         tipX+=Math.sin(t*0.9+i)*0.6*Math.abs(u);
         const pts=[], N=10;
@@ -433,7 +455,7 @@ const T={
           const wd=layer.w*(q<0.62?0.8+0.35*Math.sin(Math.PI*q/0.62*0.5):Math.max(0.18,1-(q-0.62)/0.38*0.82)*1.15);
           pts.push([px,py,wd,nx,ny]);
         }
-        out.push({pts,light:0.5+0.5*Math.cos(u*1.3+1.1),cap:!!S.fit});
+        out.push({pts,light:0.5+0.5*Math.cos(u*1.3+1.1),cap:!!S.fit,over:!!(S.fit&&!layer.tail)});
       }
     }
     return out;
@@ -441,10 +463,10 @@ const T={
   // The body of the hair under the locks: follows the longest layer, a little
   // shorter, so the gaps between tapering tips never show daylight.
   hairMass(c,style){
-    const S=HAIR_STYLE[style]||HAIR_STYLE.wolf, len=S.layers[0].len, W=S.width-2;
+    const S=HAIR_STYLE[style]||HAIR_STYLE.wolf, ML=S.layers.find(l=>!l.tail), len=ML.len, W=S.width-2;
     c.moveTo(-W,-142);
     c.ellipse(0,-142,W,46,0,Math.PI,Math.PI*2);
-    for(let k=10;k>=-10;k--){ const u=k/10; const y=S.gather?-100+14*(1-u*u)-34*u*u:Math.max(-140,len(u)-(S.layers[0].rough+16)); c.lineTo(u*W*(S.gather?0.8:0.92),y); }
+    for(let k=10;k>=-10;k--){ const u=k/10; const y=S.gather?-100+14*(1-u*u)-34*u*u:Math.max(-140,len(u)-(ML.rough+16)); c.lineTo(u*W*(S.gather?0.8:0.92),y); }
     c.closePath();
   },
   lockPath(c,L){
