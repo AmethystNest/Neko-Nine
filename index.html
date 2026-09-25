@@ -185,6 +185,24 @@ body.touch .help.pc,body:not(.touch) .help.tp{display:none}
 .stageGrid button{display:flex;align-items:baseline;gap:10px;background:none;border:0;border-radius:8px;padding:7px 8px;text-align:left;color:#efe9ff;cursor:pointer;font:700 15px/1.3 var(--serif);letter-spacing:.08em;white-space:nowrap}
 .stageGrid button small{font:600 11px/1 var(--display);letter-spacing:.14em;color:#9f97c8;min-width:4.6em}
 .stageGrid button:hover,.stageGrid button:focus-visible{background:#221f40;color:#9fdcff;outline:none}
+.sheet button.item small{display:block;margin-top:4px;font:600 11.5px/1.3 var(--serif);letter-spacing:.06em;color:#9f97c8}
+.lapTabs{display:flex;gap:8px;margin:-2px 0 2px}
+.lapTabs[hidden]{display:none}
+.lapTabs button{flex:1;border:1px solid #34305e;background:none;color:#b5acd8;border-radius:999px;padding:6px 10px;font:700 13px/1 var(--serif);letter-spacing:.1em;cursor:pointer}
+.lapTabs button.on{background:#2a2650;color:#efe9ff;border-color:#6f66b8}
+.archiveBox{width:min(92vw,640px);max-height:calc(100dvh - 24px)}
+.archiveList{overflow:auto;max-height:calc(100dvh - 150px);display:flex;flex-direction:column;gap:2px}
+.archiveList .grp{margin:8px 0 2px;font:italic 600 15px/1 var(--display);letter-spacing:.12em;color:#8fd3ff}
+.archiveList button{display:flex;gap:10px;align-items:baseline;background:none;border:0;border-radius:8px;padding:6px 8px;text-align:left;color:#efe9ff;cursor:pointer;font:600 14.5px/1.35 var(--serif);letter-spacing:.06em}
+.archiveList button small{min-width:5.4em;font:600 11px/1 var(--display);letter-spacing:.12em;color:#9f97c8}
+.archiveList button:hover,.archiveList button:focus-visible{background:#221f40;color:#9fdcff;outline:none}
+.archiveList button:disabled{color:#4c4770;cursor:default;background:none}
+.archiveRead{overflow:auto;max-height:calc(100dvh - 150px)}
+.archiveList[hidden],.archiveRead[hidden]{display:none}
+.archTitle{font:700 16px/1.4 var(--serif);letter-spacing:.12em;color:#9fdcff;margin-bottom:10px}
+.archBody p{margin:0 0 .55em;font:500 15px/1.8 var(--serif);letter-spacing:.05em}
+.archBody p.you{color:#f3dcc0;font-style:italic}
+.archBody p.note{color:#b5acd8;font-size:13px}
 .sheet .val{font:600 12px/1 system-ui;text-align:right;color:#b5acd8;font-variant-numeric:tabular-nums}
 
 /* ---- toast ---- */
@@ -266,6 +284,7 @@ body.touch .help.pc,body:not(.touch) .help.tp{display:none}
       <button id="btnContinue" class="primary" type="button" hidden>つづきから</button>
       <button id="btnNew" type="button" hidden>はじめから</button>
       <button id="btnSelect" type="button" hidden>ステージ選択</button>
+      <button id="btnArchive" type="button" hidden>アーカイヴ</button>
       <button id="btnHelp" type="button">操作方法</button>
       <button id="btnSettings" type="button">設定</button>
     </div>
@@ -287,8 +306,21 @@ body.touch .help.pc,body:not(.touch) .help.tp{display:none}
 </div></div>
 <div id="select" class="sheet" aria-hidden="true"><div class="box selectBox">
   <h2>Stages</h2>
+  <div class="lapTabs" id="lapTabs"><button type="button" data-lap="1">はじまりの夜</button><button type="button" data-lap="2">夜明け</button></div>
   <div class="stageGrid" id="stageGrid"></div>
   <button class="item" id="btnSelectClose" type="button">とじる</button>
+</div></div>
+<div id="lap" class="sheet" aria-hidden="true"><div class="box">
+  <h2>Which night?</h2>
+  <button class="item" id="btnLap1" type="button">はじまりの夜<small>1周目 ・ ナインが君を探す夜</small></button>
+  <button class="item" id="btnLap2" type="button">夜明け<small>2周目 ・ 君の側から見た、同じ夜</small></button>
+  <button class="item" id="btnLapClose" type="button">とじる</button>
+</div></div>
+<div id="archive" class="sheet" aria-hidden="true"><div class="box archiveBox">
+  <h2>Archive</h2>
+  <div id="archiveList" class="archiveList"></div>
+  <div id="archiveRead" class="archiveRead" hidden><div class="archTitle"></div><div class="archBody"></div></div>
+  <button class="item" id="btnArchiveBack" type="button">とじる</button>
 </div></div>
 <div id="help" class="sheet" aria-hidden="true"><div class="box">
   <h2>Controls</h2>

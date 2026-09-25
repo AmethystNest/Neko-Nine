@@ -2,10 +2,85 @@
 (function(root){
 'use strict';
 const TAU=Math.PI*2;
+// The owner's hairstyles, seen from behind. Each draws one closed outline around
+// the head (top of the head at y=-183, nape around y=-96).
+const HAIR={
+  // wolf cut: full crown, tucked at the ears, layered flicks at the jaw, tapered nape
+  wolf(c){
+    c.moveTo(0,-183);
+    c.bezierCurveTo(28,-183,46,-166,46,-142); c.bezierCurveTo(46,-127,41,-119,38,-111);
+    c.bezierCurveTo(42,-106,45,-101,45,-95); c.bezierCurveTo(41,-97,38,-98,35,-98);
+    c.bezierCurveTo(40,-92,41,-86,39,-80); c.bezierCurveTo(35,-82,32,-83,29,-83);
+    c.bezierCurveTo(32,-78,31,-72,27,-66); c.bezierCurveTo(23,-69,19,-70,16,-69);
+    c.bezierCurveTo(16,-63,13,-58,9,-53); c.bezierCurveTo(6,-57,3,-59,0,-59);
+    c.bezierCurveTo(-3,-59,-6,-57,-9,-53); c.bezierCurveTo(-13,-58,-16,-63,-16,-69);
+    c.bezierCurveTo(-19,-70,-23,-69,-27,-66); c.bezierCurveTo(-31,-72,-32,-78,-29,-83);
+    c.bezierCurveTo(-32,-83,-35,-82,-39,-80); c.bezierCurveTo(-41,-86,-40,-92,-35,-98);
+    c.bezierCurveTo(-38,-98,-41,-97,-45,-95); c.bezierCurveTo(-45,-101,-42,-106,-38,-111);
+    c.bezierCurveTo(-41,-119,-46,-127,-46,-142); c.bezierCurveTo(-46,-166,-28,-183,0,-183);
+  },
+  // short wolf: compact crown, a few short flicks, a small tail at the nape
+  shortwolf(c){
+    c.moveTo(0,-182);
+    c.bezierCurveTo(27,-182,44,-166,44,-143); c.bezierCurveTo(44,-128,40,-120,37,-113);
+    c.bezierCurveTo(41,-110,43,-106,42,-101); c.bezierCurveTo(38,-102,35,-103,32,-103);
+    c.bezierCurveTo(33,-97,30,-92,25,-88); c.bezierCurveTo(22,-91,18,-92,14,-91);
+    c.bezierCurveTo(13,-85,10,-80,6,-74); c.bezierCurveTo(3,-77,-3,-77,-6,-74);
+    c.bezierCurveTo(-10,-80,-13,-85,-14,-91); c.bezierCurveTo(-18,-92,-22,-91,-25,-88);
+    c.bezierCurveTo(-30,-92,-33,-97,-32,-103); c.bezierCurveTo(-35,-103,-38,-102,-42,-101);
+    c.bezierCurveTo(-43,-106,-41,-110,-37,-113); c.bezierCurveTo(-40,-120,-44,-128,-44,-143);
+    c.bezierCurveTo(-44,-166,-27,-182,0,-182);
+  },
+  // long wolf: the same layered crown, with long feathered ends resting on the shoulders
+  longwolf(c){
+    c.moveTo(0,-184);
+    c.bezierCurveTo(29,-184,47,-167,47,-142); c.bezierCurveTo(47,-126,43,-116,41,-106);
+    c.bezierCurveTo(46,-98,50,-86,50,-72); c.bezierCurveTo(46,-74,43,-75,40,-75);
+    c.bezierCurveTo(47,-62,52,-48,54,-34); c.bezierCurveTo(47,-38,41,-40,36,-40);
+    c.bezierCurveTo(37,-30,34,-22,29,-14); c.bezierCurveTo(25,-20,20,-24,15,-25);
+    c.bezierCurveTo(12,-18,6,-12,0,-10); c.bezierCurveTo(-6,-12,-12,-18,-15,-25);
+    c.bezierCurveTo(-20,-24,-25,-20,-29,-14); c.bezierCurveTo(-34,-22,-37,-30,-36,-40);
+    c.bezierCurveTo(-41,-40,-47,-38,-54,-34); c.bezierCurveTo(-52,-48,-47,-62,-40,-75);
+    c.bezierCurveTo(-43,-75,-46,-74,-50,-72); c.bezierCurveTo(-50,-86,-46,-98,-41,-106);
+    c.bezierCurveTo(-43,-116,-47,-126,-47,-142); c.bezierCurveTo(-47,-167,-29,-184,0,-184);
+  },
+  // blunt bob: a soft round crown falling straight to a clean line at the jaw
+  bob(c){
+    c.moveTo(0,-184);
+    c.bezierCurveTo(30,-184,48,-166,48,-140); c.bezierCurveTo(48,-118,49,-96,51,-80);
+    c.bezierCurveTo(52,-74,50,-70,44,-69); c.bezierCurveTo(28,-66,14,-65,0,-65);
+    c.bezierCurveTo(-14,-65,-28,-66,-44,-69); c.bezierCurveTo(-50,-70,-52,-74,-51,-80);
+    c.bezierCurveTo(-49,-96,-48,-118,-48,-140); c.bezierCurveTo(-48,-166,-30,-184,0,-184);
+  },
+  // mash wolf: a big rounded mushroom crown with a short, wispy nape
+  mash(c){
+    c.moveTo(0,-186);
+    c.bezierCurveTo(34,-186,53,-166,53,-138); c.bezierCurveTo(53,-122,49,-112,44,-106);
+    c.bezierCurveTo(40,-103,36,-103,33,-104); c.bezierCurveTo(34,-96,30,-90,24,-87);
+    c.bezierCurveTo(21,-91,17,-92,13,-91); c.bezierCurveTo(12,-83,8,-76,3,-70);
+    c.bezierCurveTo(1,-73,-1,-73,-3,-70); c.bezierCurveTo(-8,-76,-12,-83,-13,-91);
+    c.bezierCurveTo(-17,-92,-21,-91,-24,-87); c.bezierCurveTo(-30,-90,-34,-96,-33,-104);
+    c.bezierCurveTo(-36,-103,-40,-103,-44,-106); c.bezierCurveTo(-49,-112,-53,-122,-53,-138);
+    c.bezierCurveTo(-53,-166,-34,-186,0,-186);
+  },
+  // low bun: hair gathered softly at the nape, a few strands left loose
+  bun(c){
+    c.moveTo(0,-182);
+    c.bezierCurveTo(27,-182,44,-166,44,-142); c.bezierCurveTo(44,-124,41,-113,36,-104);
+    c.bezierCurveTo(40,-100,41,-95,39,-91); c.bezierCurveTo(35,-94,32,-96,28,-97);
+    c.bezierCurveTo(20,-94,10,-93,0,-93); c.bezierCurveTo(-10,-93,-20,-94,-28,-97);
+    c.bezierCurveTo(-32,-96,-35,-94,-39,-91); c.bezierCurveTo(-41,-95,-40,-100,-36,-104);
+    c.bezierCurveTo(-41,-113,-44,-124,-44,-142); c.bezierCurveTo(-44,-166,-27,-182,0,-182);
+    c.closePath();
+    // the bun itself, sitting at the nape
+    c.moveTo(20,-84); c.arc(0,-84,20,0,Math.PI*2);
+  }
+};
+const HAIR_NAMES={wolf:'ウルフ（現在）',shortwolf:'ショートウルフ',longwolf:'ロングウルフ',bob:'切りっぱなしボブ',mash:'マッシュウルフ',bun:'ゆるいお団子'};
 const T={
   init(canvas,sprites){
     this.cv=canvas; this.g=canvas.getContext('2d');
-    this.sp=sprites; this.t=0; this.warm=0; this.cleared=false; this.dawn=false; this.dk=0;
+    this.sp=sprites; this.t=0; this.warm=0; this.cleared=false; this.dawn=false; this.dk=0; this.hair='wolf'; this.HAIR_NAMES=HAIR_NAMES;
     this.drops=[]; for(let i=0;i<70;i++) this.drops.push(this.newDrop(true));
     this.streaks=[]; for(let i=0;i<120;i++) this.streaks.push({x:Math.random(),y:Math.random(),s:0.6+Math.random()*0.6});
     const r=this.rand(21);
@@ -139,16 +214,33 @@ const T={
       const x=wx-ww*0.1+m.x*ww*1.1+Math.sin(this.t*0.5+m.p)*8, y=wy+wh*0.6+m.y*H*0.4;
       g.fillStyle=`rgba(220,230,255,${0.12+0.1*Math.sin(this.t+m.p)})`; g.fillRect(x,y,2,2);
     }
-    // a small potted plant on the sill (morning)
+    // blue stars on the sill: the flower you set by the window the morning you chose to rest.
+    // One more bloom for every time the night has been walked to its end.
     if(DK>0.01){
-      const px=wx+ww*0.08, pw=wh*0.075, ph=wh*0.07;
+      const px=wx+ww*0.08, pw=wh*0.075, ph=wh*0.065, n=Math.min(7,1+(this.clears||2));
       g.globalAlpha=DK;
-      g.fillStyle='#8a5a3c'; g.beginPath(); g.moveTo(px-pw/2,sy-ph); g.lineTo(px+pw/2,sy-ph); g.lineTo(px+pw*0.38,sy); g.lineTo(px-pw*0.38,sy); g.fill();
-      g.fillStyle='#6d4530'; g.fillRect(px-pw*0.55,sy-ph-4,pw*1.1,5);
-      g.fillStyle='#4f7a4a';
-      for(const [a,l] of [[-0.9,1],[-0.4,1.25],[0.1,1.35],[0.6,1.15],[1.0,0.9]]){
-        g.save(); g.translate(px,sy-ph-4); g.rotate(a*0.6); g.beginPath(); g.ellipse(0,-l*pw*0.55,pw*0.16,l*pw*0.5,0,0,TAU); g.fill(); g.restore();
+      // stems and leaves
+      g.strokeStyle='#557a52'; g.lineWidth=1.6; g.lineCap='round';
+      const heads=[];
+      for(let i=0;i<n;i++){
+        const a=(i/(n-1||1)-0.5)*1.1, len=pw*(1.05+0.35*Math.sin(i*2.3)), sway=Math.sin(this.t*0.8+i)*1.5;
+        const hx=px+Math.sin(a)*len+sway, hy=sy-ph-4-Math.cos(a)*len;
+        g.beginPath(); g.moveTo(px+(i-n/2)*1.2,sy-ph-3); g.quadraticCurveTo(px+Math.sin(a)*len*0.4,hy+len*0.5,hx,hy); g.stroke();
+        heads.push([hx,hy,i]);
       }
+      g.fillStyle='#5f8d59';
+      for(const k of [-1,1]){ g.save(); g.translate(px+k*3,sy-ph-6); g.rotate(k*0.9); g.beginPath(); g.ellipse(0,-pw*0.22,pw*0.09,pw*0.24,0,0,TAU); g.fill(); g.restore(); }
+      // five-petalled pale-blue stars
+      for(const [hx,hy,i] of heads){
+        const r=pw*0.2*(0.9+0.15*Math.sin(i*1.7));
+        this.glow(g,hx,hy,r*3,'rgba(160,210,255,A)',0.25*DK);
+        g.fillStyle='#9fd0ff';
+        for(let k=0;k<5;k++){ const a=k/5*TAU+i; g.beginPath(); g.ellipse(hx+Math.cos(a)*r*0.55,hy+Math.sin(a)*r*0.55,r*0.52,r*0.3,a,0,TAU); g.fill(); }
+        g.fillStyle='#e8f4ff'; g.beginPath(); g.arc(hx,hy,r*0.22,0,TAU); g.fill();
+      }
+      // the pot
+      g.fillStyle='#b98a6a'; g.beginPath(); g.moveTo(px-pw/2,sy-ph); g.lineTo(px+pw/2,sy-ph); g.lineTo(px+pw*0.38,sy); g.lineTo(px-pw*0.38,sy); g.fill();
+      g.fillStyle='#a07558'; g.fillRect(px-pw*0.55,sy-ph-4,pw*1.1,5);
       g.globalAlpha=1;
     }
     // Nine on the sill, seen from behind, looking up at the moon
@@ -199,33 +291,7 @@ const T={
   ownerBack(g,x,y,s){
     const t=this.t, br=Math.sin(t*1.1)*0.7, tilt=0.09;
     const neck=[0,-96];
-    const headPath=c=>{
-      // wolf cut outline: a full, rounded crown; tucked at the ears; soft layered
-      // strands flaring out at the jaw; a longer tapered nape
-      c.beginPath();
-      c.moveTo(0,-183);
-      c.bezierCurveTo(28,-183,46,-166,46,-142);
-      c.bezierCurveTo(46,-127,41,-119,38,-111);
-      c.bezierCurveTo(42,-106,45,-101,45,-95);
-      c.bezierCurveTo(41,-97,38,-98,35,-98);
-      c.bezierCurveTo(40,-92,41,-86,39,-80);
-      c.bezierCurveTo(35,-82,32,-83,29,-83);
-      c.bezierCurveTo(32,-78,31,-72,27,-66);
-      c.bezierCurveTo(23,-69,19,-70,16,-69);
-      c.bezierCurveTo(16,-63,13,-58,9,-53);
-      c.bezierCurveTo(6,-57,3,-59,0,-59);
-      c.bezierCurveTo(-3,-59,-6,-57,-9,-53);
-      c.bezierCurveTo(-13,-58,-16,-63,-16,-69);
-      c.bezierCurveTo(-19,-70,-23,-69,-27,-66);
-      c.bezierCurveTo(-31,-72,-32,-78,-29,-83);
-      c.bezierCurveTo(-32,-83,-35,-82,-39,-80);
-      c.bezierCurveTo(-41,-86,-40,-92,-35,-98);
-      c.bezierCurveTo(-38,-98,-41,-97,-45,-95);
-      c.bezierCurveTo(-45,-101,-42,-106,-38,-111);
-      c.bezierCurveTo(-41,-119,-46,-127,-46,-142);
-      c.bezierCurveTo(-46,-166,-28,-183,0,-183);
-      c.closePath();
-    };
+    const headPath=c=>{ c.beginPath(); (HAIR[this.hair]||HAIR.wolf)(c); c.closePath(); };
     const tiltAt=(c)=>{ c.translate(neck[0],neck[1]); c.rotate(tilt); c.translate(-neck[0],-neck[1]); };
     this.lit(g,x,y,s,'owner',[-100,-190,100,130],c=>{
       // neck, shoulders and back in an oversized knit
@@ -255,6 +321,15 @@ const T={
     const hg=g.createRadialGradient(-18,-160,2,-18,-160,34); hg.addColorStop(0,'rgba(190,175,255,.22)'); hg.addColorStop(1,'rgba(190,175,255,0)');
     g.fillStyle=hg; g.fillRect(-60,-200,120,90);
     g.restore();
+    if(this.hair==='bun'){
+      // the knot catches the light along its top edge
+      g.save(); tiltAt(g);
+      g.strokeStyle='rgba(195,180,255,.4)'; g.lineWidth=1.8;
+      g.beginPath(); g.arc(0,-84,20,Math.PI*1.05,Math.PI*1.95); g.stroke();
+      g.strokeStyle='rgba(185,170,245,.18)'; g.lineWidth=1.2;
+      for(const a of [-0.6,0,0.6]){ g.beginPath(); g.arc(0,-84,12,Math.PI*1.2+a,Math.PI*1.7+a); g.stroke(); }
+      g.restore();
+    }
     g.strokeStyle='rgba(185,170,245,.22)'; g.lineWidth=2;
     g.beginPath(); g.moveTo(-34,-70+br); g.quadraticCurveTo(0,-58+br,34,-70+br); g.stroke();
     // a knit texture hint across the back
