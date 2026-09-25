@@ -167,7 +167,8 @@ const STAGES=[
   checkpoint:{x:1330},
   goal:{x:2480},
   ents:F=>[
-    F.DarkChase({startX:-80,tx:170,speed:120,accel:8,maxSpeed:170,leash:720,boostX:2150,boostSpeed:190}),
+    // your own shadow walks the path you walked a moment ago: don't stop for long
+    F.Shadow({tx:170,delay:1.8}),
     F.DropFloor({x:700,w:100,delay:0.45,crack:true,gravity:1500,se:'floorbreak',style:'crumble'}),
     F.Mover({x:1030,y:G-14,w:120,h:16,ax:'x',range:140,period:2.2,style:'plank'}),
     F.FallBlock({x:1440,w:40,h:40,y0:-60,tx:1300,delay:0.08,gravity:2600,style:'rock',landSE:'blockfall',shadow:true}),
@@ -211,8 +212,8 @@ const STAGES=[
     F.FallBlock({x:1690,w:24,h:24,y0:130,tx:1590,delay:0,gravity:3000,style:'pot',landSE:'floorbreak',shadow:true}),
     // 4: rotten boards before the last stretch
     F.DropFloor({x:1900,w:100,delay:0.45,crack:true,gravity:1500,se:'floorbreak',style:'crumble'}),
-    // 9: and the dark you walked through follows you in. Don't stop now.
-    F.DarkChase({startX:1850,tx:2150,speed:140,accel:10,maxSpeed:205,leash:520}),
+    // 9: and your shadow from the dark follows you in. Don't stop now.
+    F.Shadow({tx:2150,delay:1.6}),
     F.Light({x:3050,y:370,r:170,warm:true,doorGlow:true})
   ]
 }
@@ -243,13 +244,14 @@ const LOOP2={
   1:{floors:[[0,260],[960,1000]],checkpoint:null,goal:{x:975},
     ents:F=>[
       F.Banners({tx:200,items:[
-        {x:290,y:G-10,at:0,life:2.8},
-        {x:420,y:G-70,at:0.5,life:2.6},
-        {x:530,y:G-70,at:0.9,fake:true},
-        {x:556,y:G-170,at:1.0,life:2.5,w:120},
-        {x:700,y:G-110,at:1.6,life:2.4,w:110},
-        {x:818,y:G-110,at:2.0,fake:true},
-        {x:810,y:G-210,at:2.1,life:2.6,w:120}]})
+        {x:290,y:G-10,at:0,life:2.4},
+        {x:420,y:G-70,at:0.45,life:2.4},
+        {x:530,y:G-70,at:0.8,fake:true},
+        {x:556,y:G-170,at:0.9,life:2.5,w:120},
+        // this one is being swiped away as you land on it
+        {x:700,y:G-110,at:1.4,life:2.6,w:110,vx:-25},
+        {x:818,y:G-110,at:1.8,fake:true},
+        {x:810,y:G-210,at:1.9,life:2.8,w:120}]})
     ]},
   // 3: the presses, on a dizzy head: left and right trade places until the edge
   2:{ents:F=>[
@@ -263,11 +265,11 @@ const LOOP2={
   // 4: the walkway over the water is only there while its lamp is lit. Past the stone,
   //    two failing tubes flicker out of step with each other: read their rhythm.
   //    (the stone in the middle is a place to catch your breath, and the checkpoint)
-  3:{floors:[[0,280],[430,540],[900,1000]],checkpoint:{x:485},
+  3:{floors:[[0,260],[410,480],[900,1000]],checkpoint:{x:445},
     ents:F=>[
-      F.LightFloor({x:280,w:150,onT:1.8,offT:1.2,phase:0}),
-      F.LightFloor({x:540,w:180,seq:[[1.1,0.6],[0.35,0.3],[1.5,0.7],[0.25,0.35]],phase:0}),
-      F.LightFloor({x:720,w:180,seq:[[0.8,0.9],[1.3,0.4],[0.3,0.3],[0.9,0.5]],phase:0.7})
+      F.LightFloor({x:260,w:150,onT:1.5,offT:1.3,phase:0}),
+      F.LightFloor({x:480,w:215,seq:[[0.95,0.6],[0.3,0.3],[1.3,0.75],[0.25,0.4]],phase:0}),
+      F.LightFloor({x:695,w:205,seq:[[0.7,0.9],[1.15,0.45],[0.3,0.35],[0.8,0.55]],phase:0.7})
     ]},
   // 5: the lab is a check-up now: every trap of the first night, and a scan that sweeps from
   //    both sides. Hold still while it passes ("大丈夫です" is only true if you don't move).
@@ -282,17 +284,20 @@ const LOOP2={
       F.Shutter({x:766,w:58,top:90,tx:735,delay:0.05,dropSpeed:1350,holdClosed:1.6,riseSpeed:520,gap:70})
     ]},
   // 6: an umbrella by the parapet. Held open, you drift down slowly and the gusts carry you
-  5:{floors:[[0,260,420],[900,1000,430]],checkpoint:null,goal:{x:945,y:430},
+  5:{floors:[[0,260,420],[860,1000,430]],checkpoint:null,goal:{x:945,y:430},
     ents:F=>[
       F.Umbrella({x:200,y:420,boost:70}),
       F.Wind({x0:240,x1:920,v:90,onT:1.8,offT:3.0,phase:1.15}),
+      // the storm aims at where the wind is carrying you: once it locks on, brake or push on
+      F.Lightning({lock:0.35,strike:1.0,predict:true,withDrift:true,width:34,count:2,interval:0.7,
+        when:w=>w.P.glide&&!w.P.ground&&w.P.x>=330}),
       // the crows want the umbrella. The first swoops in low from behind the moment you land:
       // hop it (the umbrella makes the hop float)...
       F.Shot({from:'left',x0:720,y:430-20,w:34,h:18,speed:620,delay:0.2,style:'crow',se:'trap',warnSE:'warn',
-        when:w=>w.P.ground&&w.P.x>=900}),
+        when:w=>w.P.ground&&w.P.x>=860}),
       // ...and the second follows from the front at the height of that floating hop. Stay down.
-      F.Shot({from:'right',y:350,w:34,h:24,speed:700,delay:1.1,style:'crow',se:'trap',warnSE:'warn',
-        when:w=>w.ents[2].st==='fly'&&w.ents[2].x>w.P.x+40})
+      F.Shot({from:'right',y:352,w:34,h:34,speed:700,delay:1.1,style:'crow',se:'trap',warnSE:'warn',
+        when:w=>w.ents[3].st==='fly'&&w.ents[3].x>w.P.x+40})
     ]},
   // 7: rush hour walks toward you and shoves you back toward the tracks
   6:{ents:F=>[
@@ -313,17 +318,20 @@ const LOOP2={
       const es=STAGES[7].ents(F);
       // a third blade between the two, out of step with both
       es.push(F.Pendulum({px:362,py:90,len:290,amp:0.72,period:2.2,phase:1.65,r:20}));
+      // past the ledge, another blade swings over where you land: pace the ledge to time the leap
+      es.push(F.Pendulum({px:1120,py:90,len:290,amp:0.6,period:2.0,phase:0.4,r:20}));
       for(const e of es) if(e.constructor.name==='Pendulum'){ e.superhot=true; }
       return es;
     }},
-  // 9: your own shadow walks your path a little behind you. Don't stop for long.
+  // 9: the room you waited in with the lights off: the dark closes in from both sides.
   8:{ents:F=>{
-      const es=STAGES[8].ents(F).filter(e=>e.constructor.name!=='DarkChase');
-      return [F.Shadow({tx:170,delay:1.8}),...es];
+      const es=STAGES[8].ents(F).filter(e=>e.constructor.name!=='Shadow');
+      return [F.DarkChase({startX:-80,tx:170,speed:120,accel:8,maxSpeed:175,leash:700,boostX:2150,boostSpeed:195}),...es,
+        F.DarkChase({side:'right',startX:2700,speed:60,minX:2540,tx:1330})];
     }},
   // 10: the way home, told from your side: the things of those nights that could happen in any
   //     home come back once more. The dark thins and the voices are from tonight.
-  9:{floors:[[0,700],[960,1180],[1250,1400],[1600,3150]],checkpoint:{x:1330},
+  9:{floors:[[0,700],[960,1180],[1250,1400],[1600,2260],[2340,2470],[2550,2680],[2760,2890],[2970,3150]],checkpoint:{x:1330},
     dusk:{from:0.62,x0:300,x1:2750},
     memories:[
       {x:300, text:'「ナイン……どこにいるの」'},
@@ -345,10 +353,14 @@ const LOOP2={
       F.Dizzy({x0:1040,x1:1400,off:1290}),
       // the lamps (stage 4)
       F.LightFloor({x:1400,w:200,onT:2.2,offT:1.1,phase:0}),
-      // and your shadow (stage 9) follows you the rest of the way home. Don't stop now...
-      F.Shadow({tx:1700,delay:1.8}),
-      // ...not even for the snooze (stage 1 again): walk under its hop without stopping long
-      F.AlarmClock({from:'right',x0:2700,drop:true,speed:150,hopH:110,hopT:0.78,when:w=>w.P.x>=2150}),
+      // and then the dark of stage 9 and your own shadow come after you together. Four stretches of the
+      // floor before the door give way: hop them in rhythm and run for the door without stopping.
+      F.DarkChase({startX:1450,tx:1700,speed:160,accel:30,maxSpeed:212,leash:340}),
+      F.Shadow({tx:1700,delay:1.3}),
+      F.TrapFloor({x:2260,w:80,dir:'lr',delay:0.02,speed:1400}),
+      F.TrapFloor({x:2470,w:80,dir:'lr',delay:0.02,speed:1400}),
+      F.TrapFloor({x:2680,w:80,dir:'lr',delay:0.02,speed:1400}),
+      F.TrapFloor({x:2890,w:80,dir:'lr',delay:0.02,speed:1400}),
       F.Light({x:3050,y:370,r:170,warm:true,doorGlow:true})
     ]}
 };

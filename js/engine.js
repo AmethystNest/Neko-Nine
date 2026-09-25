@@ -14,7 +14,7 @@ const CFG={
   halfW:9, bodyH:46,
   hurtHalfW:6.5, hurtHead:13, hurtTop:40, hurtBottom:3,
   coyote:0.08, jumpBuffer:0.11,
-  glideFall:120,
+  glideFall:95,
   walkFPS:10
 };
 const HW=CFG.halfW, BH=CFG.bodyH;
@@ -217,6 +217,7 @@ class World{
     // --- external drift (wind, conveyors) ---
     let drift=0;
     for(const e of this.ents) if(e.drift) drift+=e.drift(this)||0;
+    this.flags.drift=drift;
 
     // --- move X ---
     const ox=P.x;
@@ -718,7 +719,7 @@ class Lightning extends Ent{
     if(this.st==='idle'){ if(this.triggered(w)){ this.st='aim'; this.tm=0; w.emit('flash',{a:.35}); w.se('warn'); } }
     else if(this.st==='aim'){
       this.tm+=dt;
-      if(this.tm<this.lock){ this.target=P.x+(this.predict?P.vx*(this.strike-this.tm):0); }
+      if(this.tm<this.lock){ this.target=P.x+(this.predict?(P.vx+(this.withDrift?(w.flags.drift||0):0))*(this.strike-this.tm):0); }
       if(this.tm>=this.strike){ this.st='strike'; this.tm=0; w.se('electric'); w.emit('flash',{a:.9}); w.shake(8); w.emit('impact',{x:this.target,y:G,w:30,style:'spark'}); }
     }else if(this.st==='strike'){
       this.tm+=dt;
@@ -947,7 +948,7 @@ class Banners extends Ent{
         // it drops out from under you: no longer something to stand on, just a thing falling
         b.vy=(b.vy||0)+2200*dt; s.y+=b.vy*dt; s.on=false; b.falling=true;
         if(s.y>600){ b.gone=true; } return; }
-      else s.y=b.y-Math.max(0,1-age/0.14)*26;
+      else { s.y=b.y-Math.max(0,1-age/0.14)*26; if(b.vx) s.x=b.x+b.vx*age; }
       s.on=true;
     });
   }

@@ -94,6 +94,7 @@ const cases={
 ],
 9:[
   ['naive walk',            'dead', [walk(X(2000))]],
+  ['stop to look around',   'dead', [walk(X(300)),wait(2.5),walk(X(2470))]],
   ['solution',              'clear',[walk(X(405)),...jumpR(0.6),walk(X(690)),...jumpR(0.6),walk(X(985)),{until:w=>w.ents[2].s.x<1045},{r:1,j:1,p:1,t:0.3},{r:1,until:GR},walk(X(1100)),
                                      {until:w=>w.ents[2].s.x>1160},{r:1,j:1,p:1,until:X(1318)},{j:1,until:GR},{until:GR},wait(0.45),walk(X(1453)),wait(0.35),walk(X(1705)),...jumpR(0.6),walk(X(1860)),...jumpR(0.6),walk(X(2000))]],
 ],
