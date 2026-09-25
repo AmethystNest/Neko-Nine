@@ -1217,8 +1217,17 @@ const R={
     limb(foot[0],foot[1],foot[0]-14,foot[1]+2,10);
     // head rests on the knees, then lifts toward the cat
     const hx=px-18+head*10-(1-head)*8, hy=py-90-head*34;
-    circ(g,sil,hx,hy,19);
-    g.fillStyle=mix('050508','2a2230'); g.beginPath(); g.ellipse(hx+6,hy-6,20,15,0.5,Math.PI*0.9,Math.PI*2.1); g.fill();
+    const HAIR=root.NEKO_HAIR;
+    if(HAIR){
+      // the same wolf cut as on the title: facing Nine (left); at dawn, turning to the window
+      const tv=-Math.cos(Math.PI*(st.turn||0)), dir=Math.sign(tv||1)*Math.max(0.3,Math.abs(tv)), k=0.5;
+      g.save(); g.translate(hx,hy); g.rotate(-0.5*(1-head)+0.12*(st.turn||0)); g.scale(k*dir,k); g.translate(-14,135);
+      g.fillStyle=sil; g.beginPath(); HAIR.path(g,Math.sin(st.t*0.8)*1.2); g.fill();
+      g.restore();
+    }else{
+      circ(g,sil,hx,hy,19);
+      g.fillStyle=mix('050508','2a2230'); g.beginPath(); g.ellipse(hx+6,hy-6,20,15,0.5,Math.PI*0.9,Math.PI*2.1); g.fill();
+    }
     limb(sh[0],sh[1]+6,knee[0]+6,knee[1]+8,12);  // arm around the knees
     g.lineCap='butt';
     // the cat

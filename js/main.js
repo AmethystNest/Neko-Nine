@@ -382,8 +382,8 @@ function endingLines(dawn,d,left){
     ['you','しばらく、休むことにしたよ。'],
     ['you','来週、病院にも行ってみる。'],
     ['cat','うん。ぼくも、ついていく。'],
-    ['you','見て、ナイン。……朝だ。',()=>{ END.sunUp=true; END.lightOn=true; }],
-    ['you','今日は、どこにも行かない。'],
+    ['you','見て、ナイン。……朝だ。',()=>{ END.sunUp=true; END.lightOn=true; END.turnTo=1; }],
+    ['you','今日は、どこにも行かない。',()=>{ END.turnTo=0; }],
     ['cat','うん。']
   ];
 }
@@ -394,7 +394,7 @@ function startEnding(){
   AU.setRain(0.6);
   const dawn=S.loop===2;
   writeSave({cleared:true,clears:clearsOf(loadSave())+1,stage:0,deaths:0});
-  Object.assign(END,{t:0,catX:40,catWalking:true,door:0,light:0,lookUp:0,rainStop:dawn?1:0,fade:1,white:fromDoor?1:0,idx:-1,lineAt:0,phase:'enter',dawn,sun:0,sunUp:false});
+  Object.assign(END,{t:0,catX:40,catWalking:true,door:0,light:0,lookUp:0,rainStop:dawn?1:0,fade:1,white:fromDoor?1:0,idx:-1,lineAt:0,phase:'enter',dawn,sun:0,sunUp:false,turn:0,turnTo:0});
   if(dawn) AU.setRain(0);
   END.lines=endingLines(dawn,S.deaths,Math.max(1,S.lives));
   AU.play('door');
@@ -412,6 +412,8 @@ function endingStep(dt){
   if(e.lightOn){ e.light=Math.min(1,e.light+dt*0.35); e.rainStop=Math.min(1,e.rainStop+dt*0.3); AU.setRain(0.6*(1-e.rainStop)); }
   // second lap: the sky pales through the talk, and the sun comes up at the end
   if(e.dawn) e.sun=e.sunUp?Math.min(1,e.sun+dt*0.18):Math.min(0.35,e.t/60);
+  // at dawn you turn from Nine to the window, and back again for the last words
+  if(e.turn!==e.turnTo) e.turn=e.turn<e.turnTo?Math.min(e.turnTo,e.turn+dt*1.4):Math.max(e.turnTo,e.turn-dt*1.4);
   if(e.phase==='talk' && e.t>=e.lineAt) advanceLine();
   if(e.phase==='outro' && e.t>=e.lineAt){ e.phase='credits'; showCredits(); }
 }
@@ -465,7 +467,8 @@ function toTitle(){
 }
 function beginGame(fromStage,picked,lap){
   const sv=loadSave();
-  S.loop=lap||sv.loop||(clearsOf(sv)>=1?2:1);
+  // a run in progress without a saved lap comes from before laps existed: that was the first night
+  S.loop=lap||sv.loop||(fromStage>0?1:(clearsOf(sv)>=1?2:1));
   S.lives=LIVES;
   // a stage picked from the select menu starts a fresh run from there
   S.deaths=fromStage>0&&!picked?(sv.deaths||0):0;
