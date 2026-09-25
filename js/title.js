@@ -81,9 +81,9 @@ const HAIR_STYLE={
   wolf:{width:44,layers:[
     {n:9,w:10,len:u=>-60-42*u*u,flare:10,flick:10,rough:6,seed:1},
     {n:7,w:9.5,len:u=>-106-6*u*u,flare:7,flick:8,rough:4,seed:2}]},
-  shortwolf:{width:36,bulge:4,layers:[
-    {n:8,w:9.5,len:u=>-80-24*u*u,flare:1,flick:2,rough:4,seed:3},
-    {n:7,w:9,len:u=>-112,flare:1,flick:2,rough:3,seed:4}]},
+  shortwolf:{width:36,bulge:2,fit:true,layers:[
+    {n:8,w:9.5,len:u=>-80-24*u*u,flare:2,flick:5,rough:3,seed:3},
+    {n:7,w:9,len:u=>-110,flare:2,flick:4,rough:2,seed:4}]},
   longwolf:{width:45,layers:[
     {n:10,w:10.5,len:u=>-12-26*u*u,flare:16,flick:12,rough:8,seed:5},
     {n:8,w:9.5,len:u=>-80-18*u*u,flare:10,flick:9,rough:6,seed:6}]},
@@ -357,7 +357,13 @@ const T={
     };
     const locks=this.hairLocks(this.hair,t);
     const mass=c=>this.hairMass(c,this.hair);
-    const hairShape=c=>{ c.save(); tiltAt(c); c.beginPath(); mass(c); for(const L of locks) this.lockPath(c,L); c.fill(); c.restore(); };
+    const S0=HAIR_STYLE[this.hair]||HAIR_STYLE.wolf, DW=S0.width-2;
+    const dome=c=>{ c.beginPath(); c.moveTo(-DW-0.5,-142); c.ellipse(0,-142,DW+0.5,46.5,0,Math.PI,Math.PI*2);
+      if(S0.fit){ c.bezierCurveTo(DW+0.5,-126,DW+1,-116,DW+16,-80); c.lineTo(DW+40,0); c.lineTo(-DW-40,0); c.lineTo(-DW-16,-80); c.bezierCurveTo(-DW-1,-116,-DW-0.5,-126,-DW-0.5,-142); }
+      else { c.lineTo(DW+0.5,-134); c.lineTo(200,-134); c.lineTo(200,166); c.lineTo(-200,166); c.lineTo(-200,-134); c.lineTo(-DW-0.5,-134); }
+      c.closePath(); c.clip(); };
+    const hairShape=c=>{ c.save(); tiltAt(c); c.beginPath(); mass(c); c.fill();
+      c.save(); dome(c); c.beginPath(); for(const L of locks) this.lockPath(c,L); c.fill(); c.restore(); c.restore(); };
     // body, then hair, each as a moonlit silhouette (shading + rim that follow the real outline)
     this.lit(g,x,y,s,'ownerBody',[-100,-110,100,130],body,'rgba(175,155,255,.45)');
     // the sweater's neckline and a knit texture hint across the back
@@ -372,7 +378,7 @@ const T={
     const rim=warm>0.5?'255,205,160':'200,185,255';
     // strand detail: every lock gets a soft lit edge and a darker parting
     g.save(); g.translate(x,y); g.scale(s,s); tiltAt(g);
-    g.save(); g.beginPath(); mass(g); for(const L of locks) this.lockPath(g,L); g.clip();
+    g.save(); dome(g); g.beginPath(); mass(g); for(const L of locks) this.lockPath(g,L); g.clip();
     g.lineCap='round';
     for(const L of locks){
       const P=L.pts, n=P.length;
@@ -407,22 +413,27 @@ const T={
       for(const i of order){
         const u=(i/(n-1))*2-1;                       // -1 left .. 1 right
         const jit=Math.sin(i*12.9898+layer.seed)*0.5; // stable per-lock variation
-        const root=[u*16+jit*2,-176+u*u*6];
-        const over=[u*(S.width+(S.bulge===undefined?8:S.bulge))+jit*2,-150+u*u*6];
-        let tipY=layer.len(u)+jit*layer.rough, tipX=u*(S.width+layer.flare)+Math.sign(u)*layer.flick*Math.abs(u)**1.5;
+        const root=[u*16,-176+u*u*6];
+        // fit: keep each lock's outer edge on the crown's contour so the sides fall
+        // straight from the dome instead of stepping out below it
+        const inset=S.fit?layer.w*1.1:0;
+        const over=[u*(S.width+(S.bulge===undefined?8:S.bulge)-inset)+jit*(S.fit?0.6:2),-150+u*u*6];
+        let tipY=layer.len(u)+jit*layer.rough, tipX=u*(S.width+layer.flare-inset*0.8)+(S.fit?0:Math.sign(u)*layer.flick*Math.abs(u)**1.5);
         if(S.gather){ tipX*=0.25; tipY=Math.min(tipY,-90); }
         tipX+=Math.sin(t*0.9+i)*0.6*Math.abs(u);
         const pts=[], N=10;
         for(let k=0;k<=N;k++){
           const q=k/N, a=(1-q)*(1-q), b=2*(1-q)*q, c=q*q;
-          const px=a*root[0]+b*over[0]+c*tipX, py=a*root[1]+b*over[1]+c*tipY;
-          const dx=2*(1-q)*(over[0]-root[0])+2*q*(tipX-over[0]), dy=2*(1-q)*(over[1]-root[1])+2*q*(tipY-over[1]);
+          // fit styles flick at the very end: the last fifth of each lock curls outward
+          const e=S.fit?Math.max(0,(q-0.78)/0.22):0, curl=S.fit?Math.sign(u)*layer.flick*(0.35+0.65*Math.abs(u)):0;
+          const px=a*root[0]+b*over[0]+c*tipX+curl*e*e, py=a*root[1]+b*over[1]+c*tipY-Math.abs(curl)*0.35*e*e;
+          const dx=2*(1-q)*(over[0]-root[0])+2*q*(tipX-over[0])+curl*2*e/0.22, dy=2*(1-q)*(over[1]-root[1])+2*q*(tipY-over[1])-Math.abs(curl)*0.7*e/0.22;
           const l=Math.hypot(dx,dy)||1, nx=-dy/l, ny=dx/l;
           // full body, then a soft taper over the last third (tips stay rounded, never needle-sharp)
           const wd=layer.w*(q<0.62?0.8+0.35*Math.sin(Math.PI*q/0.62*0.5):Math.max(0.18,1-(q-0.62)/0.38*0.82)*1.15);
           pts.push([px,py,wd,nx,ny]);
         }
-        out.push({pts,light:0.5+0.5*Math.cos(u*1.3+1.1)});
+        out.push({pts,light:0.5+0.5*Math.cos(u*1.3+1.1),cap:!!S.fit});
       }
     }
     return out;
@@ -432,7 +443,7 @@ const T={
   hairMass(c,style){
     const S=HAIR_STYLE[style]||HAIR_STYLE.wolf, len=S.layers[0].len, W=S.width-2;
     c.moveTo(-W,-142);
-    c.bezierCurveTo(-W,-176,-24,-188,0,-188); c.bezierCurveTo(24,-188,W,-176,W,-142);
+    c.ellipse(0,-142,W,46,0,Math.PI,Math.PI*2);
     for(let k=10;k>=-10;k--){ const u=k/10; const y=S.gather?-100+14*(1-u*u)-34*u*u:Math.max(-140,len(u)-(S.layers[0].rough+16)); c.lineTo(u*W*(S.gather?0.8:0.92),y); }
     c.closePath();
   },
@@ -441,6 +452,7 @@ const T={
     // same winding as the hair mass, so overlapping shapes union instead of cutting holes
     c.moveTo(P[0][0]-P[0][3]*P[0][2],P[0][1]-P[0][4]*P[0][2]);
     for(let k=1;k<P.length;k++){ const [px,py,wd,nx,ny]=P[k]; c.lineTo(px-nx*wd,py-ny*wd); }
+    if(L.cap){ const [px,py,wd,nx,ny]=P[P.length-1]; c.quadraticCurveTo(px+ny*wd*1.6,py-nx*wd*1.6,px+nx*wd,py+ny*wd); } // soft rounded tip
     for(let k=P.length-1;k>=0;k--){ const [px,py,wd,nx,ny]=P[k]; c.lineTo(px+nx*wd,py+ny*wd); }
     c.closePath();
   },
