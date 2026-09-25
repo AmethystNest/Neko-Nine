@@ -16,6 +16,8 @@ const CASES=[
   ['old clear, then a new run stopped mid-way',{stage:5,deaths:4,cleared:true},{cont:true,select:true,contLoop:1,contStage:5}],
   ['dawn run in progress',{stage:4,deaths:2,cleared:true,clears:1,loop:2,seen1:10,seen2:5},{cont:true,select:true,dawn:false,contLoop:2,contStage:4}],
   ['two clears',{stage:0,deaths:0,cleared:true,clears:2,loop:2,seen1:10,seen2:10},{cont:false,select:true,archive:true,dawn:true,lapSheet:true}],
+  ['first night cleared twice (no dawn yet)',{stage:0,deaths:0,cleared:true,clears:2,loop:1,dawnDone:false},{cont:false,select:true,archive:true,dawn:false,lapSheet:true}],
+  ['old save: first night twice, no flag',{stage:0,deaths:0,cleared:true,clears:2,loop:1},{cont:false,select:true,dawn:false}],
 ];
 (async()=>{
   const b=await chromium.launch(); let fail=0;
@@ -37,6 +39,20 @@ const CASES=[
       if(wl!==undefined&&s.loop!==wl) bad.push(`loop=${s.loop} (want ${wl})`);
       if(ws!==undefined&&s.stage!==ws) bad.push(`stage=${s.stage} (want ${ws})`);
       if(ex.contDeaths!==undefined&&s.deaths!==ex.contDeaths) bad.push(`deaths=${s.deaths} (want ${ex.contDeaths})`); }
+    if(errs.length) bad.push('errors: '+errs.join('; '));
+    console.log((bad.length?'FAIL ':'ok   ')+name+(bad.length?' -> '+bad.join(', '):'')); if(bad.length) fail++;
+    await p.close();
+  }
+  // clearing a lap: only the second lap reaches the dawn
+  for(const [name,before,loop,want] of [
+    ['clear lap 1 again after one clear',{cleared:true,clears:1,loop:1},1,false],
+    ['clear lap 2',{cleared:true,clears:1,loop:2},2,true],
+    ['clear lap 1 after the dawn keeps it',{cleared:true,clears:2,loop:1,dawnDone:true},1,true]]){
+    const p=await b.newPage(); const errs=[]; p.on('pageerror',e=>errs.push(e.message));
+    await p.addInitScript(([k,v])=>{ if(sessionStorage.getItem('seeded')) return; sessionStorage.setItem('seeded','1'); localStorage.clear(); localStorage.setItem(k,v); },[KEY,JSON.stringify(before)]);
+    await p.goto('file://'+path.resolve(__dirname,'../index.html')+'?ending=3&loop='+loop); await p.waitForTimeout(400);
+    const sv=await p.evaluate(k=>JSON.parse(localStorage.getItem(k)),KEY);
+    const bad=[]; if(!!sv.dawnDone!==want) bad.push(`dawnDone=${sv.dawnDone} (want ${want})`); if(sv.clears!==(before.clears||0)+1) bad.push(`clears=${sv.clears}`);
     if(errs.length) bad.push('errors: '+errs.join('; '));
     console.log((bad.length?'FAIL ':'ok   ')+name+(bad.length?' -> '+bad.join(', '):'')); if(bad.length) fail++;
     await p.close();

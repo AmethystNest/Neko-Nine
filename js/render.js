@@ -1036,9 +1036,9 @@ const R={
       const cur=M.a[i]=(M.a[i]||0)+(target-(M.a[i]||0))*Math.min(1,dt*(P.dead?8:2.5));
       if(cur<0.02) return;
       const y=m.y||250, rise=(1-Math.min(1,cur*1.4))*8;
-      glow(g,m.x,y,150,'rgba(255,214,160,A)',0.10*cur);
-      g.shadowColor='rgba(255,200,140,.8)'; g.shadowBlur=12;
-      g.fillStyle=`rgba(255,238,214,${0.9*cur})`;
+      glow(g,m.x,y,150,'rgba(150,165,255,A)',0.10*cur);
+      g.shadowColor='rgba(140,150,255,.8)'; g.shadowBlur=12;
+      g.fillStyle=`rgba(208,216,255,${0.9*cur})`;
       g.fillText(m.text,m.x,y+rise);
     });
     g.restore();

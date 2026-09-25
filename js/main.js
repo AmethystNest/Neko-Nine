@@ -110,6 +110,8 @@ const KANA_NUM=['ひとつ','ふたつ','みっつ','よっつ','いつつ','む
 // ---------------------------------------------------------------------------
 // Laps: the first clear unlocks the second lap (the dawn), with remixed traps.
 function clearsOf(sv){ return sv.clears||(sv.cleared?1:0); }
+// the dawn is only reached by clearing the second lap (older saves: judged by the lap last cleared)
+function dawnOf(sv){ return sv.dawnDone!==undefined?!!sv.dawnDone:(clearsOf(sv)>=2&&sv.loop===2); }
 function stageDef(i){ const d=STAGES[i]; return (S.loop===2&&d.loop2)?Object.assign({},d,d.loop2):d; }
 function loadSave(){ try{ return JSON.parse(localStorage.getItem(SAVE_KEY)||'null')||{}; }catch(_){ return {}; } }
 function writeSave(o){ try{ localStorage.setItem(SAVE_KEY,JSON.stringify(Object.assign(loadSave(),o))); }catch(_){} }
@@ -383,8 +385,10 @@ function endingLines(dawn,d,left){
     ['you','来週、病院にも行ってみる。'],
     ['cat','うん。ぼくも、ついていく。'],
     ['you','見て、ナイン。……朝だ。',()=>{ END.sunUp=true; END.lightOn=true; END.turnTo=1; }],
-    ['you','今日は、どこにも行かない。',()=>{ END.turnTo=0; }],
-    ['cat','うん。']
+    ['you','……ずっと、どこか遠くにいた気がする。'],
+    // Nine said 「ただいま」 first; now it's your turn to come home
+    ['you','ただいま、ナイン。',()=>{ END.turnTo=0; }],
+    ['cat','おかえり。']
   ];
 }
 function startEnding(){
@@ -393,7 +397,8 @@ function startEnding(){
   setHud(false);
   AU.setRain(0.6);
   const dawn=S.loop===2;
-  writeSave({cleared:true,clears:clearsOf(loadSave())+1,stage:0,deaths:0});
+  const prev=loadSave();
+  writeSave({cleared:true,clears:clearsOf(prev)+1,dawnDone:dawnOf(prev)||dawn,stage:0,deaths:0});
   Object.assign(END,{t:0,catX:40,catWalking:true,door:0,light:0,lookUp:0,rainStop:dawn?1:0,fade:1,white:fromDoor?1:0,idx:-1,lineAt:0,phase:'enter',dawn,sun:0,sunUp:false,turn:0,turnTo:0});
   if(dawn) AU.setRain(0);
   END.lines=endingLines(dawn,S.deaths,Math.max(1,S.lives));
@@ -457,13 +462,13 @@ function toTitle(){
   $('btnArchive').hidden=!((sv.seen1||0)>0||clearsOf(sv)>0);
   $('lapTabs').hidden=clearsOf(sv)<1;
   window.NEKO_TITLE.cleared=!!sv.cleared;
-  window.NEKO_TITLE.dawn=clearsOf(sv)>=2;
+  window.NEKO_TITLE.dawn=dawnOf(sv);
   window.NEKO_TITLE.clears=clearsOf(sv);
-  t.querySelector('.titleClear').textContent=clearsOf(sv)>=2?'♡ ALL CLEAR ×'+clearsOf(sv):'♡ ALL CLEAR';
+  t.querySelector('.titleClear').textContent=dawnOf(sv)?'♡ ALL CLEAR ×'+clearsOf(sv):'♡ ALL CLEAR';
   t.style.display='';
   t.classList.remove('play'); void t.offsetWidth;
   requestAnimationFrame(()=>{ t.classList.remove('hide'); t.classList.add('play'); });
-  if(AU.ready){ AU.music(clearsOf(sv)>=2?'ending':'title'); AU.setRain(sv.cleared?0:0.45); }
+  if(AU.ready){ AU.music(dawnOf(sv)?'ending':'title'); AU.setRain(sv.cleared?0:0.45); }
 }
 function beginGame(fromStage,picked,lap){
   const sv=loadSave();
@@ -516,8 +521,8 @@ $('btnNew').addEventListener('click',newGame);
 // Archive: every story line read so far, to read again at your own pace
 // ---------------------------------------------------------------------------
 function archiveEntries(){
-  const sv=loadSave(), c=clearsOf(sv);
-  const seen1=Math.max(sv.seen1||0,c>=1?10:0), seen2=Math.max(sv.seen2||0,c>=2?10:0);
+  const sv=loadSave(), c=clearsOf(sv), dawn=dawnOf(sv);
+  const seen1=Math.max(sv.seen1||0,c>=1?10:0), seen2=Math.max(sv.seen2||0,dawn?10:0);
   const L2=STAGES.map(d=>d.loop2||{});
   const mem=m=>m.map(x=>['you',x.text]);
   const out=[{grp:'はじまりの夜'}];
@@ -528,9 +533,9 @@ function archiveEntries(){
     out.push({grp:'夜明け'});
     out.push({no:'PROLOGUE',name:'同じ夜を、もう一度',open:true,lines:PROLOGUE2.map(t=>['you',t])});
     STAGES.forEach((d,i)=>out.push({no:'STAGE '+(i+1),name:d.name,open:seen2>=i+1,lines:(d.storyYou||[]).map(t=>['you',t]).concat(L2[i].memories?[['note','— 廊下の壁に浮かんだ声 —']].concat(mem(L2[i].memories)):[])}));
-    out.push({no:'ENDING',name:'朝',open:c>=2,lines:endingLines(true,null,3)});
+    out.push({no:'ENDING',name:'朝',open:dawn,lines:endingLines(true,null,3)});
   }
-  if(c>=2) out.push({grp:'窓辺'},{no:'FLOWER',name:'ブルースター',open:true,lines:[
+  if(dawn) out.push({grp:'窓辺'},{no:'FLOWER',name:'ブルースター',open:true,lines:[
     ['note','ブルースター。星のかたちをした、淡い青の花。'],['note','花言葉は「信じあう心」。'],
     ['you','はじめて病院に行った帰りに、一鉢だけ買ってきた。'],['you','ナインのマフラーと、同じ色だったから。'],
     ['note','夜を歩き終えるたびに、花はひとつずつ増えていく。']]});
