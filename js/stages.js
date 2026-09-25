@@ -37,8 +37,9 @@ const STAGES=[
   ents:F=>[
     F.Deco({type:'window',x:304,y:150}),
     F.FallBlock({x:292,w:24,h:24,y0:130,tx:205,delay:0,gravity:3000,style:'pot',landSE:'floorbreak',shadow:true}),
-    F.ChaseWall({startX:780,w:54,h:170,when:w=>w.P.x>=640&&w.P.x<760,riseSpeed:900,speed:560,minX:500}),
-    F.TrapFloor({x:680,w:140,dir:'lr',delay:0.08,speed:900,armed:w=>!!w.flags.wallDone})
+    // a delivery truck backs down the alley; the steel plate over the roadworks is the second joke
+    F.ChaseWall({startX:780,w:54,h:170,when:w=>w.P.x>=640&&w.P.x<760,riseSpeed:4000,speed:560,minX:500,style:'truck'}),
+    F.TrapFloor({x:680,w:140,dir:'lr',delay:0.08,speed:900,style:'plate',armed:w=>!!w.flags.wallDone})
   ]
 },
 // ---------------------------------------------------------------- 3
@@ -55,10 +56,10 @@ const STAGES=[
       when:w=>w.P.x>=408 && A.st==='done'});
     return [A,B,
       // Fired at whoever stands still waiting for the second press.
-      F.Shot({from:'left',y:G-22,w:54,h:8,speed:720,delay:0.1,style:'arrow',when:w=>B.st==='hold'&&w.P.x<540}),
+      F.Shot({from:'left',y:G-22,w:54,h:8,speed:720,delay:0.1,style:'bolt',when:w=>B.st==='hold'&&w.P.x<540}),
       F.DropFloor({x:600,w:140,delay:0.14,speed:520}),
-      // The exit door fires back.
-      F.Shot({from:'right',y:G-22,w:54,h:8,speed:900,delay:0.0,style:'arrow',tx:800})
+      // A rivet gun by the exit fires back.
+      F.Shot({from:'right',y:G-22,w:54,h:8,speed:900,delay:0.0,style:'bolt',tx:800})
     ];
   }
 },
@@ -71,10 +72,10 @@ const STAGES=[
   checkpoint:{x:555},
   goal:{x:905},
   ents:F=>[
-    F.Spikes({x:292,w:96,maxH:42,tx:280,delay:0.12,riseSpeed:300,hold:0.48,fallSpeed:220}),
+    F.Spikes({x:292,w:96,maxH:42,tx:280,delay:0.12,riseSpeed:300,hold:0.48,fallSpeed:220,style:'jet'}),
     F.DropFloor({x:432,w:96,delay:0.5,crack:true,gravity:1500,se:'floorbreak',style:'crumble'}),
     F.FallBlock({x:649,w:82,h:86,y0:90-86,tx:565,delay:0.16,speed:760,solid:true,style:'stone',shadow:true}),
-    F.Spikes({x:779,w:92,maxH:128,tx:735,delay:0.12,riseSpeed:760,permanent:true})
+    F.Spikes({x:779,w:92,maxH:128,tx:735,delay:0.12,riseSpeed:760,permanent:true,style:'jet'})
   ]
 },
 // ---------------------------------------------------------------- 5
@@ -129,10 +130,10 @@ const STAGES=[
     // One train passes and the gates lift... but the moment you step onto the tracks,
     // the bell starts again and a second train comes.
     F.Crossing({x0:600,x1:820,tx:530,trains:[{at:1.1,dur:0.75},{enter:2.0,delay:0.6,dur:0.75}],bells:[[0,2.0]]}),
-    F.Bonk({x:990,y:G-180,w:80,h:36}),
+    F.Bonk({x:990,y:G-180,w:80,h:36,style:'ad'}),
     F.Conveyor({x:1120,w:300,v:140,rx:1290,rv:-430}),
     // The obvious escape jump from the reversing walkway hits a hidden block.
-    F.Bonk({x:1288,y:G-176,w:110,h:34})
+    F.Bonk({x:1288,y:G-176,w:110,h:34,style:'ad'})
   ]
 },
 // ---------------------------------------------------------------- 8
@@ -179,9 +180,9 @@ const STAGES=[
   name:'ただいま', theme:'home', width:3150,
   story:['見覚えのある廊下。','ドアの向こうに、君の気配がする。'],
   storyYou:['ドアの向こうで、小さな足音がした。','……ナイン？'],
-  // The whole way home, every trap from the journey comes back once more.
-  floors:[[0,470],[1030,1480],[1580,3150]],
-  checkpoint:{x:1330},
+  // The way home: the journey comes back once more, but as the things of an old apartment hallway.
+  floors:[[0,470],[1030,1480],[1580,1900],[2000,3150]],
+  checkpoint:{x:1430},
   goal:{x:3050,locked:false},
   final:true,
   // the darkness of stage 9 follows you in, and lifts on the way to the door
@@ -196,30 +197,22 @@ const STAGES=[
     {x:2800,text:'「長生きしてね」'}
   ],
   ents:F=>[
-    // 1: the trapdoor spot is honest this time. The landing spot is not.
+    // 1: the old floorboards: the spot you remember is honest now. The landing spot is not.
     F.TrapFloor({x:470,w:140,dir:'lr',delay:0.03,speed:900}),
-    // 1: the pit from the very first hallway remembers you, too.
     F.ShiftPit({x0:610,x1:1030,px:700,pw:120,minShift:40,maxShift:150,look:150,speed:800}),
-    // 5 + 3: laser fence, then three presses in a row.
-    F.Laser({x:965,y0:90,y1:G,always:true,onT:0.8,offT:0.85,phase:0}),
-    F.Crusher({x:1030,w:80,h:150,ceil:39,period:2.1,phase:0.0,fallSpeed:1000,hold:0.25,riseSpeed:560}),
-    F.Crusher({x:1110,w:80,h:150,ceil:39,period:2.1,phase:0.25,fallSpeed:1000,hold:0.25,riseSpeed:560}),
-    F.Crusher({x:1190,w:80,h:150,ceil:39,period:2.1,phase:0.5,fallSpeed:1000,hold:0.25,riseSpeed:560}),
-    // 6: a headwind over the gap. Jump into it and you fall short.
-    F.Wind({x0:1370,x1:1575,v:-240,onT:1.3,offT:1.5,phase:0}),
-    // 5: the long jump lands right on a rising arc. Hop short and let it pass.
-    F.Arc({x:1700,w:28,maxH:G-60,tx:1545,delay:0.2,riseSpeed:600,hold:0.35}),
-    // 6: lightning that aims where you are going, twice.
-    F.Lightning({lock:0.5,strike:1.0,predict:true,width:34,count:2,interval:0.75,when:w=>w.P.x>=1820&&w.P.x<2080}),
-    // 8: the clock tower's blade.
-    F.Pendulum({px:2240,py:90,len:290,amp:0.72,period:2.2,phase:0,r:20}),
-    // 4: floor spikes that wait for you to come close.
-    F.Spikes({x:2400,w:96,maxH:42,tx:2385,delay:0.12,riseSpeed:300,hold:0.48,fallSpeed:220}),
-    // 2: the wall from the rainy alley.
-    F.ChaseWall({startX:2870,w:54,h:170,when:w=>w.P.x>=2695,riseSpeed:900,speed:520,minX:2625,flag:'wall10'}),
-    // The wall stops... and the door answers with an arrow along the floor.
-    F.Shot({from:'right',y:G-22,w:54,h:8,speed:820,delay:0.3,style:'arrow',when:w=>!!w.flags.wall10}),
-    F.Deco({type:'fakecrack',x:2910,w:70}),
+    // 8: pendant lamps swinging in the draught. They clear a walking cat; jump like you did in the
+    //    clock tower and you meet them
+    F.Pendulum({px:1190,py:90,len:262,amp:0.4,period:1.8,phase:0,r:18,style:'lamp'}),
+    F.Pendulum({px:1300,py:90,len:262,amp:0.4,period:1.8,phase:0.9,r:18,style:'lamp'}),
+    // 6: the corridor window is open: a headwind over the gap. Jump into it and you fall short.
+    F.Wind({x0:1440,x1:1575,v:-240,onT:1.3,offT:1.5,phase:0}),
+    // 2: a pot on the windowsill above your landing spot. Hop short and let it fall.
+    F.Deco({type:'window',x:1702,y:150}),
+    F.FallBlock({x:1690,w:24,h:24,y0:130,tx:1590,delay:0,gravity:3000,style:'pot',landSE:'floorbreak',shadow:true}),
+    // 4: rotten boards before the last stretch
+    F.DropFloor({x:1900,w:100,delay:0.45,crack:true,gravity:1500,se:'floorbreak',style:'crumble'}),
+    // 9: and the dark you walked through follows you in. Don't stop now.
+    F.DarkChase({startX:1850,tx:2150,speed:140,accel:10,maxSpeed:205,leash:520}),
     F.Light({x:3050,y:370,r:170,warm:true,doorGlow:true})
   ]
 }
@@ -260,7 +253,7 @@ const LOOP2={
       F.Crusher({x:320,w:90,h:150,ceil:39,period:1.9,phase:0,fallSpeed:1000,hold:0.3,riseSpeed:560}),
       F.Crusher({x:445,w:90,h:150,ceil:39,period:1.9,phase:0.55,fallSpeed:1000,hold:0.3,riseSpeed:560}),
       F.DropFloor({x:600,w:140,delay:0.14,speed:520}),
-      F.Shot({from:'right',y:G-22,w:54,h:8,speed:900,delay:0.0,style:'arrow',tx:800})
+      F.Shot({from:'right',y:G-22,w:54,h:8,speed:900,delay:0.0,style:'bolt',tx:800})
     ]},
   // 4: the lamps flicker, and the walkway over the water is only there while they're lit
   // the middle stretch is solid stone: a place to catch your breath, and the checkpoint
@@ -291,7 +284,7 @@ const LOOP2={
       // you're pinned against the vending machine.
       F.Crowd({tx:380,spawnX:582,endX:352,speed:95,count:4,heights:[76,84,70,82,74],gaps:[1.7,2.1,1.6,1.9]}),
       F.Conveyor({x:1120,w:300,v:140,rx:1290,rv:-430}),
-      F.Bonk({x:1288,y:G-176,w:110,h:34})
+      F.Bonk({x:1288,y:G-176,w:110,h:34,style:'ad'})
     ]},
   // 8: the clock tower's time runs only while you walk. Waiting won't help; pace back and forth where it's safe.
   7:{ents:F=>{
@@ -304,8 +297,8 @@ const LOOP2={
       const es=STAGES[8].ents(F).filter(e=>e.constructor.name!=='DarkChase');
       return [F.Shadow({tx:170,delay:1.8}),...es];
     }},
-  // 10: the way home, told from your side: everything that weighed on those nights comes
-  //     back once more, lighter now. The dark thins and the voices are from tonight.
+  // 10: the way home, told from your side: the things of those nights that could happen in any
+  //     home come back once more. The dark thins and the voices are from tonight.
   9:{floors:[[0,700],[960,1180],[1250,1400],[1600,3150]],checkpoint:{x:1330},
     dusk:{from:0.62,x0:300,x1:2750},
     memories:[
@@ -328,12 +321,10 @@ const LOOP2={
       F.Dizzy({x0:1040,x1:1400,off:1290}),
       // the lamps (stage 4)
       F.LightFloor({x:1400,w:200,onT:2.2,offT:1.1,phase:0}),
-      // the check-up (stage 5)
-      F.Scanner({x0:1600,x1:2000,bw:26,warn:0.7,sweep:0.8,rest:1.4,tx:1620}),
-      // the clock that moves with you (stage 8)
-      F.Pendulum({px:2300,py:90,len:290,amp:0.72,period:2.2,phase:0,r:20,superhot:true}),
-      // and your shadow (stage 9), all the way to the door. Don't stop now.
-      F.Shadow({tx:2480,delay:1.8}),
+      // and your shadow (stage 9) follows you the rest of the way home. Don't stop now...
+      F.Shadow({tx:1700,delay:1.8}),
+      // ...not even for the snooze (stage 1 again): walk under its hop without stopping long
+      F.AlarmClock({from:'right',x0:2700,drop:true,speed:150,hopH:110,hopT:0.78,when:w=>w.P.x>=2150}),
       F.Light({x:3050,y:370,r:170,warm:true,doorGlow:true})
     ]}
 };

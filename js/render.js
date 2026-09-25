@@ -336,6 +336,15 @@ P.TrapFloor.prototype.draw=function(g,w,T){
     return;
   }
   const s=this.s; if(s.on===false) return;
+  if(this.style==='plate'){
+    // a steel plate laid over roadworks: it tips into the hole
+    const k=this.st==='idle'||this.st==='wait'?0:1;
+    rect(g,'#1a1a1f',s.x,s.y+14,s.w,WH);
+    rect(g,'#6a6e76',s.x,s.y,s.w,10); rect(g,'#8a8f98',s.x,s.y,s.w,3);
+    g.fillStyle='rgba(0,0,0,.25)'; for(let x=s.x+6;x<s.x+s.w-4;x+=10) for(let y=s.y+3;y<s.y+9;y+=4) g.fillRect(x+((y/4|0)%2)*5,y,4,1.5);
+    if(!k){ rect(g,'#e8c23a',s.x+4,s.y-6,10,6); rect(g,'#e8c23a',s.x+s.w-14,s.y-6,10,6); }
+    return;
+  }
   if(this.st==='idle'||this.st==='wait') T.floor(g,s.x-1,s.y,s.w+2,WH+60-s.y);
   else T.floor(g,s.x,s.y,s.w,WH+60-s.y);
   if(this.st==='opening'){ rect(g,'rgba(0,0,0,.35)',this.dir==='lr'?s.x:s.x+s.w-3,s.y,3,40); }
@@ -421,6 +430,17 @@ P.FallBlock.prototype.drawBody=function(g,x,y,W_,h){
 };
 P.Spikes.prototype.draw=function(g,w,T){
   if(this.h<=0.5) return;
+  if(this.style==='jet'){
+    // dirty water bursting up from the drain
+    const x=this.x, top=this.y-this.h, t=w.t;
+    rect(g,'#2a3036',x-4,this.y-4,this.w+8,6);
+    const gr=g.createLinearGradient(0,top,0,this.y); gr.addColorStop(0,'rgba(220,240,245,.95)'); gr.addColorStop(1,'rgba(90,130,140,.85)');
+    g.fillStyle=gr; g.beginPath(); g.moveTo(x+4,this.y);
+    for(let i=0;i<=8;i++){ const xx=x+4+(this.w-8)*i/8; g.lineTo(xx,top+Math.sin(t*18+i*1.7)*5+(i%2)*6); }
+    g.lineTo(x+this.w-4,this.y); g.fill();
+    for(let i=0;i<5;i++) circ(g,'rgba(230,245,250,.8)',x+((i*37+t*90)%this.w),top-4-((t*60+i*13)%18),2.2);
+    return;
+  }
   if(this.dirn==='up'){ g.save(); g.beginPath(); g.rect(this.x-2,0,this.w+4,this.y); g.clip(); spikesUp(g,this.x,this.y,this.w,this.h,'#c8ccd4','#8a8f99'); g.restore(); }
   else { g.save(); g.beginPath(); g.rect(this.x-2,this.y,this.w+4,WH); g.clip(); spikesDown(g,this.x,this.y,this.w,this.h,'#c8ccd4','#8a8f99'); g.restore(); }
 };
@@ -431,6 +451,14 @@ P.SpikeRow.prototype.draw=function(g,w,T){
 P.Shot.prototype.draw=function(g,w,T){
   if(this.st!=='fly') return;
   const y=this.cy(), x=this.x, dir=this.from==='left'?1:-1;
+  if(this.style==='bolt'){
+    const tail=x-dir*this.w/2, head=x+dir*this.w/2;
+    line(g,'#9aa0a8',5,[tail,y,head,y]);
+    g.fillStyle='#c8ccd4'; g.fillRect(dir>0?head:head-10,y-7,10,14);
+    g.strokeStyle='rgba(0,0,0,.3)'; g.lineWidth=1; for(let i=0;i<5;i++){ const xx=tail+dir*(6+i*7); g.beginPath(); g.moveTo(xx,y-3); g.lineTo(xx+dir*3,y+3); g.stroke(); }
+    for(let i=0;i<3;i++) circ(g,'rgba(255,200,120,.7)',tail-dir*(6+i*8),y+(i-1)*3,1.6);
+    return;
+  }
   if(this.style==='arrow'){
     const tail=x-dir*this.w/2, head=x+dir*this.w/2;
     line(g,'#d8c9a0',3,[tail,y,head,y]);
@@ -499,6 +527,19 @@ P.Shutter.prototype.draw=function(g,w,T){
 };
 P.ChaseWall.prototype.draw=function(g,w,T){
   if(this.rise<=0) return;
+  if(this.style==='truck'){
+    // a delivery truck backing down the alley; its tail is the part that shoves
+    const x=this.x, top=G-this.h, L=260;
+    rect(g,'#d8dbe0',x,top,L,this.h-26); rect(g,'#b9bec6',x,top,L,6);
+    g.strokeStyle='rgba(0,0,0,.18)'; g.lineWidth=2; for(let i=1;i<4;i++){ g.beginPath(); g.moveTo(x+i*L/4,top+8); g.lineTo(x+i*L/4,G-30); g.stroke(); }
+    rect(g,'#2d3036',x,G-28,L,10);
+    for(const wx of [x+40,x+L-50]){ circ(g,'#1a1b1f',wx,G-12,13); circ(g,'#8a8f99',wx,G-12,5); }
+    const blink=(w.t*4|0)%2===0;
+    rect(g,blink?'#ff5a4a':'#7a2a24',x-3,G-60,6,14); rect(g,'#fff2c0',x-3,G-44,6,8);
+    if(blink&&this.st==='move'){ g.fillStyle='rgba(255,200,120,.9)'; g.font='bold 12px system-ui,sans-serif'; g.textAlign='right'; g.fillText('バックします',x-8,top+30); g.textAlign='left'; }
+    glow(g,x,G-54,40,'rgba(255,80,60,A)',blink?0.35:0.1);
+    return;
+  }
   const top=G-this.rise;
   g.save(); g.beginPath(); g.rect(this.x-2,0,this.w+4,G); g.clip();
   rect(g,'#6a4a3a',this.x,top,this.w,this.h);
@@ -550,6 +591,14 @@ P.Conveyor.prototype.draw=function(g,w,T){
 P.Bonk.prototype.draw=function(g,w,T){
   if(this.s.hidden) return;
   const s=this.s;
+  if(this.style==='ad'){
+    // a hanging advertisement you didn't see until your head found it
+    line(g,'#555',1.5,[s.x+8,0,s.x+8,s.y]); line(g,'#555',1.5,[s.x+s.w-8,0,s.x+s.w-8,s.y]);
+    rect(g,'#f2efe6',s.x,s.y,s.w,s.h); rect(g,'#3a8ad8',s.x,s.y,s.w,7);
+    g.save(); g.fillStyle='#333'; g.font='bold 11px system-ui,sans-serif'; g.textAlign='center'; g.textBaseline='middle';
+    g.fillText(s.w>90?'がんばる あなたに。':'今夜も終電で。',s.x+s.w/2,s.y+s.h/2+3); g.restore();
+    return;
+  }
   rect(g,'#9a5a3a',s.x,s.y,s.w,s.h); g.strokeStyle='rgba(0,0,0,.35)'; g.lineWidth=2; g.strokeRect(s.x+1,s.y+1,s.w-2,s.h-2);
   line(g,'rgba(0,0,0,.3)',2,[s.x,s.y+s.h/2,s.x+s.w,s.y+s.h/2]); g.fillStyle='#ffd'; g.font='bold 16px sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText('?',s.x+s.w/2,s.y+s.h/2);
 };
@@ -562,6 +611,16 @@ P.Spring.prototype.draw=function(g,w,T){
 };
 P.Pendulum.prototype.draw=function(g,w,T){
   const bx=this.bx(), by=this.by();
+  if(this.style==='lamp'){
+    line(g,'#2a2a2a',2,[this.px,this.py,bx,by]);
+    rect(g,'#3a3a40',this.px-10,this.py-4,20,5);
+    g.save(); g.translate(bx,by); g.rotate(-this.ang);
+    g.fillStyle='#c9a36a'; g.beginPath(); g.moveTo(-6,-this.r); g.lineTo(6,-this.r); g.lineTo(this.r+2,this.r*0.6); g.lineTo(-this.r-2,this.r*0.6); g.fill();
+    circ(g,'#fff1c0',0,this.r*0.6,5);
+    g.restore();
+    glow(g,bx,by+this.r*0.6,70,'rgba(255,220,150,A)',0.35);
+    return;
+  }
   line(g,'#8a6a3a',4,[this.px,this.py,bx,by]);
   circ(g,'#5a4020',this.px,this.py,7);
   g.save(); g.translate(bx,by); g.rotate(-this.ang);

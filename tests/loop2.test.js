@@ -10,12 +10,6 @@ const S10_1=[walk(X(250)),wait(1.0),walk(w=>w.ents[0].st!=='run'||w.ents[0].x<w.
 const S10_2=[{r:1,j:1,p:1,t:0.2},{r:1,until:X(725)},{until:GR},walk(X(790)),{r:1,j:1,p:1,t:0.6},{r:1,until:X(860)},{until:GR},walk(X(1000)),{until:GR}];
 const S10_3=[walk(X(1045)),{l:1,until:X(1168)},{l:1,j:1,p:1,t:0.25},{l:1,until:GR},{until:GR},wait(0.1),walk(X(1385))];
 const S10_4=[{until:w=>w.ents[3].lit&&w.ents[3].tm%3.3<0.7},walk(X(1640))];
-const S10_5=[{fn:(w,inp)=>{ const sc=w.ents[4], P=w.P; inp.right=!(sc.bx!==null&&sc.bx>P.x-110&&sc.bx<P.x+40); },until:X(2170)}];
-// time only moves while you walk: pace in the safe spot until the blade is out on the far side
-const S10_PACE=[{fn:(w,inp)=>{ const P=w.P; if(P.x>=2168) w._pd=-1; if(P.x<=2072) w._pd=1; w._pd=w._pd||-1; inp.left=w._pd<0; inp.right=w._pd>0; },
-  until:w=>w.P.x>=2165&&w._pd>0&&w.ents[5].ang>0.5}];
-const S10_6=[{fn:(w,inp)=>{ inp.right=true; if(w._jt>0){ w._jt-=1/120; inp.jump=w._jt>0; return; } if(!w.P.ground) return;
-  const e=w.ents[5], dx=e.bx()-w.P.x; if(e.by()>320&&dx>-10&&dx<130){ inp.press=true; inp.jump=true; w._jt=0.6; } },until:X(2530)},{r:1,until:GR}];
 // lap 2 helpers
 const hops=n=>{ const s=[]; for(let i=0;i<n;i++) s.push({l:1,until:XL(30)},{r:1,until:X(120)}); return s; };
 // freeze while the scan beam is near; hop the lift only while the beam is far ahead of it
@@ -83,10 +77,10 @@ const cases={
   ['keep moving',           'clear',S9_SOL],
 ],
 10:[
-  ['the way home',          'clear',[...S10_1,...S10_2,...S10_3,...S10_4,...S10_5,...S10_PACE,...S10_6,walk(X(4000))]],
-  ['from the checkpoint',   'clear',[walk(X(1385)),...S10_4,...S10_5,...S10_PACE,...S10_6,walk(X(4000))],CP10],
-  ['walk through the scan', 'dead', [walk(X(1385)),...S10_4,walk(X(2200))],CP10],
-  ['stop before the door',  'dead', [walk(X(1385)),...S10_4,...S10_5,...S10_PACE,...S10_6,walk(X(2900)),wait(2.5)],CP10],
+  ['the way home',          'clear',[...S10_1,...S10_2,...S10_3,...S10_4,walk(X(4000))]],
+  ['from the checkpoint',   'clear',[walk(X(1385)),...S10_4,walk(X(4000))],CP10],
+  ['jump over the snooze',  'dead', [walk(X(1385)),...S10_4,walk(w=>w.ents[5].st==='run'&&w.ents[5].x-w.P.x<110),{r:1,j:1,p:1,t:0.5},{r:1,until:GR},walk(X(4000))],CP10],
+  ['stop before the door',  'dead', [walk(X(1385)),...S10_4,walk(X(2900)),wait(2.5)],CP10],
 ],
 };
 let fail=0;
