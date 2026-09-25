@@ -601,9 +601,15 @@ class Laser extends Ent{
     else if(this.st==='cycle'){
       this.tm+=dt;
       const was=this.on;
-      const ph=this.tm%(this.onT+this.offT);
-      this.on=ph<this.onT;
-      this.charging=!this.on && ph>this.onT+this.offT-0.25;
+      let ph, on=this.onT, off=this.offT;
+      if(this.seq){
+        // a rhythm that changes: [[on,off],...], the last pair repeats
+        this.ci=this.ci||0; this.ct=(this.ct||0)+dt;
+        for(;;){ const c=this.seq[Math.min(this.ci,this.seq.length-1)]; if(this.ct<c[0]+c[1]) { on=c[0]; off=c[1]; break; } this.ct-=c[0]+c[1]; this.ci++; }
+        ph=this.ct;
+      } else ph=this.tm%(on+off);
+      this.on=ph<on;
+      this.charging=!this.on && ph>on+off-0.25;
       if(this.on&&!was && this.near(w)) w.se('laser');
     }
   }
@@ -810,7 +816,7 @@ class Crossing extends Ent{
       const bells=(this.bells||[[0,this.gateUp]]).concat(this.bellsDyn);
       this.bellOn=bells.some(b=>this.tm>=b[0]&&this.tm<b[1]);
       if(Math.floor(this.tm*2.6)!==this.ring && this.bellOn && Math.abs(w.P.x-(this.x0+this.x1)/2)<500){ this.ring=Math.floor(this.tm*2.6); w.se('warn'); }
-      const end=Math.max(...bells.map(b=>b[1]));
+      const end=Math.max(...bells.map(b=>b[1]),...this.trains.filter(t=>t.at!==undefined).map(t=>t.at+t.dur));
       if(!waiting && this.tm>=end && !this.active) this.st='done';
     }
   }
@@ -822,9 +828,13 @@ class Crossing extends Ent{
 
 // Darkness chasing from the left.
 class DarkChase extends Ent{
-  init(){ this.kind='dark'; this.x=this.startX; this.v=this.speed; this.alwaysUpdate=false; }
+  init(){ this.kind='dark'; this.x=this.startX; this.v=this.speed; this.alwaysUpdate=false; this.right=this.side==='right'; }
   update(w,dt){
     if(this.st==='idle'){ if(this.triggered(w)){ this.st='chase'; w.se('wallmove'); } }
+    else if(this.st==='chase' && this.right){
+      // darkness closing in from the far side; it stops at minX
+      this.x=Math.max(this.minX,this.x-this.speed*dt);
+    }
     else if(this.st==='chase'){
       this.v=Math.min(this.maxSpeed,this.v+this.accel*dt);
       if(this.boostX!==undefined && w.P.x>=this.boostX) this.v=Math.max(this.v,this.boostSpeed);
@@ -832,7 +842,7 @@ class DarkChase extends Ent{
       this.x=Math.max(this.x+this.v*dt,w.P.x-this.leash);
     }
   }
-  hazards(){ return this.st==='chase'?[{x:this.x-2000,y:-100,w:2000,h:800}]:null; }
+  hazards(){ if(this.st!=='chase') return null; return this.right?[{x:this.x,y:-100,w:2000,h:800}]:[{x:this.x-2000,y:-100,w:2000,h:800}]; }
 }
 
 // Sinusoidal moving platform.

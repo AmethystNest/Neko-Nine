@@ -2,7 +2,7 @@
 (function(){
 'use strict';
 const E=window.NEKO_ENGINE, R=window.NEKO_RENDER;
-const {PROLOGUE,STAGES}=window.NEKO_STORY;
+const {PROLOGUE,PROLOGUE2,STAGES}=window.NEKO_STORY;
 const $=id=>document.getElementById(id);
 
 // Game over sends you back to the start of the stage you reached (9 lives restored).
@@ -108,6 +108,9 @@ const KANA_NUM=['ひとつ','ふたつ','みっつ','よっつ','いつつ','む
 // ---------------------------------------------------------------------------
 // Save data
 // ---------------------------------------------------------------------------
+// Laps: the first clear unlocks the second lap (the dawn), with remixed traps.
+function clearsOf(sv){ return sv.clears||(sv.cleared?1:0); }
+function stageDef(i){ const d=STAGES[i]; return (S.loop===2&&d.loop2)?Object.assign({},d,d.loop2):d; }
 function loadSave(){ try{ return JSON.parse(localStorage.getItem(SAVE_KEY)||'null')||{}; }catch(_){ return {}; } }
 function writeSave(o){ try{ localStorage.setItem(SAVE_KEY,JSON.stringify(Object.assign(loadSave(),o))); }catch(_){} }
 
@@ -122,7 +125,7 @@ const AU=window.NEKO_AUDIO;
 const S={
   mode:'boot', stage:0, lives:LIVES, deaths:0, world:null,
   ui:{deathQuote:'',snapCam:true,lastLife:false,thunder:()=>AU.thunder()},
-  respawnAt:0, clearAt:0, playTime:0, clock:0, paused:false, fallGag:0
+  respawnAt:0, clearAt:0, playTime:0, clock:0, paused:false, fallGag:0, loop:1
 };
 const input={left:false,right:false,jump:false,press:false};
 let imgs=null, ICON='';
@@ -202,15 +205,15 @@ function enterStage(i,withStory){
   S.mode='story';
   setHud(false);
   AU.setRain(0);
-  const def=STAGES[i];
+  const def=stageDef(i);
   // a retry keeps this stage's mercy (checkpoint, trap hints); a new stage starts fresh
   const go=()=>startStage(i,withStory==='retry'?false:!!withStory);
-  const card={no:'STAGE '+(i+1),name:def.name};
+  const card={no:'STAGE '+(i+1)+(S.loop===2?'　·　夜明け':''),name:def.name};
   // after the ending, the same nights are told from your side
-  const you=!!loadSave().cleared && def.storyYou;
+  const you=S.loop===2 && def.storyYou;
   const story=you?def.storyYou:def.story;
   // chain straight into the stage story so the screen never drops to the old stage in between
-  if(withStory==='prologue') showStory(PROLOGUE,null,()=>showStory(story,card,go,you));
+  if(withStory==='prologue') showStory(S.loop===2?PROLOGUE2:PROLOGUE,null,()=>showStory(story,card,go,you),S.loop===2);
   else if(withStory) showStory(story,card,go,you);
   else showStory([],card,go);
 }
@@ -219,11 +222,11 @@ function enterStage(i,withStory){
 const HINT_AFTER=2;
 const M={deaths:0,known:new Map(),cpOn:false,cpReached:false};
 function spawnOpts(){
-  const cp=STAGES[S.stage].checkpoint;
+  const cp=stageDef(S.stage).checkpoint;
   return (M.cpReached&&cp)?{spawn:{x:cp.x,y:cp.y===undefined?E.G:cp.y}}:undefined;
 }
 function syncMercyUI(){
-  const cp=STAGES[S.stage].checkpoint;
+  const cp=stageDef(S.stage).checkpoint;
   S.ui.cp=M.cpOn&&cp?{x:cp.x,y:cp.y===undefined?E.G:cp.y,reached:M.cpReached}:null;
   const k=new Set(); for(const [i,n] of M.known) if(n>=HINT_AFTER) k.add(i);
   S.ui.known=k;
@@ -231,7 +234,7 @@ function syncMercyUI(){
 function startStage(i,fresh){
   if(fresh!==false && (fresh || S.stage!==i)){ M.deaths=0; M.known=new Map(); M.cpOn=false; M.cpReached=false; R.trail=null; }
   S.stage=i;
-  S.world=new E.World(STAGES[i],spawnOpts());
+  S.world=new E.World(stageDef(i),spawnOpts());
   rollFlap(S.world);
   R.ghosts=[]; R.parts=[];
   S.ui.snapCam=true; S.ui.deathQuote=''; input.press=false;
@@ -239,8 +242,8 @@ function startStage(i,fresh){
   updateLifeUI();
   setHud(true);
   syncMercyUI();
-  AU.setRain(STAGES[i].rain||0);
-  AU.music(STAGES[i].music||STAGES[i].theme);
+  AU.setRain(stageDef(i).rain||0);
+  AU.music(stageDef(i).music||stageDef(i).theme);
   writeSave({stage:i,deaths:S.deaths});
   S.mode='play';
   if(M.toastOnStart){ const t=M.toastOnStart; M.toastOnStart=null; setTimeout(()=>toast(t),600); }
@@ -266,7 +269,7 @@ function onDeath(ev){
 // After the bird gag has run its course, now and then the cat tries to flap over a pit.
 function rollFlap(w){ w.flap=S.fallGag>=FALL_GAG.length && Math.random()<0.15; }
 function respawn(){
-  S.world=new E.World(STAGES[S.stage],spawnOpts());
+  S.world=new E.World(stageDef(S.stage),spawnOpts());
   rollFlap(S.world);
   AU.play('meow',0.45);
   S.ui.deathQuote='';
@@ -330,7 +333,7 @@ $('retryBtn').addEventListener('click',e=>{
   goTimers.push(setTimeout(()=>{
     S.lives=LIVES;
     if(RESTART_FROM_STAGE1){ S.stage=0; }
-    const firstMercy=!M.cpOn && !!STAGES[S.stage].checkpoint;
+    const firstMercy=!M.cpOn && !!stageDef(S.stage).checkpoint;
     M.cpOn=true;
     if(firstMercy) M.toastOnStart='失くした命が、道しるべを残していった。';
     enterStage(S.stage,'retry');
@@ -349,8 +352,10 @@ function startEnding(){
   S.mode='ending';
   setHud(false);
   AU.setRain(0.6);
-  writeSave({cleared:true,stage:0,deaths:0});
-  Object.assign(END,{t:0,catX:40,catWalking:true,door:0,light:0,lookUp:0,rainStop:0,fade:1,white:fromDoor?1:0,idx:-1,lineAt:0,phase:'enter'});
+  const dawn=S.loop===2;
+  writeSave({cleared:true,clears:clearsOf(loadSave())+1,stage:0,deaths:0});
+  Object.assign(END,{t:0,catX:40,catWalking:true,door:0,light:0,lookUp:0,rainStop:dawn?1:0,fade:1,white:fromDoor?1:0,idx:-1,lineAt:0,phase:'enter',dawn,sun:0,sunUp:false});
+  if(dawn) AU.setRain(0);
   const d=S.deaths, left=Math.max(1,S.lives);
   END.lines=[
     ['you','……ナイン？',()=>END.lookUp=1],
@@ -373,6 +378,21 @@ function startEnding(){
     ['you','……おかえり、ナイン。',()=>{ END.lightOn=true; }],
     ['cat','ただいま。']
   ];
+  if(dawn) END.lines=[
+    ['you','……ナイン。',()=>END.lookUp=1],
+    ['you','おかえり。……ずっと、待ってた。'],
+    ['cat','ただいま。'],
+    ['you','夜のあいだ、ずっと考えてた。'],
+    ['you','明日もまた「大丈夫」って言って、出かけるのかなって。'],
+    ['cat','君がいない朝は、もういやだよ。'],
+    ['you','……うん。だから、会社に電話した。'],
+    ['you','しばらく、休むことにしたよ。'],
+    ['you','来週、病院にも行ってみる。'],
+    ['cat','うん。ぼくも、ついていく。'],
+    ['you','見て、ナイン。……朝だ。',()=>{ END.sunUp=true; END.lightOn=true; }],
+    ['you','今日は、どこにも行かない。'],
+    ['cat','うん。']
+  ];
   AU.play('door');
   AU.musicBox();
 }
@@ -386,6 +406,8 @@ function endingStep(dt){
     if(e.catX>=482){ e.catX=482; e.catWalking=false; e.phase='talk'; e.lineAt=e.t+1.0; }
   }
   if(e.lightOn){ e.light=Math.min(1,e.light+dt*0.35); e.rainStop=Math.min(1,e.rainStop+dt*0.3); AU.setRain(0.6*(1-e.rainStop)); }
+  // second lap: the sky pales through the talk, and the sun comes up at the end
+  if(e.dawn) e.sun=e.sunUp?Math.min(1,e.sun+dt*0.18):Math.min(0.35,e.t/60);
   if(e.phase==='talk' && e.t>=e.lineAt) advanceLine();
   if(e.phase==='outro' && e.t>=e.lineAt){ e.phase='credits'; showCredits(); }
 }
@@ -427,13 +449,16 @@ function toTitle(){
   t.classList.toggle('cleared',!!sv.cleared);
   $('btnSelect').hidden=!sv.cleared;
   window.NEKO_TITLE.cleared=!!sv.cleared;
+  window.NEKO_TITLE.dawn=clearsOf(sv)>=2;
+  t.querySelector('.titleClear').textContent=clearsOf(sv)>=2?'♡ ALL CLEAR ×'+clearsOf(sv):'♡ ALL CLEAR';
   t.style.display='';
   t.classList.remove('play'); void t.offsetWidth;
   requestAnimationFrame(()=>{ t.classList.remove('hide'); t.classList.add('play'); });
-  if(AU.ready){ AU.music('title'); AU.setRain(sv.cleared?0:0.45); }
+  if(AU.ready){ AU.music(clearsOf(sv)>=2?'ending':'title'); AU.setRain(sv.cleared?0:0.45); }
 }
 function beginGame(fromStage,picked){
   const sv=loadSave();
+  S.loop=clearsOf(sv)>=1?2:1;
   S.lives=LIVES;
   // a stage picked from the select menu starts a fresh run from there
   S.deaths=fromStage>0&&!picked?(sv.deaths||0):0;
@@ -668,6 +693,7 @@ const load=src=>new Promise(res=>{ const im=new Image(); im.onload=()=>res(im); 
   const q=new URLSearchParams(location.search);
   R.debug=q.has('debug')||location.hash==='#debug';
   if(q.has('title')){ $('splash').classList.add('hide'); toTitle(); }
+  if(q.has('loop')) S.loop=+q.get('loop')||1;
   if(q.has('stage')){ $('splash').classList.add('hide'); const n=Math.max(1,Math.min(STAGES.length,+q.get('stage')||1))-1; $('titleScreen').classList.add('hide'); $('titleScreen').style.display='none'; startStage(n); }
   if(q.has('ending')){ $('splash').classList.add('hide'); $('titleScreen').classList.add('hide'); $('titleScreen').style.display='none'; S.deaths=+q.get('ending')||37; S.lives=3; startEnding(); }
   window.__neko={S,input,R,END,startStage,startEnding};

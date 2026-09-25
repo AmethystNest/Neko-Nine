@@ -622,6 +622,19 @@ P.DarkChase.prototype.draw=function(g,w,T){
 };
 P.DarkChase.prototype.drawOver=function(g,w,T){
   if(this.st!=='chase') return;
+  if(this.right){
+    // mirror of the left darkness: a solid wall of night with a restless edge
+    const x=this.x;
+    g.fillStyle='#020206'; g.fillRect(x+20,-100,2400,WH+200);
+    const gr=g.createLinearGradient(x-40,0,x+30,0);
+    gr.addColorStop(0,'rgba(2,2,6,0)'); gr.addColorStop(1,'rgba(2,2,6,1)');
+    g.fillStyle=gr; g.fillRect(x-40,-100,70,WH+200);
+    g.fillStyle='rgba(150,30,70,.5)';
+    for(let i=0;i<9;i++){ const y=i*64+20, len=34+24*Math.sin(w.t*3+i*1.7); g.fillRect(x-len*0.5-2,y-1,4,2); }
+    const ey=250+Math.cos(w.t*1.2)*30;
+    circ(g,'rgba(255,60,80,.85)',x+22,ey,3.2); circ(g,'rgba(255,60,80,.85)',x+40,ey,3.2);
+    return;
+  }
   const x=this.x;
   const gr=g.createLinearGradient(x-60,0,x+30,0);
   gr.addColorStop(0,'rgba(90,10,40,0)'); gr.addColorStop(0.75,'rgba(120,20,60,.35)'); gr.addColorStop(1,'rgba(120,20,60,0)');
@@ -1155,16 +1168,30 @@ const R={
     rect(g,mix('1a1b26','e8d2ae'),0,0,VIEW_W,G);
     rect(g,mix('141520','cdb58e'),0,G-14,VIEW_W,14);
     rect(g,mix('1d1c22','8a6e50'),0,G,VIEW_W,WH-G);
-    // window with the night and rain
-    const wx=600, wy=90;
+    // window with the night and rain (on the second lap: the sky turning to dawn)
+    const wx=600, wy=90, SUN=st.dawn?st.sun:0;
     rect(g,mix('101118','7a6146'),wx-8,wy-8,236,176);
     rect(g,'#0c1226',wx,wy,220,160);
+    if(SUN>0){
+      const sk=g.createLinearGradient(0,wy,0,wy+160);
+      sk.addColorStop(0,`rgba(90,110,190,${Math.min(1,SUN*1.6)})`); sk.addColorStop(0.55,`rgba(240,160,130,${SUN})`); sk.addColorStop(1,`rgba(255,220,170,${SUN})`);
+      g.fillStyle=sk; g.fillRect(wx,wy,220,160);
+    }
     const r=rng(4);
-    for(let i=0;i<60;i++){ const x=wx+r()*220, y=wy+90+r()*70; rect(g,r()<.3?'rgba(255,220,150,.8)':'rgba(255,190,120,.4)',x,y,2,3); }
-    circ(g,'#e8e8f0',wx+170,wy+36,12);
+    for(let i=0;i<60;i++){ const x=wx+r()*220, y=wy+90+r()*70; g.globalAlpha=1-SUN*0.8; rect(g,r()<.3?'rgba(255,220,150,.8)':'rgba(255,190,120,.4)',x,y,2,3); }
+    g.globalAlpha=1;
+    if(SUN<0.6){ g.globalAlpha=1-SUN/0.6; circ(g,'#e8e8f0',wx+170,wy+36,12); g.globalAlpha=1; }
+    if(SUN>0.3){
+      const k=(SUN-0.3)/0.7, sy=wy+170-k*70;
+      g.save(); g.beginPath(); g.rect(wx,wy,220,160); g.clip();
+      glow(g,wx+80,sy,90,'rgba(255,200,130,A)',0.7*k); circ(g,'#fff1c8',wx+80,sy,16);
+      g.restore();
+    }
     g.strokeStyle=`rgba(170,190,230,${0.35*(1-st.rainStop)})`; g.lineWidth=1; g.beginPath();
     for(let i=0;i<40;i++){ const x=wx+((i*53+st.t*40)%220), y=wy+((i*37+st.t*400)%160); g.moveTo(x,y); g.lineTo(x-2,y+10); } g.stroke();
     rect(g,mix('101118','7a6146'),wx+106,wy,8,160); rect(g,mix('101118','7a6146'),wx,wy+76,220,8);
+    // sunlight across the floor at dawn
+    if(SUN>0.3){ g.fillStyle=`rgba(255,200,140,${0.16*(SUN-0.3)/0.7})`; g.beginPath(); g.moveTo(wx,wy+160); g.lineTo(wx+220,wy+160); g.lineTo(wx+120,G+120); g.lineTo(wx-320,G+120); g.fill(); }
     // moonlight on the floor
     g.fillStyle=`rgba(180,200,255,${0.08*(1-L)})`; g.beginPath(); g.moveTo(wx,wy+160); g.lineTo(wx+220,wy+160); g.lineTo(wx+300,G+120); g.lineTo(wx-120,G+120); g.fill();
     // bed

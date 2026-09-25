@@ -5,7 +5,7 @@ const TAU=Math.PI*2;
 const T={
   init(canvas,sprites){
     this.cv=canvas; this.g=canvas.getContext('2d');
-    this.sp=sprites; this.t=0; this.warm=0; this.cleared=false;
+    this.sp=sprites; this.t=0; this.warm=0; this.cleared=false; this.dawn=false; this.dk=0;
     this.drops=[]; for(let i=0;i<70;i++) this.drops.push(this.newDrop(true));
     this.streaks=[]; for(let i=0;i<120;i++) this.streaks.push({x:Math.random(),y:Math.random(),s:0.6+Math.random()*0.6});
     const r=this.rand(21);
@@ -28,6 +28,9 @@ const T={
     const g=this.g, W=this.W, H=this.H;
     this.t+=dt;
     this.warm+=((this.cleared?1:0)-this.warm)*Math.min(1,dt*0.8);
+    // after the second lap the night gives way to morning
+    this.dk+=((this.dawn?1:0)-this.dk)*Math.min(1,dt*0.6);
+    const DK=this.dk;
     g.setTransform(this.dpr,0,0,this.dpr,0,0);
     // room wall
     const wall=g.createLinearGradient(0,0,0,H);
@@ -39,17 +42,33 @@ const T={
     const sky=g.createLinearGradient(0,wy,0,wy+wh);
     sky.addColorStop(0,'#15173d'); sky.addColorStop(0.45,'#2e2c64'); sky.addColorStop(0.8,'#6a5a98'); sky.addColorStop(1,'#b596c4');
     g.fillStyle=sky; g.fillRect(wx,wy,ww,wh);
+    if(DK>0.01){
+      const ds=g.createLinearGradient(0,wy,0,wy+wh);
+      ds.addColorStop(0,`rgba(92,122,200,${DK})`); ds.addColorStop(0.5,`rgba(236,168,160,${DK})`); ds.addColorStop(0.82,`rgba(255,205,150,${DK})`); ds.addColorStop(1,`rgba(255,232,190,${DK})`);
+      g.fillStyle=ds; g.fillRect(wx,wy,ww,wh);
+      // the sun just clearing the rooftops
+      const sx=wx+ww*0.24, sy2=wy+wh*(0.92-0.14*DK), sr=wh*0.085;
+      this.glow(g,sx,sy2,sr*9,'rgba(255,196,130,A)',0.55*DK);
+      this.glow(g,sx,sy2,sr*3,'rgba(255,236,190,A)',0.8*DK);
+      g.fillStyle=`rgba(255,244,214,${DK})`; g.beginPath(); g.arc(sx,sy2,sr,0,TAU); g.fill();
+      // two birds far off
+      g.strokeStyle=`rgba(70,50,70,${0.55*DK})`; g.lineWidth=1.6;
+      for(let i=0;i<2;i++){
+        const bx=wx+ww*(((this.t*0.018+i*0.23)%1.2)-0.1), by=wy+wh*(0.28+i*0.07)+Math.sin(this.t*0.9+i)*6, f=Math.sin(this.t*7+i*2)*4;
+        g.beginPath(); g.moveTo(bx-8,by-f); g.quadraticCurveTo(bx-3,by-3,bx,by); g.quadraticCurveTo(bx+3,by-3,bx+8,by-f); g.stroke();
+      }
+    }
     // soft clouds, layered like washes of paint
     for(const c of this.clouds){
       c.x+=c.v*dt; if(c.x>1.3) c.x=-0.3;
       const cx=wx+c.x*ww, cy=wy+c.y*wh, r=c.r*wh;
       const gr=g.createRadialGradient(cx,cy,0,cx,cy,r);
-      gr.addColorStop(0,`rgba(${c.col},${c.a*(1-0.5*this.warm)})`); gr.addColorStop(1,`rgba(${c.col},0)`);
+      gr.addColorStop(0,`rgba(${DK>0.5?'255,220,210':c.col},${c.a*(1-0.5*this.warm)*(1-0.3*DK)})`); gr.addColorStop(1,`rgba(${c.col},0)`);
       g.fillStyle=gr; g.beginPath(); g.ellipse(cx,cy,r*1.7,r,0,0,TAU); g.fill();
     }
     // stars
     for(const st of this.stars){
-      const a=Math.min(1,st.a*(1+0.35*this.warm)*(0.55+0.45*Math.sin(this.t*st.s+st.p)));
+      const a=Math.min(1,st.a*(1+0.35*this.warm)*(0.55+0.45*Math.sin(this.t*st.s+st.p)))*(1-DK*0.95);
       const x=wx+st.x*ww, y=wy+st.y*wh;
       if(st.big){ this.glow(g,x,y,st.r*5,'rgba(255,250,235,A)',a*0.35); }
       g.fillStyle=`rgba(255,250,240,${a})`; g.fillRect(x-st.r/2,y-st.r/2,st.r,st.r);
@@ -62,9 +81,9 @@ const T={
     const m=mc.getContext('2d'); m.clearRect(0,0,ms,ms);
     m.fillStyle='#fff4dc'; m.beginPath(); m.arc(ms/2,ms/2,mr,0,TAU); m.fill();
     m.globalCompositeOperation='destination-out'; m.beginPath(); m.arc(ms/2+mr*0.45,ms/2-mr*0.3,mr*0.92,0,TAU); m.fill(); m.globalCompositeOperation='source-over';
-    g.drawImage(mc,mx-ms/2,my-ms/2);
+    g.globalAlpha=1-DK*0.97; g.drawImage(mc,mx-ms/2,my-ms/2); g.globalAlpha=1;
     // shooting star (after the rain has stopped)
-    if(this.cleared){
+    if(this.cleared&&DK<0.5){
       this.shoot=(this.shoot||{t:4,x:0.7,y:0.1});
       this.shoot.t+=dt;
       if(this.shoot.t>6){ this.shoot={t:0,x:0.45+Math.random()*0.45,y:0.05+Math.random()*0.25}; }
@@ -105,6 +124,8 @@ const T={
     const sy=wy+wh+10;
     g.fillStyle=this.mix('#232030','#4a372b'); g.fillRect(wx-30,sy,ww+60,12);
     g.fillStyle=this.mix('#15131e','#2c2019'); g.fillRect(wx-30,sy+12,ww+60,6);
+    // morning sun falling into the room
+    if(DK>0.01){ g.fillStyle=`rgba(255,200,140,${0.1*DK})`; g.beginPath(); g.moveTo(wx,wy+wh); g.lineTo(wx+ww,wy+wh); g.lineTo(wx+ww*0.7,H); g.lineTo(wx-ww*0.6,H); g.fill(); }
     // moonlight falling into the room
     g.fillStyle='rgba(190,170,255,.05)'; g.beginPath(); g.moveTo(wx,wy+wh); g.lineTo(wx+ww,wy+wh); g.lineTo(wx+ww*0.9,H); g.lineTo(wx-ww*0.35,H); g.fill();
     // warm lamp (bright after the game has been cleared)
@@ -118,6 +139,18 @@ const T={
       const x=wx-ww*0.1+m.x*ww*1.1+Math.sin(this.t*0.5+m.p)*8, y=wy+wh*0.6+m.y*H*0.4;
       g.fillStyle=`rgba(220,230,255,${0.12+0.1*Math.sin(this.t+m.p)})`; g.fillRect(x,y,2,2);
     }
+    // a small potted plant on the sill (morning)
+    if(DK>0.01){
+      const px=wx+ww*0.08, pw=wh*0.075, ph=wh*0.07;
+      g.globalAlpha=DK;
+      g.fillStyle='#8a5a3c'; g.beginPath(); g.moveTo(px-pw/2,sy-ph); g.lineTo(px+pw/2,sy-ph); g.lineTo(px+pw*0.38,sy); g.lineTo(px-pw*0.38,sy); g.fill();
+      g.fillStyle='#6d4530'; g.fillRect(px-pw*0.55,sy-ph-4,pw*1.1,5);
+      g.fillStyle='#4f7a4a';
+      for(const [a,l] of [[-0.9,1],[-0.4,1.25],[0.1,1.35],[0.6,1.15],[1.0,0.9]]){
+        g.save(); g.translate(px,sy-ph-4); g.rotate(a*0.6); g.beginPath(); g.ellipse(0,-l*pw*0.55,pw*0.16,l*pw*0.5,0,0,TAU); g.fill(); g.restore();
+      }
+      g.globalAlpha=1;
+    }
     // Nine on the sill, seen from behind, looking up at the moon
     if(this.cleared){
       // after the ending: you and Nine, together at the window
@@ -129,6 +162,8 @@ const T={
     }else{
       this.catBack(g,wx+ww*0.64,sy,wh*0.5);
     }
+    // the room itself warms with the morning
+    if(DK>0.01){ g.fillStyle=`rgba(255,180,130,${0.07*DK})`; g.fillRect(0,0,W,H); }
     // vignette
     const vg=g.createRadialGradient(W*0.55,H*0.45,H*0.2,W*0.5,H*0.5,H*1.1);
     vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,.65)');

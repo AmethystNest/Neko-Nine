@@ -225,5 +225,125 @@ const STAGES=[
 }
 ];
 
-root.NEKO_STORY={PROLOGUE,STAGES};
+// ============================================================================
+// Second lap (after the first ending): the same nights, told from your side
+// toward the dawn. Each stage twists one thing the first lap taught you.
+// ============================================================================
+const PROLOGUE2=[
+  '同じ夜を、もう一度。',
+  'こんどは、君のほうから。'
+];
+const LOOP2={
+  // 1: the trapdoor spot is solid now; the floor you jumped from is the one that gives way
+  0:{floors:[[0,170],[300,450]],
+    ents:F=>[
+      F.TrapFloor({x:170,w:130,dir:'lr',delay:0.06,speed:900}),
+      F.ShiftPit({x0:450,x1:1000,px:580,pw:140,minShift:50,maxShift:170,look:150,speed:760})
+    ]},
+  // 2: wait out the first pot and walk on... a second one follows
+  1:{ents:F=>{
+      const pot=F.FallBlock({x:292,w:24,h:24,y0:130,tx:205,delay:0,gravity:3000,style:'pot',landSE:'floorbreak',shadow:true});
+      return [
+        F.Deco({type:'window',x:304,y:150}),
+        pot,
+        F.ChaseWall({startX:780,w:54,h:170,when:w=>w.P.x>=640&&w.P.x<760,riseSpeed:900,speed:560,minX:500}),
+        F.TrapFloor({x:680,w:140,dir:'lr',delay:0.08,speed:900,armed:w=>!!w.flags.wallDone}),
+        F.Deco({type:'window',x:342,y:230}),
+        F.FallBlock({x:330,w:24,h:24,y0:210,delay:0,gravity:3000,style:'pot',landSE:'floorbreak',shadow:true,
+          when:w=>(pot.st==='landed'||pot.st==='broken')&&w.P.x>=265})
+      ];
+    }},
+  // 3: the presses come down in the other order
+  2:{ents:F=>{
+      const A=F.Crusher({x:420,w:90,h:150,tx:285,delay:0.2,fallSpeed:920,hold:0.55,riseSpeed:430});
+      const B=F.Crusher({x:330,w:90,h:150,delay:0.05,fallSpeed:1100,hold:0.7,riseSpeed:430,
+        when:w=>w.P.x>=300 && A.st==='done'});
+      return [A,B,
+        F.Shot({from:'left',y:G-22,w:54,h:8,speed:720,delay:0.1,style:'arrow',when:w=>B.st==='hold'&&w.P.x<540}),
+        F.DropFloor({x:600,w:140,delay:0.14,speed:520}),
+        F.Shot({from:'right',y:G-22,w:54,h:8,speed:900,delay:0.0,style:'arrow',tx:800})
+      ];
+    }},
+  // 4: jump the floor spikes and the ceiling answers
+  3:{ents:F=>[
+      F.Spikes({x:292,w:96,maxH:42,tx:270,delay:0.12,riseSpeed:300,hold:0.48,fallSpeed:220}),
+      F.DropFloor({x:432,w:96,delay:0.5,crack:true,gravity:1500,se:'floorbreak',style:'crumble'}),
+      F.FallBlock({x:649,w:82,h:86,y0:90-86,tx:565,delay:0.16,speed:760,solid:true,style:'stone',shadow:true}),
+      F.Spikes({x:779,w:92,maxH:128,tx:735,delay:0.12,riseSpeed:760,permanent:true}),
+      F.Spikes({x:250,w:170,y:90,maxH:150,dirn:'down',delay:0,riseSpeed:1600,hold:0.5,fallSpeed:500,
+        when:w=>!w.P.ground&&w.P.x>=240&&w.P.x<430})
+    ]},
+  // 5: the laser keeps its rhythm... until the third gap
+  4:{ents:F=>[
+      F.Laser({x:250,y0:90,y1:G,tx:150,warm:0.28,seq:[[0.72,0.62],[0.72,0.62],[0.72,0.2],[0.72,0.62]]}),
+      F.Lift({x:335,w:100,rise:272,speed:440}),
+      F.SpikeRow({x:335,w:100,y:90,h:38,dirn:'down'}),
+      F.Arc({x:585,w:28,maxH:G-60,tx:470,delay:0.22,riseSpeed:560,hold:0.3}),
+      F.Shot({from:'right',y:G-21,w:74,h:42,speed:760,tx:540,delay:0.35,style:'block',se:'wallmove'}),
+      F.Shot({from:'right',y:G-150,w:74,h:42,speed:760,tx:540,delay:1.6,style:'block',se:'wallmove'}),
+      F.Shutter({x:766,w:58,top:90,tx:735,delay:0.05,dropSpeed:1350,holdClosed:1.6,riseSpeed:520,gap:70})
+    ]},
+  // 6: the crows swap: one from behind while you wait for the wind, one ahead when you land
+  5:{ents:F=>[
+      F.Lightning({lock:0.5,strike:1.0,predict:true,width:34,when:w=>w.P.x>=150&&w.P.x<360}),
+      F.DropFloor({x:530,w:60,y:400,thick:14,delay:0.04,gravity:1800,style:'glass',se:'floorbreak'}),
+      F.Wind({x0:600,x1:840,v:-175,onT:1.3,offT:3.0,phase:0}),
+      F.Shot({from:'left',x0:350,y:400-20,w:34,h:18,speed:800,delay:0.05,style:'crow',se:'trap',warnSE:'warn',
+        when:w=>w.P.ground&&w.P.x>=590&&w.P.x<=640&&!w.ents[2].active}),
+      F.Shot({from:'right',y:430-20,w:34,h:18,speed:620,delay:0.15,style:'crow',se:'trap',warnSE:'warn',when:w=>w.P.ground&&w.P.x>=800})
+    ]},
+  // 7: after the first train the gates lift... and the second comes right then, bell or no bell
+  6:{ents:F=>[
+      F.Block({x:300,y:G-84,w:46,h:84,style:'vending'}),
+      F.Crossing({x0:600,x1:820,tx:530,trains:[{at:1.1,dur:0.75},{at:2.05,dur:0.75}],bells:[[0,2.0]]}),
+      F.Bonk({x:990,y:G-180,w:80,h:36}),
+      F.Conveyor({x:1120,w:300,v:140,rx:1290,rv:-430}),
+      F.Bonk({x:1288,y:G-176,w:110,h:34})
+    ]},
+  // 8: the fake door is the real one now; the old real door is the trap
+  7:{goal:{x:905,y:250},
+    ents:F=>[
+      F.Pendulum({px:245,py:90,len:290,amp:0.72,period:2.2,phase:0,r:20}),
+      F.Pendulum({px:480,py:90,len:290,amp:0.72,period:2.2,phase:1.1,r:20}),
+      F.Spring({x:690,w:40,power:1150}),
+      F.Spikes({x:630,w:160,y:90,maxH:34,dirn:'down',delay:0,riseSpeed:900,permanent:true,when:w=>w.P.vy<-900}),
+      F.DropFloor({x:790,w:135,y:250,thick:20,delay:0.02,speed:1100,style:'ledge',se:'trapdoor',when:()=>false}),
+      F.FakeDoor({x:1300,y:G}),
+      F.SpikeRow({x:760,w:280,y:G+120,h:26}),
+      F.Crusher({x:1240,w:84,h:78,delay:0.12,fallSpeed:1100,hold:0.7,riseSpeed:380,style:'bell',
+        when:w=>w.P.ground&&w.P.x>=1160&&w.P.y>=G-1}),
+      // try the old door and a second bell answers
+      F.Crusher({x:1262,w:76,h:70,delay:0.04,fallSpeed:1500,hold:0.6,riseSpeed:380,style:'bell',
+        when:w=>w.P.ground&&Math.abs(w.P.x-1300)<=16&&w.P.y>=G-1})
+    ]},
+  // 9: the dark closes in from both sides
+  8:{ents:F=>[
+      F.DarkChase({startX:-80,tx:170,speed:120,accel:8,maxSpeed:180,leash:700,boostX:2150,boostSpeed:195}),
+      F.DropFloor({x:700,w:100,delay:0.45,crack:true,gravity:1500,se:'floorbreak',style:'crumble'}),
+      F.Mover({x:1030,y:G-14,w:120,h:16,ax:'x',range:140,period:2.2,style:'plank'}),
+      F.FallBlock({x:1440,w:40,h:40,y0:-60,tx:1300,delay:0.08,gravity:2600,style:'rock',landSE:'blockfall',shadow:true}),
+      F.Light({x:1935,y:300,r:130,warm:true,lantern:true}),
+      F.TrapFloor({x:1880,w:110,dir:'mid',delay:0.03,speed:900}),
+      F.DarkChase({side:'right',startX:2700,speed:60,minX:2540,tx:1330})
+    ]},
+  // 10: no wall this time; the dark is thinner and the voices are from tonight
+  9:{dusk:{from:0.62,x0:300,x1:2750},
+    memories:[
+      {x:300, text:'「ナイン……どこにいるの」'},
+      {x:1130,text:'「会社に、電話しなきゃ。……休みますって」'},
+      {x:1640,text:'「こわかったけど、ちゃんと言えた」'},
+      {x:1990,y:292,text:'「大丈夫じゃないって、言ってもいいんだ」'},
+      {x:2400,text:'「ドアの向こうで、小さな音がした」'},
+      {x:2800,text:'「……ナイン？」'}
+    ],
+    ents:F=>{
+      const base=STAGES[9].ents(F);
+      // drop the chasing wall, its arrow and the fake crack; keep the lamp by the door
+      const n=e=>e.constructor.name;
+      return base.filter(e=>n(e)!=='ChaseWall'&&!(n(e)==='Shot'&&e.style==='arrow')&&n(e)!=='Deco');
+    }}
+};
+for(const k in LOOP2) STAGES[k].loop2=LOOP2[k];
+
+root.NEKO_STORY={PROLOGUE,PROLOGUE2,STAGES};
 })(typeof window!=='undefined'?window:globalThis);
