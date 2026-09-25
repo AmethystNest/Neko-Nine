@@ -378,7 +378,7 @@ function endingLines(dawn,d,left){
     ['cat',`残った${KANA_NUM[left-1]}の命は、ぜんぶ君のそばで使うよ。`],
     // a few words more, depending on how many lives Nine brought home
     ...(left>=LIVES?[['you','……九つとも、ちゃんと持って帰ってきたんだね。'],['cat','うん。ぜんぶ、君に会うためにとっておいた。']]:
-        left===1?[['you','ぼろぼろじゃない……。'],['cat','最後のひとつで、間に合った。']]:[]),
+        left===1?[['you','……たったひとつしか、残ってないの？'],['cat','うん。最後のひとつで、間に合った。']]:[]),
     ['you','……おかえり、ナイン。',()=>{ END.lightOn=true; }],
     ['cat','ただいま。']
   ];
