@@ -358,7 +358,7 @@ $('retryBtn').addEventListener('click',e=>{
     M.cpOn=true;
     const wingUp=S.retires===WING_AT_RETIRES;
     if(wingUp) M.wingMode=true;
-    if(wingUp) M.toastOnStart='2回目の「もう一回」に、羽が応えた。このステージの間だけ。';
+    if(wingUp) M.toastOnStart='羽が応えた。二段ジャンプ＋罠1回無効。';
     else if(firstMercy) M.toastOnStart='失くした命が、道しるべを残していった。';
     enterStage(S.stage,'retry');
     // the story screen is already fully up, so nothing of the old stage shows through
