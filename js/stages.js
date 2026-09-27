@@ -331,7 +331,7 @@ const LOOP2={
     }},
   // 10: the way home, told from your side: the things of those nights that could happen in any
   //     home come back once more. The dark thins and the voices are from tonight.
-  9:{floors:[[0,700],[960,1180],[1250,1400],[1600,2260],[2340,2470],[2550,2680],[2760,2890],[2970,3150]],checkpoint:{x:1330},
+  9:{floors:[[0,700],[960,1180],[1250,1400],[1600,2100],[3000,3150]],checkpoint:{x:1330},
     dusk:{from:0.62,x0:300,x1:2750},
     memories:[
       {x:300, text:'「ナイン……どこにいるの」'},
@@ -353,14 +353,11 @@ const LOOP2={
       F.Dizzy({x0:1040,x1:1400,off:1290}),
       // the lamps (stage 4)
       F.LightFloor({x:1400,w:200,onT:2.2,offT:1.1,phase:0}),
-      // and then the dark of stage 9 and your own shadow come after you together. Four stretches of the
-      // floor before the door give way: hop them in rhythm and run for the door without stopping.
+      // and then the dark of stage 9 and your own shadow come after you together, and the floor
+      // behind you gives way all the way to the door. Run, and don't stop.
       F.DarkChase({startX:1450,tx:1700,speed:160,accel:30,maxSpeed:212,leash:340}),
       F.Shadow({tx:1700,delay:1.3}),
-      F.TrapFloor({x:2260,w:80,dir:'lr',delay:0.02,speed:1400}),
-      F.TrapFloor({x:2470,w:80,dir:'lr',delay:0.02,speed:1400}),
-      F.TrapFloor({x:2680,w:80,dir:'lr',delay:0.02,speed:1400}),
-      F.TrapFloor({x:2890,w:80,dir:'lr',delay:0.02,speed:1400}),
+      F.Collapse({x0:2100,x1:3000,speed:222,tx:2160}),
       F.Light({x:3050,y:370,r:170,warm:true,doorGlow:true})
     ]}
 };

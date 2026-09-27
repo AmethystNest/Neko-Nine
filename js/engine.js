@@ -1096,9 +1096,35 @@ class Truck extends Ent{
   }
 }
 
+// The floor gives way behind you, tile by tile, all the way to the door.
+class Collapse extends Ent{
+  init(){
+    this.kind='collapse'; this.front=this.x0; this.tw=this.tw||40;
+    this.tiles=[];
+    for(let x=this.x0;x<this.x1;x+=this.tw){
+      const w_=Math.min(this.tw,this.x1-x);
+      this.tiles.push({s:{x,y:G,w:w_,h:WH+400-G,kind:'floor',on:true},dy:0,vy:0,rot:0,falling:false});
+    }
+    this.solids=this.tiles.map(t=>t.s);
+    this.alwaysUpdate=true;
+  }
+  update(w,dt){
+    if(this.st==='idle'){ if(this.triggered(w)){ this.st='go'; w.se('floorbreak'); w.shake(4); } else return; }
+    if(this.st==='go'){ this.front+=this.speed*dt; if(this.front>=this.x1) this.st='done'; }
+    let n=0;
+    for(const t of this.tiles){
+      if(!t.falling && t.s.x+t.s.w<=this.front){
+        t.falling=true; t.s.on=false; t.rot=(Math.random()-0.5)*0.6;
+        if((n++)%2===0 && Math.abs(w.P.x-t.s.x)<600){ w.se('floorbreak'); w.shake(2); w.emit('crumble',{x:t.s.x,y:G,w:t.s.w}); }
+      }
+      if(t.falling){ t.vy+=1800*dt; t.dy+=t.vy*dt; }
+    }
+  }
+}
+
 const K={Block,TrapFloor,ShiftPit,DropFloor,Crusher,FallBlock,Spikes,Shot,Laser,Lift,Arc,Shutter,ChaseWall,
   Lightning,Wind,Conveyor,Bonk,Spring,Pendulum,Crossing,DarkChase,Mover,SpikeRow,Deco,FakeDoor,Light,
-  AlarmClock,Banners,Dizzy,LightFloor,Umbrella,Crowd,Shadow,Scanner,Truck};
+  AlarmClock,Banners,Dizzy,LightFloor,Umbrella,Crowd,Shadow,Scanner,Truck,Collapse};
 // Factory helpers: K.trapdoor({...}) etc.
 const F={};
 for(const k in K){ F[k]=o=>new K[k](o); }

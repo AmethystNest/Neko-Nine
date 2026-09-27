@@ -531,6 +531,22 @@ P.Shutter.prototype.draw=function(g,w,T){
   for(let x=this.x;x<this.x+this.w;x+=16){ g.fillStyle='#e8c23a'; g.fillRect(x,y1-10,8,10); g.fillStyle='#222'; g.fillRect(x+8,y1-10,8,10); }
   rect(g,'#30353a',this.x-4,this.top-6,this.w+8,6);
 };
+P.Collapse.prototype.draw=function(g,w,T){
+  for(const t of this.tiles){
+    const s=t.s;
+    if(t.dy>WH) continue;
+    if(!t.falling){
+      T.floor(g,s.x,G,s.w,WH+60-G);
+      // cracks just ahead of the collapse
+      const d=s.x-this.front;
+      if(this.st==='go' && d<90){ const k=1-Math.max(0,d)/90; g.strokeStyle=`rgba(10,8,6,${0.3+0.6*k})`; g.lineWidth=2; g.beginPath();
+        g.moveTo(s.x+4,G); g.lineTo(s.x+14,G+10*k); g.lineTo(s.x+10,G+22*k); g.moveTo(s.x+s.w-6,G); g.lineTo(s.x+s.w-16,G+14*k); g.stroke(); }
+    }else{
+      g.save(); g.translate(s.x+s.w/2,G+t.dy+20); g.rotate(t.rot*Math.min(1,t.dy/80));
+      T.floor(g,-s.w/2,-20,s.w,60); g.restore();
+    }
+  }
+};
 P.Truck.prototype.draw=function(g,w,T){
   if(this.st==='idle') return;
   const x=this.x, bw=this.bw, bh=this.bh, cw=this.cw, ch=this.ch, top=G-bh, t=w.t;
@@ -791,11 +807,11 @@ P.Banners.prototype.draw=function(g,w,T){
     g.save(); g.globalAlpha=0.95;
     g.fillStyle='rgba(20,22,30,.35)'; g.fillRect(x+3,y+4,W_,s.h+8);
     g.fillStyle='#f3f4f8'; g.beginPath(); g.roundRect?g.roundRect(x,y,W_,s.h+8,5):g.rect(x,y,W_,s.h+8); g.fill();
-    // app icon + two lines of text; the fake one is marked "既読" in red
-    rect(g,b.fake?'#d8483a':'#3a8ad8',x+5,y+4,14,14);
+    // app icon + two lines of text. The fake looks the same until you land on it
+    rect(g,b.fake&&b.trip!==undefined?'#d8483a':'#3a8ad8',x+5,y+4,14,14);
     rect(g,'#9aa0ad',x+24,y+5,W_-34,3); rect(g,'#c4c8d2',x+24,y+12,W_-46,3);
     g.restore();
-    if(b.fake) bigLabel(g,'既読',x+W_/2,y-14,'#ff8a7a');
+    if(b.fake&&b.trip!==undefined) bigLabel(g,'既読',x+W_/2,y-14,'#ff8a7a');
   });
 };
 P.Dizzy.prototype.draw=function(g,w,T){
@@ -881,6 +897,10 @@ P.Shadow.prototype.drawOver=P.Shadow.prototype.draw;
 // ---------------------------------------------------------------------------
 // Mercy hints: faint outlines of traps that already took two lives.
 // ---------------------------------------------------------------------------
+P.Banners.prototype.hintRect=function(){
+  const i=this.items.findIndex((b,k)=>b.fake&&!b.gone&&this.solids[k].on); if(i<0) return null;
+  const s=this.solids[i]; return {x:s.x,y:s.y-4,w:s.w,h:s.h+12};
+};
 P.TrapFloor.prototype.hintRect=function(){ return this.st==='idle'?{x:this.x,y:this.y-4,w:this.w,h:14}:null; };
 P.DropFloor.prototype.hintRect=function(){ return this.st==='idle'?{x:this.x,y:this.y0-4,w:this.w,h:14}:null; };
 P.ShiftPit.prototype.hintRect=function(){ return this.done?null:{x:this.p0+this.minShift,y:G-4,w:this.maxShift-this.minShift+this.pw,h:14}; };

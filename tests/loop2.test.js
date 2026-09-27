@@ -10,8 +10,8 @@ const S10_1=[walk(X(250)),wait(1.0),walk(w=>w.ents[0].st!=='run'||w.ents[0].x<w.
 const S10_2=[{r:1,j:1,p:1,t:0.2},{r:1,until:X(725)},{until:GR},walk(X(790)),{r:1,j:1,p:1,t:0.6},{r:1,until:X(860)},{until:GR},walk(X(1000)),{until:GR}];
 const S10_3=[walk(X(1045)),{l:1,until:X(1168)},{l:1,j:1,p:1,t:0.25},{l:1,until:GR},{until:GR},wait(0.1),walk(X(1385))];
 const S10_4=[{until:w=>w.ents[3].lit&&w.ents[3].tm%3.3<0.7},walk(X(1640))];
-// the last stretch: short hops over the four hidden pits, in rhythm, without stopping
-const S10_HOPS={fn:(w,i)=>{ i.right=w.P.x<3044; i.left=w.P.x>3056; if(w.P.ground){ i.jump=false; if([2260,2470,2680,2890].some(p=>w.P.x>=p-20&&w.P.x<p-6)){ i.press=true; i.jump=true; w._hs=w.t; } } else i.jump=w.t-(w._hs||0)<0.1; },until:w=>w.cleared};
+// the last stretch: the floor gives way behind you all the way to the door; just run
+const S10_DOOR={fn:(w,i)=>{ i.right=w.P.x<3044; i.left=w.P.x>3056; },until:w=>w.cleared};
 // the notifications: hop from one to the next, jumping up past each fake
 const hopTo=(x0,t,xl)=>[walk(X(x0)),{r:1,j:1,p:1,t},{r:1,until:X(xl)},{until:GR}];
 const S2_A=hopTo(235,0.2,300), S2_B=hopTo(392,0.3,430), S2_C=hopTo(495,0.4,575), S2_D=[{r:1,until:w=>!w.P.ground},{until:GR}], S2_E=[{r:1,until:w=>w.P.x>=w.ents[0].solids[4].x+w.ents[0].solids[4].w-40},{r:1,j:1,p:1,t:0.4},{r:1,until:X(825)},{until:GR}];
@@ -112,10 +112,9 @@ const cases={
   ['keep moving',           'clear',S9_SOL],
 ],
 10:[
-  ['the way home',          'clear',[...S10_1,...S10_2,...S10_3,...S10_4,S10_HOPS]],
-  ['from the checkpoint',   'clear',[walk(X(1385)),...S10_4,S10_HOPS],CP10],
-  ['run straight for the door','dead',[walk(X(1385)),...S10_4,walk(X(4000))],CP10],
-  ['big jumps over the floor','dead',[walk(X(1385)),...S10_4,{fn:(w,i)=>{ i.right=true; i.jump=!w.P.ground; if(w.P.ground&&[2240,2450,2660,2870].some(p=>w.P.x>=p&&w.P.x<p+12)){ i.press=true; i.jump=true; } },until:X(4000)}],CP10],
+  ['the way home',          'clear',[...S10_1,...S10_2,...S10_3,...S10_4,S10_DOOR]],
+  ['from the checkpoint',   'clear',[walk(X(1385)),...S10_4,S10_DOOR],CP10],
+  ['stop as the floor goes','dead', [walk(X(1385)),...S10_4,walk(X(2300)),wait(0.6),S10_DOOR],CP10],
   ['stop before the door',  'dead', [walk(X(1385)),...S10_4,walk(X(2200)),wait(2)],CP10],
 ],
 };
