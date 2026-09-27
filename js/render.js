@@ -655,7 +655,8 @@ P.Wind.prototype.draw=function(g,w,T){
   }
   g.stroke(); g.restore();
 };
-P.Lightning.prototype.floorY=function(w){ for(const s of w.statics) if(this.target>=s.x&&this.target<=s.x+s.w) return s.y; return G; };
+// Over open air (a gap, a parapet drop) there is no floor to stop at: let the bolt run to the bottom of the world.
+P.Lightning.prototype.floorY=function(w){ for(const s of w.statics) if(this.target>=s.x&&this.target<=s.x+s.w) return s.y; return WH; };
 P.Conveyor.prototype.draw=function(g,w,T){
   const y=this.y===undefined?G:this.y;
   rect(g,'#2d3136',this.x,y,this.w,10);
