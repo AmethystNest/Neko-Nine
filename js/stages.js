@@ -293,13 +293,13 @@ const LOOP2={
       // the storm strikes two fixed spots over the gap, one after the other: the warning shows where
       F.Lightning({targets:[TG1],lock:0,strike:0.9,width:56,hold:0.5,period:PER,phase:0,tx:120}),
       F.Lightning({targets:[TG2],lock:0,strike:0.9,width:56,hold:0.5,period:PER,phase:PH2,tx:120}),
-      // the crows want the umbrella. The first swoops in low from behind the moment you land:
-      // hop it (the umbrella makes the hop float)...
-      F.Shot({from:'left',x0:720,y:430-20,w:34,h:18,speed:620,delay:0.2,style:'crow',se:'trap',warnSE:'warn',lockGoal:true,
+      // the crows want the umbrella. The first swoops in low from behind the moment you land: hop it.
+      F.Shot({from:'left',x0:720,y:430-20,w:34,h:18,speed:620,delay:0.2,style:'crow',se:'trap',warnSE:'warn',
         when:w=>w.P.ground&&w.P.x>=860}),
-      // ...and the second follows from the front at the height of that floating hop. Stay down.
-      F.Shot({from:'right',y:352,w:34,h:34,speed:700,delay:1.1,style:'crow',se:'trap',warnSE:'warn',
-        when:w=>w.ents[4].st==='fly'&&w.ents[4].x>w.P.x+40})
+      // The second waits until you're back on solid ground after that (however long the hop took),
+      // then comes from the front at head height a beat later. Stay down.
+      F.Shot({from:'right',y:352,w:34,h:34,speed:700,delay:0.6,style:'crow',se:'trap',warnSE:'warn',
+        when:w=>{ const c1=w.ents[4]; return (c1.st==='done'||(c1.st==='fly'&&c1.x>w.P.x+40))&&w.P.ground; }})
     ]},
   // 7: rush hour walks toward you and shoves you back toward the tracks
   6:{ents:F=>[

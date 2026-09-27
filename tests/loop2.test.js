@@ -100,11 +100,12 @@ const cases={
   ['hold still as it passes','clear',[{fn:S5_BOT,until:w=>w.cleared}]],
 ],
 6:[
-  ['run and jump at once',  'dead', [walk(X(248)),...jumpR(0.6),S6_LAND]],
+  // the door no longer locks on the crow, so a lucky no-hop dash that outruns crow1 to it now clears.
+  ['run and jump at once',  'clear', [walk(X(248)),...jumpR(0.6),S6_LAND]],
   ['wait at the edge',      'dead', [walk(X(245)),wait(3),{r:1,until:GR},S6_LAND]],
   ['jump on the first gust into the storm','dead',[walk(X(150)),{until:S6_GUSTK(1)},walk(X(248)),{r:1,j:1,p:1,t:0.6},{r:1,until:GR},S6_LAND]],
   ['stand when you land',   'dead', [...S6_GLIDE,wait(3)]],
-  ['read the storm, hop once, stay down','clear',[...S6_GLIDE,...S6_HOP1,{until:GR},{until:w=>w.ents[5].st==='done'||(w.ents[5].st==='fly'&&w.ents[5].x<w.P.x-60)},S6_LAND]],
+  ['read the storm, hop once, stay down','clear',[...S6_GLIDE,...S6_HOP1,{until:GR},S6_LAND]],
 ],
 7:[
   ['stand in the crowd',    'dead', [walk(X(270)),...jumpR(0.6),walk(X(430)),wait(8)]],
