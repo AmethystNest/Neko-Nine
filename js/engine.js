@@ -716,22 +716,27 @@ class Lightning extends Ent{
   init(){ this.kind='lightning'; this.tx0=0; this.shots=0; this.strikeT=-1; }
   update(w,dt){
     const P=w.P;
-    if(this.st==='idle'){ if(this.triggered(w)){ this.st='aim'; this.tm=0; w.emit('flash',{a:.35}); w.se('warn'); } }
+    if(this.st==='idle'){ if(this.triggered(w)){ this.st='aim'; this.tm=-(this.phase||0); if(!this.period){ w.emit('flash',{a:.35}); w.se('warn'); } } }
     else if(this.st==='aim'){
       this.tm+=dt;
-      if(this.tm<this.lock){ this.target=P.x+(this.predict?(P.vx+(this.withDrift?(w.flags.drift||0):0))*(this.strike-this.tm):0); }
+      if(this.targets){ this.target=this.targets[Math.min(this.shots,this.targets.length-1)]; } // fixed spots
+      else if(this.tm<this.lock){ this.target=P.x+(this.predict?(P.vx+(this.withDrift?(w.flags.drift||0):0))*(this.strike-this.tm):0); }
       if(this.tm>=this.strike){ this.st='strike'; this.tm=0; w.se('electric'); w.emit('flash',{a:.9}); w.shake(8); w.emit('impact',{x:this.target,y:G,w:30,style:'spark'}); }
     }else if(this.st==='strike'){
       this.tm+=dt;
-      if(this.tm>=0.2){
+      if(this.tm>=Math.max(0.2,(this.hold||0.14)+0.06)){
         this.shots++;
-        if(this.shots<(this.count||1)){ this.st='aim'; this.tm=this.lock-(this.interval||0.6); }
+        if(this.period){ this.st='rest'; this.tm=0; }
+        else if(this.shots<(this.count||1)){ this.st='aim'; this.tm=this.lock-(this.interval||0.6); }
         else this.st='done';
       }
+    }else if(this.st==='rest'){
+      // a steady rhythm on a fixed spot: warn, strike, rest, again
+      this.tm+=dt; if(this.tm>=this.period-this.strike-Math.max(0.2,(this.hold||0.14)+0.06)){ this.st='aim'; this.tm=0; if(Math.abs(P.x-this.target)<600) w.se('warn'); }
     }
   }
   hazards(){
-    if(this.st==='strike' && this.tm<0.14) return [{x:this.target-this.width/2,y:0,w:this.width,h:G}];
+    if(this.st==='strike' && this.tm<(this.hold||0.14)) return [{x:this.target-this.width/2,y:0,w:this.width,h:G}];
     return null;
   }
 }

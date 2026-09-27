@@ -227,6 +227,7 @@ const PROLOGUE2=[
   '同じ夜を、もう一度。',
   'こんどは、君のほうから。'
 ];
+let TG1=560,TG2=720,PER=1.8,PH2=0.5;
 const LOOP2={
   // 1: an alarm clock hops down the hall. Jump it and it jumps with you; walk under its hop.
   0:{floors:[[0,1000]],checkpoint:{x:520},
@@ -289,15 +290,16 @@ const LOOP2={
       F.Umbrella({x:200,y:420,boost:70}),
       F.Wind({x0:240,x1:920,v:90,onT:1.8,offT:3.0,phase:1.15}),
       // the storm aims at where the wind is carrying you: once it locks on, brake or push on
-      F.Lightning({lock:0.35,strike:1.0,predict:true,withDrift:true,width:34,count:2,interval:0.7,
-        when:w=>w.P.glide&&!w.P.ground&&w.P.x>=330}),
+      // the storm strikes two fixed spots over the gap, one after the other: the warning shows where
+      F.Lightning({targets:[TG1],lock:0,strike:0.9,width:56,hold:0.5,period:PER,phase:0,tx:120}),
+      F.Lightning({targets:[TG2],lock:0,strike:0.9,width:56,hold:0.5,period:PER,phase:PH2,tx:120}),
       // the crows want the umbrella. The first swoops in low from behind the moment you land:
       // hop it (the umbrella makes the hop float)...
-      F.Shot({from:'left',x0:720,y:430-20,w:34,h:18,speed:620,delay:0.2,style:'crow',se:'trap',warnSE:'warn',
+      F.Shot({from:'left',x0:720,y:430-20,w:34,h:18,speed:620,delay:0.2,style:'crow',se:'trap',warnSE:'warn',lockGoal:true,
         when:w=>w.P.ground&&w.P.x>=860}),
       // ...and the second follows from the front at the height of that floating hop. Stay down.
       F.Shot({from:'right',y:352,w:34,h:34,speed:700,delay:1.1,style:'crow',se:'trap',warnSE:'warn',
-        when:w=>w.ents[3].st==='fly'&&w.ents[3].x>w.P.x+40})
+        when:w=>w.ents[4].st==='fly'&&w.ents[4].x>w.P.x+40})
     ]},
   // 7: rush hour walks toward you and shoves you back toward the tracks
   6:{ents:F=>[

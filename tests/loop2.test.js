@@ -55,11 +55,10 @@ const S5_BOT=(w,inp)=>{ const P=w.P, E=w.ents; inp.right=inp.left=inp.jump=false
   inp.right=true; };
 const S6_GUST=w=>{ const p=w.ents[1].tm%4.8; return p>=0.1&&p<0.15; };
 const S6_LAND={fn:(w,inp)=>{ inp.right=w.P.x<945; inp.left=w.P.x>951; },until:w=>w.cleared};
-// once the lightning has locked on, brake if it's going to land ahead of you
-const S6_STEER={fn:(w,i)=>{ const L=w.ents[2]; i.right=true; i.left=false;
-  if(L.st==='aim'&&L.tm>=L.lock){ const ahead=L.target-w.P.x; if(ahead>-20&&ahead<160){ i.right=false; i.left=true; } } },until:GR};
-const S6_GLIDE=[walk(X(150)),{until:S6_GUST},walk(X(248)),{r:1,j:1,p:1,t:0.6},S6_STEER];
-const S6_HOP1=[{until:w=>w.ents[3].st==='fly'&&w.ents[3].x>w.P.x-110},{j:1,p:1,t:0.08},{until:w=>w.ents[3].st==='fly'&&w.ents[3].x>w.P.x+40}];
+// the storm strikes two fixed spots on a steady rhythm: pick a gust whose timing slips between them
+const S6_GUSTK=k=>w=>{ const t=w.ents[1].tm; return t>=0.1+4.8*k&&t<0.15+4.8*k; };
+const S6_GLIDE=[walk(X(150)),{until:S6_GUSTK(2)},walk(X(248)),{r:1,j:1,p:1,t:0.6},{r:1,until:GR}];
+const S6_HOP1=[{until:w=>w.ents[4].st==='fly'&&w.ents[4].x>w.P.x-110},{j:1,p:1,t:0.08},{until:w=>w.ents[4].st==='fly'&&w.ents[4].x>w.P.x+40}];
 const S7_HOP=(w,inp)=>{ const c=w.ents[2]; inp.right=inp.left=false;
   if(w._j>0){ w._j-=1/120; inp.jump=true; return; }
   if(!w.P.ground) return;
@@ -103,9 +102,9 @@ const cases={
 6:[
   ['run and jump at once',  'dead', [walk(X(248)),...jumpR(0.6),S6_LAND]],
   ['wait at the edge',      'dead', [walk(X(245)),wait(3),{r:1,until:GR},S6_LAND]],
-  ['glide straight through the storm','dead',[walk(X(150)),{until:S6_GUST},walk(X(248)),{r:1,j:1,p:1,t:0.6},{r:1,until:GR},S6_LAND]],
+  ['jump on the first gust into the storm','dead',[walk(X(150)),{until:S6_GUSTK(1)},walk(X(248)),{r:1,j:1,p:1,t:0.6},{r:1,until:GR},S6_LAND]],
   ['stand when you land',   'dead', [...S6_GLIDE,wait(3)]],
-  ['brake, hop once, stay down','clear',[...S6_GLIDE,...S6_HOP1,{until:GR},{until:w=>w.ents[4].st==='done'||(w.ents[4].st==='fly'&&w.ents[4].x<w.P.x-60)},S6_LAND]],
+  ['read the storm, hop once, stay down','clear',[...S6_GLIDE,...S6_HOP1,{until:GR},{until:w=>w.ents[5].st==='done'||(w.ents[5].st==='fly'&&w.ents[5].x<w.P.x-60)},S6_LAND]],
 ],
 7:[
   ['stand in the crowd',    'dead', [walk(X(270)),...jumpR(0.6),walk(X(430)),wait(8)]],

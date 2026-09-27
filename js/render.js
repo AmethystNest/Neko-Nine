@@ -64,6 +64,40 @@ function bigLabel(g,text,x,y,col,align){
   g.lineJoin='round'; g.lineWidth=6; g.strokeStyle='rgba(10,12,20,.9)'; g.strokeText(text,x,y);
   g.fillStyle=col; g.fillText(text,x,y); g.restore();
 }
+// Small angel wings with layered feathers, a soft glow and a halo.
+// Local space: the cat faces right, feet at y=0, body height dh.
+function drawAngelWings(g,t,dh){
+  const k=Math.sin(t*30);           // flap
+  g.save();
+  // glow behind everything
+  const gl=g.createRadialGradient(-4,-dh*0.62,2,-4,-dh*0.62,dh*1.25);
+  gl.addColorStop(0,'rgba(255,248,215,.55)'); gl.addColorStop(0.5,'rgba(255,236,170,.18)'); gl.addColorStop(1,'rgba(255,236,170,0)');
+  g.fillStyle=gl; g.beginPath(); g.arc(-4,-dh*0.62,dh*1.25,0,TAU); g.fill();
+  const wing=(back)=>{
+    g.save(); g.translate(back?-8:-2,-dh*0.62); g.scale(back?1.55:1.8,back?1.55:1.8);
+    g.rotate(-0.25+k*0.45+(back?0.25:0)); g.globalAlpha=back?0.75:1;
+    g.shadowColor='rgba(255,240,190,.9)'; g.shadowBlur=8;
+    // long flight feathers fanning back
+    for(let i=0;i<5;i++){ const a=-2.5+i*0.24, L=24-i*2.6;
+      g.save(); g.rotate(a); g.fillStyle=i%2?'#fbf8ef':'#ffffff'; g.beginPath(); g.ellipse(L*0.5,0,L*0.55,3.3,0,0,TAU); g.fill();
+      g.strokeStyle='rgba(190,175,140,.55)'; g.lineWidth=0.6; g.stroke(); g.restore(); }
+    // soft covert feathers near the shoulder
+    g.fillStyle='#ffffff'; g.beginPath(); g.ellipse(-4,-5,6.5,4.2,-0.7,0,TAU); g.fill();
+    g.strokeStyle='rgba(190,175,140,.45)'; g.lineWidth=0.6; g.stroke();
+    g.fillStyle='rgba(255,236,190,.55)'; for(let i=0;i<3;i++){ g.beginPath(); g.arc(-10+i*4,-3+i*1.5,2.2,0,TAU); g.fill(); }
+    g.restore();
+  };
+  wing(true); wing(false);
+  // halo
+  g.shadowColor='rgba(255,225,120,.95)'; g.shadowBlur=10;
+  g.strokeStyle='#ffe38a'; g.lineWidth=2.4; g.beginPath(); g.ellipse(dh*0.28,-dh-5+Math.sin(t*4)*1.2,9,3,0,0,TAU); g.stroke();
+  g.shadowBlur=0;
+  // a few sparkles drifting off
+  for(let i=0;i<5;i++){ const ph=(t*1.3+i*0.21)%1, x=-18-ph*20+Math.sin(i*7.3)*12, y=-dh*0.5-ph*26+Math.cos(i*3.1)*10, r=(1-ph)*2.2;
+    g.globalAlpha=(1-ph)*0.9; g.fillStyle='#fff6cc'; g.beginPath(); g.moveTo(x,y-r*2); g.lineTo(x+r*0.6,y); g.lineTo(x,y+r*2); g.lineTo(x-r*0.6,y); g.fill();
+    g.beginPath(); g.moveTo(x-r*2,y); g.lineTo(x,y+r*0.6); g.lineTo(x+r*2,y); g.lineTo(x,y-r*0.6); g.fill(); }
+  g.restore();
+}
 function drawDoor(g,x,y,pal,t,opts){
   const w=42,h=82,top=y-h;
   opts=opts||{};
@@ -1204,6 +1238,8 @@ const R={
     g.save();
     g.translate(Math.round(P.x),Math.round(P.y+pad));
     if(P.facing<0) g.scale(-1,1);
+    // once in a while, falling into a pit, the cat really does try to fly: little angel wings
+    if(w.flap && !P.ground && P.vy>0 && P.y>G+4) drawAngelWings(g,w.t,dh);
     g.drawImage(sp,Math.round(-dw/2),Math.round(-dh),Math.round(dw),Math.round(dh));
     if(P.glide){
       // the umbrella, held open over the head
@@ -1213,12 +1249,6 @@ const R={
       g.fillStyle='#4a7ad8'; g.beginPath(); g.moveTo(-26,-26); g.quadraticCurveTo(0,-54,26,-26);
       for(let i=0;i<4;i++){ const a=-26+i*13; g.quadraticCurveTo(a+19.5,-31,a+13,-26); }
       g.fill(); rect(g,'rgba(255,255,255,.18)',-18,-36,10,3); g.restore();
-    }
-    // once in a while, falling into a pit, the cat really does try to fly
-    if(w.flap && !P.ground && P.vy>0 && P.y>G+4){
-      const k=Math.sin(w.t*38)*0.8;
-      g.fillStyle='#f4f1ea'; g.strokeStyle='#8a8fa8'; g.lineWidth=1;
-      for(const s of [0,1]){ g.save(); g.translate(s?2:-6,-dh*0.62); g.scale(1.3,1.3); g.rotate(-0.5+k+(s?0.35:0)); g.globalAlpha=s?1:0.7; g.beginPath(); g.moveTo(0,0); g.quadraticCurveTo(-8,-20,-26,-16); g.quadraticCurveTo(-14,-6,0,0); g.fill(); g.stroke(); g.restore(); }
     }
     g.restore();
     if(ui&&ui.sleep){
