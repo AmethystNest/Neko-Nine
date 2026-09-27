@@ -59,7 +59,11 @@ class World{
     const sp=this.opts.spawn||d.spawn||{x:110,y:G};
     this.P={x:sp.x,y:sp.y,vx:0,vy:0,facing:1,ground:true,ref:null,
       dead:false,deadT:0,cause:'',frame:0,anim:0,land:0,
-      jumpT:0,jumpX:sp.x,coyote:0,jbuf:0,air:0,squash:0};
+      jumpT:0,jumpX:sp.x,coyote:0,jbuf:0,air:0,squash:0,
+      doubleJumpUsed:false,invuln:0};
+    // 救済措置: 累計9回目のゲームオーバー後のリトライで一度だけ、羽の力を借りる。
+    this.wingMode=!!this.opts.wingMode;
+    this.shieldUsed=false;
     this.statics=[];
     for(const f of d.floors||[]){
       const top=f[2]===undefined?G:f[2];
@@ -86,7 +90,15 @@ class World{
   }
   kill(cause,killer){
     const P=this.P;
-    if(P.dead||this.cleared) return;
+    if(P.dead||this.cleared||P.invuln>0) return;
+    if(this.wingMode && !this.shieldUsed){
+      this.shieldUsed=true;
+      P.invuln=0.9;
+      P.vy=-380; P.vx=(P.facing>=0?-1:1)*220; P.ground=false; P.ref=null;
+      this.se('checkpoint');
+      this.emit('shield',{x:P.x,y:P.y,cause});
+      return;
+    }
     if(!killer && cause==='fall' && P.lastRef && P.lastRef.owner) killer=P.lastRef.owner;
     this.killer=killer&&killer.idx!==undefined?killer.idx:-1;
     P.dead=true; P.deadT=0; P.cause=cause||'trap';
@@ -196,14 +208,18 @@ class World{
       P.vx=approach(P.vx,0,(P.ground?CFG.friction:CFG.airFriction)*dt);
     }
 
-    if(P.jbuf>0 && (P.ground || P.coyote>0)){
+    if(P.ground) P.doubleJumpUsed=false;
+    const canDouble=this.wingMode && !P.ground && P.coyote<=0 && !P.doubleJumpUsed;
+    if(P.jbuf>0 && (P.ground || P.coyote>0 || canDouble)){
+      if(canDouble) P.doubleJumpUsed=true;
       P.vy=-CFG.jump; P.ground=false; P.ref=null; P.coyote=0; P.jbuf=0;
       P.jumpX=P.x; P.jumpT=0; P.land=0;
       this.se('jump');
-      this.emit('jump',{x:P.x,y:P.y});
+      this.emit('jump',{x:P.x,y:P.y,double:canDouble});
     }
     P.jbuf=Math.max(0,P.jbuf-dt);
     P.coyote=Math.max(0,P.coyote-dt);
+    P.invuln=Math.max(0,P.invuln-dt);
 
     if(!P.ground){
       if(P.vy>=0) P.boost=false;

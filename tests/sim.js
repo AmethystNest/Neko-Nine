@@ -8,7 +8,7 @@ const {STAGES}=globalThis.NEKO_STORY;
 // script: array of steps {r,l,j,p,until(w)|t, name}
 function run(idx,script,opts={}){
   const base=STAGES[idx], def=(opts.loop===2&&base.loop2)?Object.assign({},base,base.loop2):base;
-  const w=new World(def,opts.spawn?{spawn:opts.spawn}:undefined);
+  const w=new World(def,(opts.spawn||opts.wingMode)?{spawn:opts.spawn,wingMode:opts.wingMode}:undefined);
   const inp={left:false,right:false,jump:false,press:false};
   const dt=process.env.DT?1/+process.env.DT:1/120;
   let si=0, st=0, T=0;

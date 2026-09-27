@@ -1039,6 +1039,7 @@ const R={
         for(let i=0;i<(ev.style==='pot'?16:10);i++) this.part(ev.x+(Math.random()-0.5)*(ev.w||30),ev.y-2,(Math.random()-0.5)*220,-Math.random()*200,col,2+Math.random()*3,0.9);
         break; }
       case 'checkpoint': for(let i=0;i<24;i++) this.part(ev.x+(Math.random()-0.5)*30,ev.y-40,(Math.random()-0.5)*120,-Math.random()*160,'rgba(255,220,160,.9)',2,1.0,120); break;
+      case 'shield': for(let i=0;i<20;i++) this.part(ev.x,ev.y-30,(Math.random()-0.5)*260,-Math.random()*260,'rgba(255,245,210,.95)',2+Math.random()*2,0.8,60); this.shakeA=Math.max(this.shakeA,6); break;
       case 'bonk': for(let i=0;i<6;i++) this.part(ev.x,ev.y,(Math.random()-0.5)*120,Math.random()*60,'#ffe9a8',2,0.5); break;
       case 'death': {
         const y=Math.min(ev.y,WH-10);
@@ -1240,7 +1241,11 @@ const R={
     if(P.facing<0) g.scale(-1,1);
     // once in a while, falling into a pit, the cat really does try to fly: little angel wings
     if(w.flap && !P.ground && P.vy>0 && P.y>G+4) drawAngelWings(g,w.t,dh);
+    // rescue wings: granted for the stage after the 9th game over, gone once it's cleared
+    if(w.wingMode && !P.ground) drawAngelWings(g,w.t,dh);
+    if(w.wingMode && P.invuln>0 && Math.floor(w.t*16)%2) g.globalAlpha=0.45;
     g.drawImage(sp,Math.round(-dw/2),Math.round(-dh),Math.round(dw),Math.round(dh));
+    g.globalAlpha=1;
     if(P.glide){
       // the umbrella, held open over the head
       const tilt=(w.flags.wind||0)*0.25;

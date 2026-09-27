@@ -135,7 +135,7 @@ const AU=window.NEKO_AUDIO;
 // State
 // ---------------------------------------------------------------------------
 const S={
-  mode:'boot', stage:0, lives:LIVES, deaths:0, world:null,
+  mode:'boot', stage:0, lives:LIVES, deaths:0, retires:0, world:null,
   ui:{deathQuote:'',snapCam:true,lastLife:false,thunder:()=>AU.thunder()},
   respawnAt:0, clearAt:0, playTime:0, clock:0, paused:false, fallGag:0, loop:1
 };
@@ -232,10 +232,16 @@ function enterStage(i,withStory){
 // Mercy (only after a game over in this stage): a checkpoint appears, and traps
 // that killed you twice start showing a faint outline before they trigger.
 const HINT_AFTER=2;
-const M={deaths:0,known:new Map(),cpOn:false,cpReached:false};
+const M={deaths:0,known:new Map(),cpOn:false,cpReached:false,wingMode:false};
+// Rescue: on the 9th cumulative game-over's retry, Nine comes back in wing form for that
+// stage's clear attempt — a double jump, and one trap hit forgiven.
+const WING_AT_RETIRES=9;
 function spawnOpts(){
   const cp=stageDef(S.stage).checkpoint;
-  return (M.cpReached&&cp)?{spawn:{x:cp.x,y:cp.y===undefined?E.G:cp.y}}:undefined;
+  const o={};
+  if(M.cpReached&&cp) o.spawn={x:cp.x,y:cp.y===undefined?E.G:cp.y};
+  if(M.wingMode) o.wingMode=true;
+  return Object.keys(o).length?o:undefined;
 }
 function syncMercyUI(){
   const cp=stageDef(S.stage).checkpoint;
@@ -303,6 +309,7 @@ function toast(text){
   clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('on'),2600);
 }
 function onClear(){
+  M.wingMode=false;
   const last=!!STAGES[S.stage].final;
   // the last door opens onto light: give it time, and let the music and rain go quiet
   S.clearAt=S.clock+(last?3.2:1.7);
@@ -315,6 +322,8 @@ function onClear(){
 let goTimers=[];
 function showGameOver(){
   S.mode='gameover';
+  S.retires++;
+  writeSave({retires:S.retires});
   setHud(false);
   AU.setRain(0);
   AU.play('gameover'); AU.stopMusic(2.5);
@@ -347,7 +356,10 @@ $('retryBtn').addEventListener('click',e=>{
     if(RESTART_FROM_STAGE1){ S.stage=0; }
     const firstMercy=!M.cpOn && !!stageDef(S.stage).checkpoint;
     M.cpOn=true;
-    if(firstMercy) M.toastOnStart='失くした命が、道しるべを残していった。';
+    const wingUp=S.retires===WING_AT_RETIRES;
+    if(wingUp) M.wingMode=true;
+    if(wingUp) M.toastOnStart='9回目の「もう一回」に、羽が応えた。このステージの間だけ。';
+    else if(firstMercy) M.toastOnStart='失くした命が、道しるべを残していった。';
     enterStage(S.stage,'retry');
     // the story screen is already fully up, so nothing of the old stage shows through
     over.classList.remove('show','lifeCount','retryMoment'); over.setAttribute('aria-hidden','true');
@@ -487,8 +499,10 @@ function beginGame(fromStage,picked,lap){
   S.lives=LIVES;
   // a stage picked from the select menu starts a fresh run from there
   S.deaths=fromStage>0&&!picked?(sv.deaths||0):0;
+  S.retires=fromStage>0&&!picked?(sv.retires||0):0;
   S.fallGag=fromStage>0?(sv.fallGag||0):0;
   S.playTime=0;
+  M.wingMode=false;
   const t=$('titleScreen'); t.classList.add('hide'); setTimeout(()=>{ if(t.classList.contains('hide')) t.style.display='none'; },700);
   enterStage(fromStage,fromStage===0?'prologue':true);
 }
