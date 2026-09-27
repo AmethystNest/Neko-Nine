@@ -88,10 +88,6 @@ function drawAngelWings(g,t,dh){
     g.restore();
   };
   wing(true); wing(false);
-  // halo
-  g.shadowColor='rgba(255,225,120,.95)'; g.shadowBlur=10;
-  g.strokeStyle='#ffe38a'; g.lineWidth=2.4; g.beginPath(); g.ellipse(dh*0.28,-dh-5+Math.sin(t*4)*1.2,9,3,0,0,TAU); g.stroke();
-  g.shadowBlur=0;
   // a few sparkles drifting off
   for(let i=0;i<5;i++){ const ph=(t*1.3+i*0.21)%1, x=-18-ph*20+Math.sin(i*7.3)*12, y=-dh*0.5-ph*26+Math.cos(i*3.1)*10, r=(1-ph)*2.2;
     g.globalAlpha=(1-ph)*0.9; g.fillStyle='#fff6cc'; g.beginPath(); g.moveTo(x,y-r*2); g.lineTo(x+r*0.6,y); g.lineTo(x,y+r*2); g.lineTo(x-r*0.6,y); g.fill();
