@@ -243,15 +243,15 @@ const LOOP2={
   //    (one gap, nothing to split: no checkpoint here, only the hints)
   1:{floors:[[0,260],[960,1000]],checkpoint:null,goal:{x:975},
     ents:F=>[
+      // the next step pops up first, right where you'd go... it's already read. The real one
+      // comes a beat later, higher up. Twice.
       F.Banners({tx:200,items:[
-        {x:290,y:G-10,at:0,life:2.4},
-        {x:420,y:G-70,at:0.45,life:2.4},
-        {x:530,y:G-70,at:0.8,fake:true},
-        {x:556,y:G-170,at:0.9,life:2.5,w:120},
-        // this one is being swiped away as you land on it
-        {x:700,y:G-110,at:1.4,life:2.6,w:110,vx:-25},
-        {x:818,y:G-110,at:1.8,fake:true},
-        {x:810,y:G-210,at:1.9,life:2.8,w:120}]})
+        {x:290,y:G-10,at:0,life:3.2},
+        {x:420,y:G-40,at:0.25,fake:true},
+        {x:440,y:G-150,at:0.95,life:2.6,w:110},
+        {x:600,y:G-110,at:1.5,life:2.6},
+        {x:740,y:G-110,at:1.75,fake:true},
+        {x:770,y:G-210,at:2.35,life:2.8,w:110}]})
     ]},
   // 3: the presses, on a dizzy head: left and right trade places until the edge
   2:{ents:F=>[
@@ -331,7 +331,7 @@ const LOOP2={
     }},
   // 10: the way home, told from your side: the things of those nights that could happen in any
   //     home come back once more. The dark thins and the voices are from tonight.
-  9:{floors:[[0,700],[960,1180],[1250,1400],[1600,2100],[3000,3150]],checkpoint:{x:1330},
+  9:{floors:[[0,700],[960,1180],[1250,1400],[1720,1790],[2040,2100],[3000,3150]],checkpoint:{x:1330},
     dusk:{from:0.62,x0:300,x1:2750},
     memories:[
       {x:300, text:'「ナイン……どこにいるの」'},
@@ -344,20 +344,22 @@ const LOOP2={
     ents:F=>[
       // the alarm (stage 1)
       F.AlarmClock({from:'right',x0:690,speed:160,hopH:110,hopT:0.8,when:w=>w.P.x>=160&&w.P.x<600}),
-      // the notifications (stage 2): the flush one is the fake again
+      // the notifications (stage 2): the one that shows up first is already read
       F.Banners({tx:640,items:[
-        {x:712,y:G-24,at:0,life:3.6},
-        {x:822,y:G-24,at:0.5,fake:true},
-        {x:846,y:G-124,at:0.7,life:3.6}]}),
+        {x:712,y:G-24,at:0,life:3.2},
+        {x:822,y:G-24,at:0.35,fake:true},
+        {x:840,y:G-130,at:1.0,life:3.0}]}),
       // the dizziness (stage 3), over a small gap this time
       F.Dizzy({x0:1040,x1:1400,off:1290}),
-      // the lamps (stage 4)
-      F.LightFloor({x:1400,w:200,onT:2.2,offT:1.1,phase:0}),
+      // the lamps (stage 4): two failing tubes out of step over the water, and one more after
+      F.LightFloor({x:1400,w:160,seq:[[1.2,0.5],[0.35,0.3],[0.9,0.6]],phase:1.2}),
+      F.LightFloor({x:1560,w:160,seq:[[0.7,0.6],[1.1,0.35],[0.3,0.4]],phase:0.5}),
+      F.LightFloor({x:1790,w:250,seq:[[0.9,0.7],[0.3,0.3],[1.2,0.5]],phase:2.1}),
       // and then the dark of stage 9 and your own shadow come after you together, and the floor
-      // behind you gives way all the way to the door. Run, and don't stop.
-      F.DarkChase({startX:1450,tx:1700,speed:160,accel:30,maxSpeed:212,leash:340}),
-      F.Shadow({tx:1700,delay:1.3}),
-      F.Collapse({x0:2100,x1:3000,speed:222,tx:2160}),
+      // gives way behind you all the way to the door. Flat out, or it's over.
+      F.DarkChase({startX:1820,tx:2040,speed:200,accel:60,maxSpeed:229,leash:220}),
+      F.Shadow({tx:2040,delay:1.2}),
+      F.Collapse({x0:2100,x1:3000,speed:229,tx:2130}),
       F.Light({x:3050,y:370,r:170,warm:true,doorGlow:true})
     ]}
 };

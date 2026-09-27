@@ -7,14 +7,22 @@ const wait=t=>({t});
 const L2={loop:2,maxT:60};
 const CP10={spawn:{x:1330,y:420}};
 const S10_1=[walk(X(250)),wait(1.0),walk(w=>w.ents[0].st!=='run'||w.ents[0].x<w.P.x-30),walk(X(685))];
-const S10_2=[{r:1,j:1,p:1,t:0.2},{r:1,until:X(725)},{until:GR},walk(X(790)),{r:1,j:1,p:1,t:0.6},{r:1,until:X(860)},{until:GR},walk(X(1000)),{until:GR}];
+const S10_2=[{r:1,j:1,p:1,t:0.2},{r:1,until:X(725)},{until:GR},{until:w=>w.ents[1].solids[2].on},walk(X(790)),{r:1,j:1,p:1,t:0.6},{r:1,until:X(860)},{until:GR},walk(X(1000)),{until:GR}];
 const S10_3=[walk(X(1045)),{l:1,until:X(1168)},{l:1,j:1,p:1,t:0.25},{l:1,until:GR},{until:GR},wait(0.1),walk(X(1385))];
-const S10_4=[{until:w=>w.ents[3].lit&&w.ents[3].tm%3.3<0.7},walk(X(1640))];
+// the tubes: jump when the one ahead is dark or the one underfoot starts to flicker
+const S10_TUBES={fn:(w,inp)=>{ const P=w.P, L=[w.ents[3],w.ents[4],w.ents[5]]; inp.right=true; inp.press=false;
+  if(w._j>0){ w._j-=1/120; inp.jump=true; return; } inp.jump=false; if(!P.ground) return;
+  const at=x=>L.find(l=>x>=l.x&&x<l.x+l.w), ahead=at(P.x+30), cur=at(P.x);
+  if((ahead&&!ahead.lit)||(cur&&cur.flicker)){ inp.press=true; inp.jump=true; w._j=0.6; } },until:X(2045)};
+const S10_4=[{until:w=>w.ents[3].tm%5>1.6&&w.ents[3].tm%5<1.65},S10_TUBES];
 // the last stretch: the floor gives way behind you all the way to the door; just run
 const S10_DOOR={fn:(w,i)=>{ i.right=w.P.x<3044; i.left=w.P.x>3056; },until:w=>w.cleared};
 // the notifications: hop from one to the next, jumping up past each fake
 const hopTo=(x0,t,xl)=>[walk(X(x0)),{r:1,j:1,p:1,t},{r:1,until:X(xl)},{until:GR}];
-const S2_A=hopTo(235,0.2,300), S2_B=hopTo(392,0.3,430), S2_C=hopTo(495,0.4,575), S2_D=[{r:1,until:w=>!w.P.ground},{until:GR}], S2_E=[{r:1,until:w=>w.P.x>=w.ents[0].solids[4].x+w.ents[0].solids[4].w-40},{r:1,j:1,p:1,t:0.4},{r:1,until:X(825)},{until:GR}];
+const S2_A=hopTo(235,0.2,300);
+const S2_B=[{until:w=>w.ents[0].solids[2].on},wait(0.5),{r:1,j:1,p:1,t:0.6},{r:1,until:X(470)},{until:GR}];
+const S2_C=[walk(X(520)),{until:w=>w.ents[0].solids[3].on},{r:1,until:w=>!w.P.ground},{r:1,until:X(610)},{until:GR}];
+const S2_D=[{until:w=>w.ents[0].solids[5].on},wait(0.2),walk(X(670)),{r:1,j:1,p:1,t:0.6},{r:1,until:X(800)},{until:GR}];
 // the failing tubes: jump when the tube ahead is dark or the one underfoot starts to flicker
 const S4_SMART=(w,inp)=>{ const P=w.P, B=w.ents[1], C=w.ents[2]; inp.right=true; inp.press=false;
   if(w._j>0){ w._j-=1/120; inp.jump=true; return; } inp.jump=false;
@@ -69,10 +77,10 @@ const cases={
   ['walk under its hops',   'clear',[walk(X(250)),wait(1.1),walk(w=>w.ents[0].x<w.P.x-30),walk(X(560)),wait(1.1),walk(X(2000))]],
 ],
 2:[
-  ['walk onto the first fake','dead',[...S2_A,...S2_B,walk(X(2000))]],
-  ['walk onto the second',  'dead', [...S2_A,...S2_B,...S2_C,...S2_D,walk(X(2000))]],
+  ['take the first to appear','dead',[...S2_A,{until:w=>w.ents[0].solids[1].on},...hopTo(360,0.15,440),walk(X(2000))]],
+  ['take the next one again','dead',[...S2_A,...S2_B,...S2_C,{until:w=>w.ents[0].solids[4].on},walk(X(680)),{r:1,j:1,p:1,t:0.02},{r:1,until:X(760)},{until:GR},walk(X(2000))]],
   ['wait too long',         'dead', [...S2_A,wait(4)]],
-  ['jump up past both',     'clear',[...S2_A,...S2_B,...S2_C,...S2_D,...S2_E,{fn:(w,i)=>{ i.right=w.P.x<972; i.left=w.P.x>978; },until:w=>w.cleared}]],
+  ['wait a beat, go higher','clear',[...S2_A,...S2_B,...S2_C,...S2_D,{fn:(w,i)=>{ i.right=w.P.x<972; i.left=w.P.x>978; },until:w=>w.cleared}]],
 ],
 3:[
   ['press on at the wrong beat','dead',[walk(X(240)),wait(0.95),walk(X(252)),{l:1,until:X(588)}]],
@@ -113,8 +121,10 @@ const cases={
 ],
 10:[
   ['the way home',          'clear',[...S10_1,...S10_2,...S10_3,...S10_4,S10_DOOR]],
+  ['take the first banner', 'dead', [...S10_1,{r:1,j:1,p:1,t:0.2},{r:1,until:X(2000)}]],
   ['from the checkpoint',   'clear',[walk(X(1385)),...S10_4,S10_DOOR],CP10],
-  ['stop as the floor goes','dead', [walk(X(1385)),...S10_4,walk(X(2300)),wait(0.6),S10_DOOR],CP10],
+  ['walk across the tubes', 'dead', [walk(X(4000))],CP10],
+  ['ease off in the collapse','dead',[walk(X(1385)),...S10_4,walk(X(2300)),wait(0.2),S10_DOOR],CP10],
   ['stop before the door',  'dead', [walk(X(1385)),...S10_4,walk(X(2200)),wait(2)],CP10],
 ],
 };

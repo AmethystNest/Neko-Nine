@@ -843,8 +843,14 @@ class Crossing extends Ent{
 class DarkChase extends Ent{
   init(){ this.kind='dark'; this.x=this.startX; this.v=this.speed; this.alwaysUpdate=false; this.right=this.side==='right'; }
   update(w,dt){
-    if(this.st==='idle'){ if(this.triggered(w)){ this.st='chase'; w.se('wallmove'); } }
-    else if(this.st==='chase' && this.right){
+    if(this.st==='idle'){ if(this.triggered(w)){ this.st='chase'; w.se('darkrise'); w.shake(3); } }
+    if(this.st==='chase'){
+      // close behind you, you can hear it
+      const gap=this.right?this.x-w.P.x:w.P.x-this.x;
+      this.pt=(this.pt||0)+dt;
+      if(!w.P.dead && gap<260 && this.pt>1.1 && !(this.right&&this.x<=this.minX)){ this.pt=0; w.se('darkpulse'); }
+    }
+    if(this.st==='chase' && this.right){
       // darkness closing in from the far side; it stops at minX
       this.x=Math.max(this.minX,this.x-this.speed*dt);
     }
@@ -942,7 +948,7 @@ class Banners extends Ent{
       if(age<0){ s.on=false; return; }
       if(!b.shown){ b.shown=true; w.se('warn'); }
       if(b.fake && P.ground && P.ref===s && !b.trip){ b.trip=this.clock; w.se('trapdoor'); }
-      if(b.trip!==undefined && this.clock-b.trip>0.12) b.fall=(b.fall||0)+dt;
+      if(b.trip!==undefined) b.fall=(b.fall||0)+dt; // read: it drops the instant you land
       if(!b.fake && age>=b.life){ b.gone=true; s.on=false; return; }
       if(b.fall!==undefined){
         // it drops out from under you: no longer something to stand on, just a thing falling
@@ -1033,8 +1039,9 @@ class Shadow extends Ent{
   init(w){ this.kind='shadow'; this.path=[]; this.clock=0; this.pos=null; }
   update(w,dt){
     const P=w.P;
-    if(this.st==='idle'){ if(this.triggered(w)){ this.st='follow'; this.clock=0; w.se('warn'); } else return; }
+    if(this.st==='idle'){ if(this.triggered(w)){ this.st='follow'; this.clock=0; w.se('shadow'); } else return; }
     this.clock+=dt;
+    if(this.pos && !P.dead){ this.mt=(this.mt||0)+dt; if(Math.abs(this.pos[1]-P.x)<90 && this.mt>1.6){ this.mt=0; w.se('shadowmew'); } }
     if(!P.dead) this.path.push([this.clock,P.x,P.y,P.facing,P.frame,P.ground]);
     const t=this.clock-this.delay;
     while(this.path.length>1 && this.path[1][0]<=t) this.path.shift();
