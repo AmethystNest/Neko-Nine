@@ -448,8 +448,8 @@ function endingStep(dt){
     if(e.catX>=482){ e.catX=482; e.catWalking=false; e.phase='talk'; e.lineAt=e.t+1.0; }
   }
   if(e.lightOn){ e.light=Math.min(1,e.light+dt*0.35); e.rainStop=Math.min(1,e.rainStop+dt*0.3); AU.setRain(0.6*(1-e.rainStop)); }
-  // second lap: the sky pales through the talk, and the sun comes up at the end
-  if(e.dawn) e.sun=e.sunUp?Math.min(1,e.sun+dt*0.18):Math.min(0.35,e.t/60);
+  // second lap: the window stays night until "見て、ナイン。……朝だ。", then the sun comes up
+  if(e.dawn) e.sun=e.sunUp?Math.min(1,e.sun+dt*0.18):0;
   // at dawn you turn from Nine to the window, and back again for the last words
   if(e.turn!==e.turnTo) e.turn=e.turn<e.turnTo?Math.min(e.turnTo,e.turn+dt*1.4):Math.max(e.turnTo,e.turn-dt*1.4);
   if(e.phase==='talk' && e.t>=e.lineAt) advanceLine();
