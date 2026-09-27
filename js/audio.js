@@ -181,7 +181,7 @@ const AU={
     const wet=c.createGain(); wet.gain.value=0.5; this.rev.connect(wet); wet.connect(this.musicBus);
     this.dry=c.createGain(); this.dry.gain.value=0.8; this.dry.connect(this.musicBus);
     this.renderSE();
-    document.addEventListener('visibilitychange',()=>{ if(!this.ctx) return; if(document.hidden) this.ctx.suspend(); else if(this.ready) this.ctx.resume(); });
+    document.addEventListener('visibilitychange',()=>{ if(!this.ctx) return; if(document.hidden) this.ctx.suspend(); else if(this.ready && !this.held) this.ctx.resume(); });
   },
   async renderSE(){
     const OAC=root.OfflineAudioContext||root.webkitOfflineAudioContext;

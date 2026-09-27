@@ -633,12 +633,14 @@ function pauseGame(){
   S.paused=true; input.left=input.right=input.jump=false; input.press=false;
   document.querySelectorAll('.controls button').forEach(b=>b.classList.remove('active'));
   sheet('pause',true);
+  AU.held=true;
   if(AU.ctx) AU.ctx.suspend();
 }
 function resumeGame(){
   if(!S.paused) return;
   S.paused=false; sheet('pause',false); sheet('settings',false); sheet('help',false);
   pacer.reset(performance.now());
+  AU.held=false;
   if(AU.ctx && AU.ready) AU.ctx.resume();
 }
 $('pauseBtn').addEventListener('click',e=>{ e.preventDefault(); pauseGame(); });
@@ -652,6 +654,7 @@ $('btnHelpClose').addEventListener('click',()=>sheet('help',false));
 $('btnQuit').addEventListener('click',()=>{
   S.paused=false; sheet('pause',false); sheet('settings',false); sheet('help',false);
   S.respawnAt=0; S.clearAt=0;
+  AU.held=false;
   if(AU.ctx && AU.ready) AU.ctx.resume();
   toTitle();
 });
@@ -676,6 +679,10 @@ function bindHold(id,key){
 if(matchMedia('(pointer:coarse)').matches) document.body.classList.add('touch');
 addEventListener('pointerdown',e=>{ if(e.pointerType==='touch' && !IS_TOUCH()){ document.body.classList.add('touch'); syncTapWords(); } },{capture:true,passive:true});
 function IS_TOUCH(){ return document.body.classList.contains('touch'); }
+// iOS Safari ignores user-scalable=no: block pinch zoom and the long-press menu directly.
+for(const t of ['gesturestart','gesturechange','gestureend']) document.addEventListener(t,e=>e.preventDefault(),{passive:false});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
 function syncTapWords(){
   const w=IS_TOUCH()?'TAP':'CLICK';
   document.querySelector('#splash .sp2').textContent=w+' TO BEGIN';
@@ -768,10 +775,15 @@ function loop(now){
 (function(){
   const btn=$('fullscreenBtn');
   const isFs=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
+  // iPhone Safari has no page fullscreen: from the home screen the app already is; otherwise say how
+  const canFs=!!(document.fullscreenEnabled||document.webkitFullscreenEnabled);
+  const standalone=navigator.standalone===true||matchMedia('(display-mode: standalone)').matches;
+  if(!canFs && standalone) btn.hidden=true;
   const upd=()=>{ btn.textContent=isFs()?'×':'⛶'; btn.setAttribute('aria-label',isFs()?'フルスクリーン終了':'フルスクリーン'); };
   btn.addEventListener('pointerdown',e=>e.stopPropagation(),true);
   btn.addEventListener('click',async e=>{
     e.preventDefault(); e.stopPropagation();
+    if(!canFs){ toast('共有 → ホーム画面に追加 で、全画面で遊べます'); return; }
     if(isFs()){ try{ if(document.exitFullscreen) await document.exitFullscreen(); else if(document.webkitExitFullscreen) document.webkitExitFullscreen(); }catch(_){} try{ screen.orientation&&screen.orientation.unlock&&screen.orientation.unlock(); }catch(_){} }
     else requestFs();
     upd();
