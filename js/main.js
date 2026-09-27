@@ -536,16 +536,24 @@ function newGame(e){
 }
 for(const n of [1,2]) $('btnLap'+n).addEventListener('click',e=>{ sheet('lap',false); writeSave({stage:0,deaths:0,loop:n}); titleTap(e,0,false,n); });
 $('btnLapClose').addEventListener('click',()=>sheet('lap',false));
-// Stage select (unlocked after the ending)
+// Stage select (unlocked after the ending): only stages you've actually reached that lap, spoiler-free otherwise.
 STAGES.forEach((d,i)=>{
   const b=document.createElement('button'); b.type='button';
-  b.innerHTML='<small>STAGE '+(i+1)+'</small>'; b.appendChild(document.createTextNode(d.name));
-  b.addEventListener('click',e=>{ sheet('select',false); writeSave({stage:i,deaths:0,loop:selLap}); titleTap(e,i,true,selLap); });
+  b.innerHTML='<small>STAGE '+(i+1)+'</small><span></span>';
+  b.addEventListener('click',e=>{ if(b.disabled) return; sheet('select',false); writeSave({stage:i,deaths:0,loop:selLap}); titleTap(e,i,true,selLap); });
   $('stageGrid').appendChild(b);
 });
+function seenOf(sv,lap){ return lap===2?Math.max(sv.seen2||0,dawnOf(sv)?10:0):Math.max(sv.seen1||0,clearsOf(sv)>=1?10:0); }
+function updateStageGrid(){
+  const seen=seenOf(loadSave(),selLap);
+  document.querySelectorAll('#stageGrid button').forEach((b,i)=>{
+    const open=seen>=i+1;
+    b.disabled=!open; b.querySelector('span').textContent=open?STAGES[i].name:'？？？';
+  });
+}
 // which lap the stage select starts
 let selLap=1;
-function setSelLap(n){ selLap=n; document.querySelectorAll('#lapTabs button').forEach(b=>b.classList.toggle('on',+b.dataset.lap===n)); }
+function setSelLap(n){ selLap=n; document.querySelectorAll('#lapTabs button').forEach(b=>b.classList.toggle('on',+b.dataset.lap===n)); updateStageGrid(); }
 document.querySelectorAll('#lapTabs button').forEach(b=>b.addEventListener('click',()=>setSelLap(+b.dataset.lap)));
 $('btnSelect').addEventListener('click',e=>{ e.stopPropagation(); AU.unlock(); const sv=loadSave(); setSelLap(sv.loop||(clearsOf(sv)>=1?2:1)); sheet('select',true); });
 $('btnSelectClose').addEventListener('click',()=>sheet('select',false));
