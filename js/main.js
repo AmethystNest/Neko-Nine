@@ -2,7 +2,7 @@
 (function(){
 'use strict';
 const E=window.NEKO_ENGINE, R=window.NEKO_RENDER;
-const {PROLOGUE,STAGES}=window.NEKO_STORY;
+const {PROLOGUE,PROLOGUE2,STAGES}=window.NEKO_STORY;
 const $=id=>document.getElementById(id);
 
 // Game over sends you back to the start of the stage you reached (9 lives restored).
@@ -18,7 +18,11 @@ const DEATH_QUOTES=[
   "画面の前で「あっ」って言ったでしょ。","指、滑ったよね？ そういうことにしとこう。",
   "知ってた。知らなかったけど。","これは経験値。ぼくの経験値。","今の避けれる猫いる？",
   "転生RTA、更新。","避けたよ？ 気持ちでは。","猫背が敗因。","リスポーンって便利。",
-  "鑑識呼んで。","初見を狙った犯行ですね。"
+  "鑑識呼んで。","初見を狙った犯行ですね。",
+  "世界線間違えた。","学びがありました。","動物病院行きます。","新しいぼくにご期待ください。",
+  "これで厄がひとつ減った。","ぼくらは命に嫌われている。","ちゅ〜るで治ります。","労災おります？",
+  "次はちゃんと操作してね。","手汗拭いてからやろう。","ぼくの命、君の指にかかってるんだ。",
+  "タップ軽いね。命は重いよ。","代わろうか？","ねえ、まだやめないよね？"
 ];
 // Lines for the trap that got you. Key: trap kind (or kind:style). Edit freely.
 const TRAP_QUOTES={
@@ -28,13 +32,18 @@ const TRAP_QUOTES={
   'dropfloor:crumble':["ヒビには気づいてた。気づいてただけ。"],
   'dropfloor:glass':  ["ガラスの上に乗る猫、いる？ いた。"],
   'dropfloor:ledge':  ["扉だと思った？ ぼくも。"],
-  'crush':        ["薄型モデルじゃないです。","猫って液体だよね？","圧縮に失敗しました。"],
+  'crush':        ["薄型モデルじゃないです。","猫って液体だよね？","圧縮に失敗しました。","ねこふんじゃった。"],
   'fallblock:pot':["植木鉢、狙ってたよね？"],
   'fallblock:rock':["落石注意の看板、出しといて。"],
   'spike':        ["トゲって、生えるんだ。","針治療にしては刺しすぎ。"],
   'shot:arrow':   ["矢って、猫にも当たるんだ。","背中から撃つのは卑怯。"],
   'shot:block':   ["壁が走ってきた。"],
   'shot:crow':    ["カラスとは分かり合えない。"],
+  'shot:bolt':    ["ボルト、締まった。ぼくに。","工場は、猫に厳しい。"],
+  'spike:jet':    ["下水、元気すぎる。","噴き上がるのは、気持ちだけでよかった。"],
+  'wall:truck':   ["バックします、って言ってた。","配達先、ぼくじゃないです。"],
+  'trapfloor:plate':["工事中の札、出しといて。"],
+  'pendulum:lamp':["照明、揺れすぎ。","明かりに殴られた。"],
   'laser':        ["しびれた。物理的に。"],
   'electric':     ["しびれた。物理的に。"],
   'shutter':      ["シャッター、閉店ガラガラ。"],
@@ -42,7 +51,12 @@ const TRAP_QUOTES={
   'lightning':    ["これが10まんボルト。"],
   'train':        ["終電、乗れなかった。轢かれた。","踏切では止まりましょう。"],
   'pendulum':     ["振り子を見てたら、吸い込まれた。"],
-  'dark':         ["暗闇に食べられた。"]
+  'dark':         ["暗闇に食べられた。"],
+  'clock':        ["目覚ましに起こされた。永遠に。","スヌーズは効きません。"],
+  'crowd':        ["満員電車は、猫にはきつい。","押さないでください。押されました。"],
+  'scan':         ["「動かないでください」って言われてた。","じっとしてるの、苦手なんだ。"],
+  'shadow':       ["自分の影に追いつかれた。","立ち止まったら、昨日に捕まる。"],
+  'collapse':     ["足元から、世界が崩れた。","振り返ったら、床がなかった。"]
 };
 // Falling into any pit, trapdoor or moving floor runs this gag in order (once per playthrough).
 const FALL_GAG=["次回作、鳥で。","まだ猫です。","鳥の企画、通った？","羽だけでも先に実装して。","もう飛べる気がしてきた。","飛べませんでした。"];
@@ -53,8 +67,8 @@ const TRAP_QUOTE_RATE=0.5;
 const COUNT_QUOTE_RATE=0.5;
 // Lines tied to how many lives are left (after this death).
 const COUNT_QUOTES={
-  3:["あと三つ。……急がなきゃ。"],
-  2:["あと、ふたつ。"],
+  3:["あと三つ。……急がなきゃ。","すでに満身創痍だ。"],
+  2:["あと、ふたつ。","すでに満身創痍だ。"],
   1:["あと、ひとつ。","これが最後の命。","……まだ、終われない。"]
 };
 const RETRY_QUOTES=[
@@ -72,7 +86,13 @@ const RETRY_QUOTES=[
   "クリアできなくてもいいよ。\n君が明日もいてくれたら、ぼくはうれしい。",
   "九つ使い切っても、ぼくはまた歩けるよ。\n君が「もう一回」って言ってくれるなら。",
   "転んだ場所は、ちゃんと覚えてる。\nだから次は、少しだけ遠くまで行ける。",
-  "急がなくていい。\nぼくはここで、待っていられるから。"
+  "急がなくていい。\nぼくはここで、待っていられるから。",
+  "できなかったことより、\n今日も続けようとした君は偉いよ。",
+  "休むことも、ちゃんと前に進む方法のひとつだよ。",
+  "明日終わりを迎えるとしても、\n今日から幸福になったって遅くないんだよ。",
+  "君のいない天国よりも、君のいる地獄を選ぶよ。",
+  "涙で目が洗えるほどたくさん泣いたひとは、\n視野が広くなるんだ。",
+  "止まりさえしなければ、\nどんなにゆっくりでも進めばいいんだ。"
 ];
 function bag(list){ let b=[]; return ()=>{ if(!b.length){ b=list.slice(); for(let i=b.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [b[i],b[j]]=[b[j],b[i]]; } } return b.pop(); }; }
 const nextDeathQuote=bag(DEATH_QUOTES), nextRetryQuote=bag(RETRY_QUOTES);
@@ -87,6 +107,7 @@ function trapKeyOf(ev){
   return ev.cause==='fall'?'fall':null;
 }
 function trapLine(key){
+  if(S.world&&S.world.flap&&FALL_KEYS.has(key)) return '羽、生えた気がしたのに。';
   // pits and floors: the running bird gag comes first (the moving floor also has its own lines)
   if(FALL_KEYS.has(key) && S.fallGag<FALL_GAG.length && !(key==='pit' && Math.random()<0.5)){
     return FALL_GAG[S.fallGag++];
@@ -107,6 +128,11 @@ const KANA_NUM=['ひとつ','ふたつ','みっつ','よっつ','いつつ','む
 // ---------------------------------------------------------------------------
 // Save data
 // ---------------------------------------------------------------------------
+// Laps: the first clear unlocks the second lap (the dawn), with remixed traps.
+function clearsOf(sv){ return sv.clears||(sv.cleared?1:0); }
+// the dawn is only reached by clearing the second lap (older saves: judged by the lap last cleared)
+function dawnOf(sv){ return sv.dawnDone!==undefined?!!sv.dawnDone:(clearsOf(sv)>=2&&sv.loop===2); }
+function stageDef(i){ const d=STAGES[i]; return (S.loop===2&&d.loop2)?Object.assign({},d,d.loop2):d; }
 function loadSave(){ try{ return JSON.parse(localStorage.getItem(SAVE_KEY)||'null')||{}; }catch(_){ return {}; } }
 function writeSave(o){ try{ localStorage.setItem(SAVE_KEY,JSON.stringify(Object.assign(loadSave(),o))); }catch(_){} }
 
@@ -119,9 +145,9 @@ const AU=window.NEKO_AUDIO;
 // State
 // ---------------------------------------------------------------------------
 const S={
-  mode:'boot', stage:0, lives:LIVES, deaths:0, world:null,
+  mode:'boot', stage:0, lives:LIVES, deaths:0, retires:0, world:null,
   ui:{deathQuote:'',snapCam:true,lastLife:false,thunder:()=>AU.thunder()},
-  respawnAt:0, clearAt:0, playTime:0, clock:0, paused:false, fallGag:0
+  respawnAt:0, clearAt:0, playTime:0, clock:0, paused:false, fallGag:0, loop:1
 };
 const input={left:false,right:false,jump:false,press:false};
 let imgs=null, ICON='';
@@ -151,10 +177,11 @@ let storyDone=null, storyTimers=[], storyStage=0, storyOpenedAt=0, storyInstant=
 const STORY_SKIP_GUARD=700;
 function skipStory(){ if(storyDone && performance.now()-storyOpenedAt>=STORY_SKIP_GUARD) storyDone(); }
 function clearStoryTimers(){ storyTimers.forEach(clearTimeout); storyTimers=[]; }
-function showStory(lines,card,then){
+function showStory(lines,card,then,you){
   const el=$('story');
   clearStoryTimers();
   el.replaceChildren();
+  el.classList.toggle('you',!!you);
   const box=document.createElement('div');
   el.appendChild(box);
   const skip=document.createElement('div'); skip.className='skip'; skip.textContent=(IS_TOUCH()?'TAP':'CLICK')+' ▶'; el.appendChild(skip);
@@ -200,25 +227,34 @@ function enterStage(i,withStory){
   S.mode='story';
   setHud(false);
   AU.setRain(0);
-  const def=STAGES[i];
+  const def=stageDef(i);
   // a retry keeps this stage's mercy (checkpoint, trap hints); a new stage starts fresh
   const go=()=>startStage(i,withStory==='retry'?false:!!withStory);
-  const card={no:'STAGE '+(i+1),name:def.name};
+  const card={no:'STAGE '+(i+1)+(S.loop===2?'　·　夜明け':''),name:def.name};
+  // after the ending, the same nights are told from your side
+  const you=S.loop===2 && def.storyYou;
+  const story=you?def.storyYou:def.story;
   // chain straight into the stage story so the screen never drops to the old stage in between
-  if(withStory==='prologue') showStory(PROLOGUE,null,()=>showStory(def.story,card,go));
-  else if(withStory) showStory(def.story,card,go);
+  if(withStory==='prologue') showStory(S.loop===2?PROLOGUE2:PROLOGUE,null,()=>showStory(story,card,go,you),S.loop===2);
+  else if(withStory) showStory(story,card,go,you);
   else showStory([],card,go);
 }
 // Mercy (only after a game over in this stage): a checkpoint appears, and traps
 // that killed you twice start showing a faint outline before they trigger.
 const HINT_AFTER=2;
-const M={deaths:0,known:new Map(),cpOn:false,cpReached:false};
+const M={deaths:0,known:new Map(),cpOn:false,cpReached:false,wingMode:false};
+// Rescue: on the 2nd cumulative game-over's retry, Nine comes back in wing form for that
+// stage's clear attempt — a double jump, and one trap hit forgiven.
+const WING_AT_RETIRES=2;
 function spawnOpts(){
-  const cp=STAGES[S.stage].checkpoint;
-  return (M.cpReached&&cp)?{spawn:{x:cp.x,y:cp.y===undefined?E.G:cp.y}}:undefined;
+  const cp=stageDef(S.stage).checkpoint;
+  const o={};
+  if(M.cpReached&&cp) o.spawn={x:cp.x,y:cp.y===undefined?E.G:cp.y};
+  if(M.wingMode) o.wingMode=true;
+  return Object.keys(o).length?o:undefined;
 }
 function syncMercyUI(){
-  const cp=STAGES[S.stage].checkpoint;
+  const cp=stageDef(S.stage).checkpoint;
   S.ui.cp=M.cpOn&&cp?{x:cp.x,y:cp.y===undefined?E.G:cp.y,reached:M.cpReached}:null;
   const k=new Set(); for(const [i,n] of M.known) if(n>=HINT_AFTER) k.add(i);
   S.ui.known=k;
@@ -226,16 +262,17 @@ function syncMercyUI(){
 function startStage(i,fresh){
   if(fresh!==false && (fresh || S.stage!==i)){ M.deaths=0; M.known=new Map(); M.cpOn=false; M.cpReached=false; R.trail=null; }
   S.stage=i;
-  S.world=new E.World(STAGES[i],spawnOpts());
+  S.world=new E.World(stageDef(i),spawnOpts());
+  rollFlap(S.world);
   R.ghosts=[]; R.parts=[];
   S.ui.snapCam=true; S.ui.deathQuote=''; input.press=false;
   $('msg').textContent='STAGE '+(i+1);
   updateLifeUI();
   setHud(true);
   syncMercyUI();
-  AU.setRain(STAGES[i].rain||0);
-  AU.music(STAGES[i].music||STAGES[i].theme);
-  writeSave({stage:i,deaths:S.deaths});
+  AU.setRain(stageDef(i).rain||0);
+  AU.music(stageDef(i).music||stageDef(i).theme);
+  writeSave({stage:i,deaths:S.deaths,loop:S.loop,['seen'+S.loop]:Math.max(loadSave()['seen'+S.loop]||0,i+1)});
   S.mode='play';
   if(M.toastOnStart){ const t=M.toastOnStart; M.toastOnStart=null; setTimeout(()=>toast(t),600); }
 }
@@ -257,8 +294,11 @@ function onDeath(ev){
     S.respawnAt=S.clock+1.05;
   }
 }
+// After the bird gag has run its course, now and then the cat tries to flap over a pit.
+function rollFlap(w){ w.flap=S.fallGag>=FALL_GAG.length && Math.random()<0.15; }
 function respawn(){
-  S.world=new E.World(STAGES[S.stage],spawnOpts());
+  S.world=new E.World(stageDef(S.stage),spawnOpts());
+  rollFlap(S.world);
   AU.play('meow',0.45);
   S.ui.deathQuote='';
   S.ui.snapCam=!!M.cpReached;
@@ -279,6 +319,7 @@ function toast(text){
   clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('on'),2600);
 }
 function onClear(){
+  M.wingMode=false;
   const last=!!STAGES[S.stage].final;
   // the last door opens onto light: give it time, and let the music and rain go quiet
   S.clearAt=S.clock+(last?3.2:1.7);
@@ -291,6 +332,8 @@ function onClear(){
 let goTimers=[];
 function showGameOver(){
   S.mode='gameover';
+  S.retires++;
+  writeSave({retires:S.retires});
   setHud(false);
   AU.setRain(0);
   AU.play('gameover'); AU.stopMusic(2.5);
@@ -321,9 +364,12 @@ $('retryBtn').addEventListener('click',e=>{
   goTimers.push(setTimeout(()=>{
     S.lives=LIVES;
     if(RESTART_FROM_STAGE1){ S.stage=0; }
-    const firstMercy=!M.cpOn && !!STAGES[S.stage].checkpoint;
+    const firstMercy=!M.cpOn && !!stageDef(S.stage).checkpoint;
     M.cpOn=true;
-    if(firstMercy) M.toastOnStart='失くした命が、道しるべを残していった。';
+    const wingUp=S.retires===WING_AT_RETIRES;
+    if(wingUp) M.wingMode=true;
+    if(wingUp) M.toastOnStart='羽が応えた。二段ジャンプ＋罠1回無効。';
+    else if(firstMercy) M.toastOnStart='失くした命が、道しるべを残していった。';
     enterStage(S.stage,'retry');
     // the story screen is already fully up, so nothing of the old stage shows through
     over.classList.remove('show','lifeCount','retryMoment'); over.setAttribute('aria-hidden','true');
@@ -335,20 +381,15 @@ $('retryBtn').addEventListener('click',e=>{
 // Ending
 // ---------------------------------------------------------------------------
 const END={t:0,catX:110,catWalking:true,door:0,light:0,lookUp:0,rainStop:0,fade:1,lines:[],idx:-1,lineAt:0,phase:'enter'};
-function startEnding(){
-  const fromDoor=S.mode==='play';
-  S.mode='ending';
-  setHud(false);
-  AU.setRain(0.6);
-  writeSave({cleared:true,stage:0,deaths:0});
-  Object.assign(END,{t:0,catX:40,catWalking:true,door:0,light:0,lookUp:0,rainStop:0,fade:1,white:fromDoor?1:0,idx:-1,lineAt:0,phase:'enter'});
-  const d=S.deaths, left=Math.max(1,S.lives);
-  END.lines=[
+function endingLines(dawn,d,left){
+  // d===null: the archive's telling, without a death count
+  const died=d===null?'ここに来るまでに、ぼくは何度も死んだ。':(d>0?`ここに来るまでに、ぼくは ${d} 回死んだ。`:'ここに来るまで、ぼくは一度も死ななかった。');
+  if(!dawn) return [
     ['you','……ナイン？',()=>END.lookUp=1],
     ['you','どこに行ってたの。……ずっと、探してたんだよ。'],
     ['cat','ぼくも、君を探してた。'],
-    ['cat',d>0?`ここに来るまでに、ぼくは ${d} 回死んだ。`:'ここに来るまで、ぼくは一度も死ななかった。'],
-    ['cat',d>0?'そのたびに君が「もう一回」って、ぼくを立たせてくれた。':'君がずっと、ぼくを前へ進ませてくれた。'],
+    ['cat',died],
+    ['cat',d!==0?'そのたびに君が「もう一回」って、ぼくを立たせてくれた。':'君がずっと、ぼくを前へ進ませてくれた。'],
     ['you','……ずっと「大丈夫」って言ってたけど、'],
     ['you','ほんとは、ぜんぜん大丈夫じゃなかった。'],
     ['cat','知ってたよ。'],
@@ -358,9 +399,42 @@ function startEnding(){
     ['cat','うまく生きられない日があっても、'],
     ['cat','そのひとつを、どうか手放さないで。'],
     ['cat',`残った${KANA_NUM[left-1]}の命は、ぜんぶ君のそばで使うよ。`],
+    // a few words more, depending on how many lives Nine brought home
+    ...(left>=LIVES?[['you','……九つとも、ちゃんと持って帰ってきたんだね。'],['cat','うん。ぜんぶ、君に会うためにとっておいた。']]:
+        left===1?[['you','……たったひとつしか、残ってないの？'],['cat','うん。最後のひとつで、間に合った。']]:[]),
     ['you','……おかえり、ナイン。',()=>{ END.lightOn=true; }],
     ['cat','ただいま。']
   ];
+  return [
+    ['you','……ナイン。',()=>END.lookUp=1],
+    ['you','おかえり。……ずっと、待ってた。'],
+    ['cat','ただいま。'],
+    ['you','夜のあいだ、ずっと考えてた。'],
+    ['you','明日もまた「大丈夫」って言って、出かけるのかなって。'],
+    ['cat','君がいない朝は、もういやだよ。'],
+    ['you','……うん。だから、会社に電話した。'],
+    ['you','しばらく、休むことにしたよ。'],
+    ['you','来週、病院にも行ってみる。'],
+    ['cat','うん。ぼくも、ついていく。'],
+    ['cat','ぼくはひとりじゃない、だから君もひとりじゃないんだよ。'],
+    ['you','見て、ナイン。……朝だ。',()=>{ END.sunUp=true; END.lightOn=true; END.turnTo=1; }],
+    ['you','……ずっと、どこか遠くにいた気がする。'],
+    // Nine said 「ただいま」 first; now it's your turn to come home
+    ['you','ただいま、ナイン。',()=>{ END.turnTo=0; }],
+    ['cat','おかえり。']
+  ];
+}
+function startEnding(){
+  const fromDoor=S.mode==='play';
+  S.mode='ending';
+  setHud(false);
+  AU.setRain(0.6);
+  const dawn=S.loop===2;
+  const prev=loadSave();
+  writeSave({cleared:true,clears:clearsOf(prev)+1,dawnDone:dawnOf(prev)||dawn,stage:0,deaths:0});
+  Object.assign(END,{t:0,catX:40,catWalking:true,door:0,light:0,lookUp:0,rainStop:dawn?1:0,fade:1,white:fromDoor?1:0,idx:-1,lineAt:0,phase:'enter',dawn,sun:0,sunUp:false,turn:0,turnTo:0});
+  if(dawn) AU.setRain(0);
+  END.lines=endingLines(dawn,S.deaths,Math.max(1,S.lives));
   AU.play('door');
   AU.musicBox();
 }
@@ -374,6 +448,10 @@ function endingStep(dt){
     if(e.catX>=482){ e.catX=482; e.catWalking=false; e.phase='talk'; e.lineAt=e.t+1.0; }
   }
   if(e.lightOn){ e.light=Math.min(1,e.light+dt*0.35); e.rainStop=Math.min(1,e.rainStop+dt*0.3); AU.setRain(0.6*(1-e.rainStop)); }
+  // second lap: the sky pales through the talk, and the sun comes up at the end
+  if(e.dawn) e.sun=e.sunUp?Math.min(1,e.sun+dt*0.18):Math.min(0.35,e.t/60);
+  // at dawn you turn from Nine to the window, and back again for the last words
+  if(e.turn!==e.turnTo) e.turn=e.turn<e.turnTo?Math.min(e.turnTo,e.turn+dt*1.4):Math.max(e.turnTo,e.turn-dt*1.4);
   if(e.phase==='talk' && e.t>=e.lineAt) advanceLine();
   if(e.phase==='outro' && e.t>=e.lineAt){ e.phase='credits'; showCredits(); }
 }
@@ -414,19 +492,28 @@ function toTitle(){
   $('btnContinue').innerHTML='つづきから<small>STAGE '+((sv.stage||0)+1)+'</small>';
   t.classList.toggle('cleared',!!sv.cleared);
   $('btnSelect').hidden=!sv.cleared;
+  $('btnArchive').hidden=!((sv.seen1||0)>0||clearsOf(sv)>0);
+  $('lapTabs').hidden=clearsOf(sv)<1;
   window.NEKO_TITLE.cleared=!!sv.cleared;
+  window.NEKO_TITLE.dawn=dawnOf(sv);
+  window.NEKO_TITLE.clears=clearsOf(sv);
+  t.querySelector('.titleClear').textContent=dawnOf(sv)?'♡ ALL CLEAR ×'+clearsOf(sv):'♡ ALL CLEAR';
   t.style.display='';
   t.classList.remove('play'); void t.offsetWidth;
   requestAnimationFrame(()=>{ t.classList.remove('hide'); t.classList.add('play'); });
-  if(AU.ready){ AU.music('title'); AU.setRain(sv.cleared?0:0.45); }
+  if(AU.ready){ AU.music(dawnOf(sv)?'ending':'title'); AU.setRain(sv.cleared?0:0.45); }
 }
-function beginGame(fromStage,picked){
+function beginGame(fromStage,picked,lap){
   const sv=loadSave();
+  // a run in progress without a saved lap comes from before laps existed: that was the first night
+  S.loop=lap||sv.loop||(fromStage>0?1:(clearsOf(sv)>=1?2:1));
   S.lives=LIVES;
   // a stage picked from the select menu starts a fresh run from there
   S.deaths=fromStage>0&&!picked?(sv.deaths||0):0;
+  S.retires=fromStage>0&&!picked?(sv.retires||0):0;
   S.fallGag=fromStage>0?(sv.fallGag||0):0;
   S.playTime=0;
+  M.wingMode=false;
   const t=$('titleScreen'); t.classList.add('hide'); setTimeout(()=>{ if(t.classList.contains('hide')) t.style.display='none'; },700);
   enterStage(fromStage,fromStage===0?'prologue':true);
 }
@@ -435,25 +522,82 @@ function requestFs(){
   try{ const r=document.documentElement; if(r.requestFullscreen&&!document.fullscreenElement){ const p=r.requestFullscreen({navigationUI:'hide'}); if(p&&p.catch)p.catch(()=>{}); } else if(r.webkitRequestFullscreen&&!document.webkitFullscreenElement) r.webkitRequestFullscreen(); }catch(_){}
   try{ if(screen.orientation&&screen.orientation.lock){ const p=screen.orientation.lock('landscape'); if(p&&p.catch)p.catch(()=>{}); } }catch(_){}
 }
-function titleTap(e,fromStage,picked){
+function titleTap(e,fromStage,picked,lap){
   if(S.mode!=='title') return;
   e.preventDefault(); e.stopPropagation();
   AU.unlock(); AU.play('start');
   requestFs();
-  beginGame(fromStage,picked);
+  beginGame(fromStage,picked,lap);
 }
+// After the first ending, a new game asks which night to walk: the first, or the dawn.
+function newGame(e){
+  if(clearsOf(loadSave())>=1){ e.stopPropagation(); AU.unlock(); sheet('lap',true); return; }
+  writeSave({stage:0,deaths:0}); titleTap(e,0,false,1);
+}
+for(const n of [1,2]) $('btnLap'+n).addEventListener('click',e=>{ sheet('lap',false); writeSave({stage:0,deaths:0,loop:n}); titleTap(e,0,false,n); });
+$('btnLapClose').addEventListener('click',()=>sheet('lap',false));
 // Stage select (unlocked after the ending)
 STAGES.forEach((d,i)=>{
   const b=document.createElement('button'); b.type='button';
   b.innerHTML='<small>STAGE '+(i+1)+'</small>'; b.appendChild(document.createTextNode(d.name));
-  b.addEventListener('click',e=>{ sheet('select',false); writeSave({stage:i,deaths:0}); titleTap(e,i,true); });
+  b.addEventListener('click',e=>{ sheet('select',false); writeSave({stage:i,deaths:0,loop:selLap}); titleTap(e,i,true,selLap); });
   $('stageGrid').appendChild(b);
 });
-$('btnSelect').addEventListener('click',e=>{ e.stopPropagation(); AU.unlock(); sheet('select',true); });
+// which lap the stage select starts
+let selLap=1;
+function setSelLap(n){ selLap=n; document.querySelectorAll('#lapTabs button').forEach(b=>b.classList.toggle('on',+b.dataset.lap===n)); }
+document.querySelectorAll('#lapTabs button').forEach(b=>b.addEventListener('click',()=>setSelLap(+b.dataset.lap)));
+$('btnSelect').addEventListener('click',e=>{ e.stopPropagation(); AU.unlock(); const sv=loadSave(); setSelLap(sv.loop||(clearsOf(sv)>=1?2:1)); sheet('select',true); });
 $('btnSelectClose').addEventListener('click',()=>sheet('select',false));
-$('btnStart').addEventListener('click',e=>{ writeSave({stage:0,deaths:0}); titleTap(e,0); });
+$('btnStart').addEventListener('click',newGame);
 $('btnContinue').addEventListener('click',e=>titleTap(e,loadSave().stage||0));
-$('btnNew').addEventListener('click',e=>{ writeSave({stage:0,deaths:0}); titleTap(e,0); });
+$('btnNew').addEventListener('click',newGame);
+// ---------------------------------------------------------------------------
+// Archive: every story line read so far, to read again at your own pace
+// ---------------------------------------------------------------------------
+function archiveEntries(){
+  const sv=loadSave(), c=clearsOf(sv), dawn=dawnOf(sv);
+  const seen1=Math.max(sv.seen1||0,c>=1?10:0), seen2=Math.max(sv.seen2||0,dawn?10:0);
+  const L2=STAGES.map(d=>d.loop2||{});
+  const mem=m=>m.map(x=>['you',x.text]);
+  const out=[{grp:'はじまりの夜'}];
+  out.push({no:'PROLOGUE',name:'九つの命',open:seen1>=1,lines:PROLOGUE.map(t=>['cat',t])});
+  STAGES.forEach((d,i)=>out.push({no:'STAGE '+(i+1),name:d.name,open:seen1>=i+1,lines:d.story.map(t=>['cat',t]).concat(d.memories?[['note','— 廊下の壁に浮かんだ声 —']].concat(mem(d.memories)):[])}));
+  out.push({no:'ENDING',name:'おかえり',open:c>=1,lines:endingLines(false,null,3).map(([w,t])=>[w,t])});
+  if(c>=1){
+    out.push({grp:'夜明け'});
+    out.push({no:'PROLOGUE',name:'同じ夜を、もう一度',open:true,lines:PROLOGUE2.map(t=>['you',t])});
+    STAGES.forEach((d,i)=>out.push({no:'STAGE '+(i+1),name:d.name,open:seen2>=i+1,lines:(d.storyYou||[]).map(t=>['you',t]).concat(L2[i].memories?[['note','— 廊下の壁に浮かんだ声 —']].concat(mem(L2[i].memories)):[])}));
+    out.push({no:'ENDING',name:'朝',open:dawn,lines:endingLines(true,null,3)});
+  }
+  if(dawn) out.push({grp:'窓辺'},{no:'FLOWER',name:'ブルースター',open:true,lines:[
+    ['note','ブルースター。星のかたちをした、淡い青の花。'],['note','花言葉は「信じあう心」。'],
+    ['you','はじめて病院に行った帰りに、一鉢だけ買ってきた。'],['you','ナインのマフラーと、同じ色だったから。'],
+    ['note','夜を歩き終えるたびに、花はひとつずつ増えていく。']]});
+  return out;
+}
+function openArchive(){
+  const list=$('archiveList'); list.replaceChildren(); $('archiveRead').hidden=true; list.hidden=false;
+  $('btnArchiveBack').textContent='とじる';
+  for(const e of archiveEntries()){
+    if(e.grp){ const h=document.createElement('div'); h.className='grp'; h.textContent=e.grp; list.appendChild(h); continue; }
+    const b=document.createElement('button'); b.type='button'; b.disabled=!e.open;
+    b.innerHTML='<small></small><span></span>'; b.querySelector('small').textContent=e.no; b.querySelector('span').textContent=e.open?e.name:'？？？';
+    if(e.open) b.addEventListener('click',()=>readArchive(e));
+    list.appendChild(b);
+  }
+  sheet('archive',true);
+}
+function readArchive(e){
+  const r=$('archiveRead'), body=r.querySelector('.archBody');
+  r.querySelector('.archTitle').textContent=e.no+'　'+e.name;
+  body.replaceChildren();
+  for(const [who,t] of e.lines){ const p=document.createElement('p'); p.className=who==='you'?'you':who==='note'?'note':''; p.textContent=t; body.appendChild(p); }
+  $('archiveList').hidden=true; r.hidden=false; r.scrollTop=0;
+  $('btnArchiveBack').textContent='もどる';
+}
+$('btnArchive').addEventListener('click',e=>{ e.stopPropagation(); AU.unlock(); openArchive(); });
+$('btnArchiveBack').addEventListener('click',()=>{ if(!$('archiveRead').hidden){ $('archiveRead').hidden=true; $('archiveList').hidden=false; $('btnArchiveBack').textContent='とじる'; } else sheet('archive',false); });
 // Splash: the first tap unlocks sound, so the title can greet you with music.
 $('splash').addEventListener('pointerup',e=>{
   e.preventDefault();
@@ -489,12 +633,14 @@ function pauseGame(){
   S.paused=true; input.left=input.right=input.jump=false; input.press=false;
   document.querySelectorAll('.controls button').forEach(b=>b.classList.remove('active'));
   sheet('pause',true);
+  AU.held=true;
   if(AU.ctx) AU.ctx.suspend();
 }
 function resumeGame(){
   if(!S.paused) return;
   S.paused=false; sheet('pause',false); sheet('settings',false); sheet('help',false);
   pacer.reset(performance.now());
+  AU.held=false;
   if(AU.ctx && AU.ready) AU.ctx.resume();
 }
 $('pauseBtn').addEventListener('click',e=>{ e.preventDefault(); pauseGame(); });
@@ -508,6 +654,7 @@ $('btnHelpClose').addEventListener('click',()=>sheet('help',false));
 $('btnQuit').addEventListener('click',()=>{
   S.paused=false; sheet('pause',false); sheet('settings',false); sheet('help',false);
   S.respawnAt=0; S.clearAt=0;
+  AU.held=false;
   if(AU.ctx && AU.ready) AU.ctx.resume();
   toTitle();
 });
@@ -532,6 +679,10 @@ function bindHold(id,key){
 if(matchMedia('(pointer:coarse)').matches) document.body.classList.add('touch');
 addEventListener('pointerdown',e=>{ if(e.pointerType==='touch' && !IS_TOUCH()){ document.body.classList.add('touch'); syncTapWords(); } },{capture:true,passive:true});
 function IS_TOUCH(){ return document.body.classList.contains('touch'); }
+// iOS Safari ignores user-scalable=no: block pinch zoom and the long-press menu directly.
+for(const t of ['gesturestart','gesturechange','gestureend']) document.addEventListener(t,e=>e.preventDefault(),{passive:false});
+document.addEventListener('contextmenu',e=>e.preventDefault());
+document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
 function syncTapWords(){
   const w=IS_TOUCH()?'TAP':'CLICK';
   document.querySelector('#splash .sp2').textContent=w+' TO BEGIN';
@@ -545,7 +696,7 @@ addEventListener('keydown',e=>{
   if(e.key==='ArrowRight'||e.key==='d') input.right=true;
   if(e.code==='Space'||e.key==='ArrowUp'||e.key==='w'||e.key==='z'){ if(!input.jump) input.press=true; input.jump=true; e.preventDefault(); }
   // a help/settings sheet opened from the title: Esc closes it, other keys are ignored
-  const sub=['select','help','settings'].find(id=>$(id).classList.contains('show'));
+  const sub=['archive','lap','select','help','settings'].find(id=>$(id).classList.contains('show'));
   if(sub && !S.paused){ if(e.key==='Escape') sheet(sub,false); return; }
   if(e.key==='Escape'||e.key==='p'){ if(sub){ sheet(sub,false); return; } if(S.paused) resumeGame(); else pauseGame(); return; }
   if(S.paused){ if(e.key==='Enter') resumeGame(); return; }
@@ -599,6 +750,10 @@ function loop(now){
     }
   }
   const rdt=active?dt:0;
+  // idle grooming / sleeping during pause
+  const busy=input.left||input.right||input.jump;
+  S.ui.idleT=(active&&!busy&&w&&!w.P.dead)?(S.ui.idleT||0)+dt:0;
+  S.ui.sleep=!!S.paused;
   try{
     if(w && (S.mode==='play'||S.mode==='dying'||S.mode==='story'||S.mode==='gameover')){
       R.frame(w,S.ui,rdt);
@@ -620,10 +775,15 @@ function loop(now){
 (function(){
   const btn=$('fullscreenBtn');
   const isFs=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
+  // iPhone Safari has no page fullscreen: from the home screen the app already is; otherwise say how
+  const canFs=!!(document.fullscreenEnabled||document.webkitFullscreenEnabled);
+  const standalone=navigator.standalone===true||matchMedia('(display-mode: standalone)').matches;
+  if(!canFs && standalone) btn.hidden=true;
   const upd=()=>{ btn.textContent=isFs()?'×':'⛶'; btn.setAttribute('aria-label',isFs()?'フルスクリーン終了':'フルスクリーン'); };
   btn.addEventListener('pointerdown',e=>e.stopPropagation(),true);
   btn.addEventListener('click',async e=>{
     e.preventDefault(); e.stopPropagation();
+    if(!canFs){ toast('共有 → ホーム画面に追加 で、全画面で遊べます'); return; }
     if(isFs()){ try{ if(document.exitFullscreen) await document.exitFullscreen(); else if(document.webkitExitFullscreen) document.webkitExitFullscreen(); }catch(_){} try{ screen.orientation&&screen.orientation.unlock&&screen.orientation.unlock(); }catch(_){} }
     else requestFs();
     upd();
@@ -652,6 +812,7 @@ const load=src=>new Promise(res=>{ const im=new Image(); im.onload=()=>res(im); 
   const q=new URLSearchParams(location.search);
   R.debug=q.has('debug')||location.hash==='#debug';
   if(q.has('title')){ $('splash').classList.add('hide'); toTitle(); }
+  if(q.has('loop')) S.loop=+q.get('loop')||1;
   if(q.has('stage')){ $('splash').classList.add('hide'); const n=Math.max(1,Math.min(STAGES.length,+q.get('stage')||1))-1; $('titleScreen').classList.add('hide'); $('titleScreen').style.display='none'; startStage(n); }
   if(q.has('ending')){ $('splash').classList.add('hide'); $('titleScreen').classList.add('hide'); $('titleScreen').style.display='none'; S.deaths=+q.get('ending')||37; S.lives=3; startEnding(); }
   window.__neko={S,input,R,END,startStage,startEnding};

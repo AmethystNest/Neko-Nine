@@ -59,6 +59,29 @@ function bell(c,d,f,t,dur,vol){
 // Sound effects. Soft, a little toy-like: the world is cruel, the sounds are gentle.
 // ---------------------------------------------------------------------------
 const SE_DEF={
+  // the dark wakes: a low beating drone that swells, a breath of whispering noise, and a falling semitone
+  darkrise:[2.2,(c,d)=>{
+    tone(c,d,{f0:55,dur:2.0,vol:0.28,a:0.5,curve:'lin'}); tone(c,d,{f0:58.3,dur:2.0,vol:0.24,a:0.6,curve:'lin'});
+    tone(c,d,{type:'sawtooth',f0:110,f1:98,dur:1.9,vol:0.06,a:0.7,lp:420,glide:1.8});
+    noise(c,d,{f0:260,f1:90,dur:1.9,vol:0.3,a:0.6,curve:'lin'});
+    noise(c,d,{f0:2600,ft:'bandpass',q:4,dur:1.2,vol:0.05,a:0.5,t:0.4});
+    tone(c,d,{type:'triangle',f0:hz('E5'),f1:hz('D#5'),dur:1.0,vol:0.04,t:0.8,glide:0.9,vib:[5,6]});
+  }],
+  // the dark right behind you: a slow heavy heartbeat and a breath
+  darkpulse:[0.9,(c,d)=>{
+    tone(c,d,{f0:52,f1:36,dur:0.24,vol:0.5}); tone(c,d,{f0:48,f1:34,dur:0.24,vol:0.38,t:0.26});
+    noise(c,d,{f0:500,f1:180,dur:0.6,vol:0.12,a:0.2,t:0.1});
+  }],
+  // your shadow sets off: a meow pitched down and smeared, two voices out of tune
+  shadow:[1.4,(c,d)=>{
+    for(const [dt,v] of [[0,0.12],[14,0.08]]) tone(c,d,{type:'sawtooth',f0:520,f1:210,dur:1.1,vol:v,a:0.18,lp:900,q:3,glide:1.0,detune:dt,vib:[6,18],curve:'lin'});
+    noise(c,d,{f0:1800,ft:'bandpass',q:3,dur:0.9,vol:0.05,a:0.3});
+    tone(c,d,{f0:65,dur:1.2,vol:0.15,a:0.3});
+  }],
+  // it's close: a short, low mew
+  shadowmew:[0.6,(c,d)=>{
+    for(const [dt,v] of [[0,0.09],[18,0.06]]) tone(c,d,{type:'sawtooth',f0:380,f1:250,dur:0.45,vol:v,a:0.08,lp:800,q:3,glide:0.4,detune:dt,vib:[7,14]});
+  }],
   jump:[0.2,(c,d)=>{ tone(c,d,{f0:330,f1:660,dur:0.16,vol:0.22,glide:0.1}); tone(c,d,{type:'triangle',f0:660,f1:990,dur:0.1,vol:0.05}); }],
   land:[0.14,(c,d)=>{ tone(c,d,{f0:150,f1:60,dur:0.1,vol:0.35}); noise(c,d,{f0:700,dur:0.06,vol:0.12}); }],
   death:[0.6,(c,d)=>{
@@ -102,7 +125,7 @@ const SE_DEF={
   shutter:[0.35,(c,d)=>{ noise(c,d,{f0:1600,f1:900,ft:'bandpass',q:2,dur:0.25,vol:0.2}); tone(c,d,{type:'square',f0:95,dur:0.15,vol:0.05,lp:600}); }],
   meow:[0.6,(c,d)=>{ const o=tone(c,d,{type:'sawtooth',f0:620,dur:0.42,vol:0.1,lp:1800,q:4}); o.frequency.setValueAtTime(620,0); o.frequency.linearRampToValueAtTime(900,0.12); o.frequency.linearRampToValueAtTime(560,0.42); }]
 };
-const SE_VOL={jump:0.8,land:0.55,death:1,goal:1,warn:1.6,trap:0.9,life:1,gameover:1,retry:1,start:1,checkpoint:1,door:1,laser:1.5,lasercharge:1.5,electric:0.7,crusher:0.8,floorbreak:0.8,spike:0.8,blockfall:0.8,wallmove:0.7,arrow:0.9,trapdoor:0.9,pitshift:1.8,dropfloor:0.8,shutter:1.4,meow:0.8};
+const SE_VOL={darkrise:1.3,darkpulse:1.2,shadow:1.3,shadowmew:1.2,jump:0.8,land:0.55,death:1,goal:1,warn:1.6,trap:0.9,life:1,gameover:1,retry:1,start:1,checkpoint:1,door:1,laser:1.5,lasercharge:1.5,electric:0.7,crusher:0.8,floorbreak:0.8,spike:0.8,blockfall:0.8,wallmove:0.7,arrow:0.9,trapdoor:0.9,pitshift:1.8,dropfloor:0.8,shutter:1.4,meow:0.8};
 
 // ---------------------------------------------------------------------------
 // Music. Shared leitmotif: the ending's music box melody.
@@ -158,7 +181,7 @@ const AU={
     const wet=c.createGain(); wet.gain.value=0.5; this.rev.connect(wet); wet.connect(this.musicBus);
     this.dry=c.createGain(); this.dry.gain.value=0.8; this.dry.connect(this.musicBus);
     this.renderSE();
-    document.addEventListener('visibilitychange',()=>{ if(!this.ctx) return; if(document.hidden) this.ctx.suspend(); else if(this.ready) this.ctx.resume(); });
+    document.addEventListener('visibilitychange',()=>{ if(!this.ctx) return; if(document.hidden) this.ctx.suspend(); else if(this.ready && !this.held) this.ctx.resume(); });
   },
   async renderSE(){
     const OAC=root.OfflineAudioContext||root.webkitOfflineAudioContext;

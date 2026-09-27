@@ -14,6 +14,7 @@ const CFG={
   halfW:9, bodyH:46,
   hurtHalfW:6.5, hurtHead:13, hurtTop:40, hurtBottom:3,
   coyote:0.08, jumpBuffer:0.11,
+  glideFall:95,
   walkFPS:10
 };
 const HW=CFG.halfW, BH=CFG.bodyH;
@@ -58,7 +59,11 @@ class World{
     const sp=this.opts.spawn||d.spawn||{x:110,y:G};
     this.P={x:sp.x,y:sp.y,vx:0,vy:0,facing:1,ground:true,ref:null,
       dead:false,deadT:0,cause:'',frame:0,anim:0,land:0,
-      jumpT:0,jumpX:sp.x,coyote:0,jbuf:0,air:0,squash:0};
+      jumpT:0,jumpX:sp.x,coyote:0,jbuf:0,air:0,squash:0,
+      doubleJumpUsed:false,invuln:0};
+    // 救済措置: 累計9回目のゲームオーバー後のリトライで一度だけ、羽の力を借りる。
+    this.wingMode=!!this.opts.wingMode;
+    this.shieldUsed=false;
     this.statics=[];
     for(const f of d.floors||[]){
       const top=f[2]===undefined?G:f[2];
@@ -85,7 +90,15 @@ class World{
   }
   kill(cause,killer){
     const P=this.P;
-    if(P.dead||this.cleared) return;
+    if(P.dead||this.cleared||P.invuln>0) return;
+    if(this.wingMode && !this.shieldUsed){
+      this.shieldUsed=true;
+      P.invuln=0.9;
+      P.vy=-380; P.vx=(P.facing>=0?-1:1)*220; P.ground=false; P.ref=null;
+      this.se('checkpoint');
+      this.emit('shield',{x:P.x,y:P.y,cause});
+      return;
+    }
     if(!killer && cause==='fall' && P.lastRef && P.lastRef.owner) killer=P.lastRef.owner;
     this.killer=killer&&killer.idx!==undefined?killer.idx:-1;
     P.dead=true; P.deadT=0; P.cause=cause||'trap';
@@ -130,7 +143,10 @@ class World{
     for(const s of this.S){ s.px=s.x; s.py=s.y; }
     // any trap guarding the exit may lock the door this frame
     if(this.goal) this.goal.locked=false;
-    for(const e of this.ents) e.update && e.update(this,dt);
+    // some things in the clock tower only move while you do
+    this.flags.rate=this.timeRate();
+    this.stime=(this.stime||0)+dt*this.flags.rate;
+    for(const e of this.ents) e.update && e.update(this,e.superhot?dt*this.flags.rate:dt);
     this.S=this.collect();
     for(const s of this.S){
       if(s.px===undefined){ s.px=s.x; s.py=s.y; }
@@ -178,6 +194,8 @@ class World{
     let dir=0;
     if(inp.left&&!inp.right) dir=-1;
     if(inp.right&&!inp.left) dir=1;
+    // dizziness: left and right trade places
+    if(this.flags.dizzy) dir=-dir;
     if(inp.press){ P.jbuf=CFG.jumpBuffer; }
     inp.press=false;
 
@@ -190,19 +208,23 @@ class World{
       P.vx=approach(P.vx,0,(P.ground?CFG.friction:CFG.airFriction)*dt);
     }
 
-    if(P.jbuf>0 && (P.ground || P.coyote>0)){
+    if(P.ground) P.doubleJumpUsed=false;
+    const canDouble=this.wingMode && !P.ground && P.coyote<=0 && !P.doubleJumpUsed;
+    if(P.jbuf>0 && (P.ground || P.coyote>0 || canDouble)){
+      if(canDouble) P.doubleJumpUsed=true;
       P.vy=-CFG.jump; P.ground=false; P.ref=null; P.coyote=0; P.jbuf=0;
       P.jumpX=P.x; P.jumpT=0; P.land=0;
       this.se('jump');
-      this.emit('jump',{x:P.x,y:P.y});
+      this.emit('jump',{x:P.x,y:P.y,double:canDouble});
     }
     P.jbuf=Math.max(0,P.jbuf-dt);
     P.coyote=Math.max(0,P.coyote-dt);
+    P.invuln=Math.max(0,P.invuln-dt);
 
     if(!P.ground){
       if(P.vy>=0) P.boost=false;
       if(!inp.jump && !P.boost && P.vy<-180) P.vy+=CFG.gravity*CFG.cutGravity*dt;
-      P.vy=Math.min(CFG.maxFall,P.vy+CFG.gravity*dt);
+      P.vy=Math.min(P.glide?CFG.glideFall:CFG.maxFall,P.vy+CFG.gravity*dt);
       P.jumpT+=dt; P.air+=dt;
     }else{
       P.air=0;
@@ -211,6 +233,7 @@ class World{
     // --- external drift (wind, conveyors) ---
     let drift=0;
     for(const e of this.ents) if(e.drift) drift+=e.drift(this)||0;
+    this.flags.drift=drift;
 
     // --- move X ---
     const ox=P.x;
@@ -285,6 +308,12 @@ class World{
     this.animate(dt,dir);
   }
 
+  // how fast time runs for things marked superhot: it follows how fast you walk, and stops when you do
+  timeRate(){
+    const P=this.P;
+    if(P.dead) return 1;
+    return clamp(Math.abs(P.vx)/CFG.speed,0,1);
+  }
   animate(dt,dir){
     const P=this.P;
     P.land=Math.max(0,P.land-dt);
@@ -601,9 +630,15 @@ class Laser extends Ent{
     else if(this.st==='cycle'){
       this.tm+=dt;
       const was=this.on;
-      const ph=this.tm%(this.onT+this.offT);
-      this.on=ph<this.onT;
-      this.charging=!this.on && ph>this.onT+this.offT-0.25;
+      let ph, on=this.onT, off=this.offT;
+      if(this.seq){
+        // a rhythm that changes: [[on,off],...], the last pair repeats
+        this.ci=this.ci||0; this.ct=(this.ct||0)+dt;
+        for(;;){ const c=this.seq[Math.min(this.ci,this.seq.length-1)]; if(this.ct<c[0]+c[1]) { on=c[0]; off=c[1]; break; } this.ct-=c[0]+c[1]; this.ci++; }
+        ph=this.ct;
+      } else ph=this.tm%(on+off);
+      this.on=ph<on;
+      this.charging=!this.on && ph>on+off-0.25;
       if(this.on&&!was && this.near(w)) w.se('laser');
     }
   }
@@ -697,22 +732,27 @@ class Lightning extends Ent{
   init(){ this.kind='lightning'; this.tx0=0; this.shots=0; this.strikeT=-1; }
   update(w,dt){
     const P=w.P;
-    if(this.st==='idle'){ if(this.triggered(w)){ this.st='aim'; this.tm=0; w.emit('flash',{a:.35}); w.se('warn'); } }
+    if(this.st==='idle'){ if(this.triggered(w)){ this.st='aim'; this.tm=-(this.phase||0); if(!this.period){ w.emit('flash',{a:.35}); w.se('warn'); } } }
     else if(this.st==='aim'){
       this.tm+=dt;
-      if(this.tm<this.lock){ this.target=P.x+(this.predict?P.vx*(this.strike-this.tm):0); }
+      if(this.targets){ this.target=this.targets[Math.min(this.shots,this.targets.length-1)]; } // fixed spots
+      else if(this.tm<this.lock){ this.target=P.x+(this.predict?(P.vx+(this.withDrift?(w.flags.drift||0):0))*(this.strike-this.tm):0); }
       if(this.tm>=this.strike){ this.st='strike'; this.tm=0; w.se('electric'); w.emit('flash',{a:.9}); w.shake(8); w.emit('impact',{x:this.target,y:G,w:30,style:'spark'}); }
     }else if(this.st==='strike'){
       this.tm+=dt;
-      if(this.tm>=0.2){
+      if(this.tm>=Math.max(0.2,(this.hold||0.14)+0.06)){
         this.shots++;
-        if(this.shots<(this.count||1)){ this.st='aim'; this.tm=this.lock-(this.interval||0.6); }
+        if(this.period){ this.st='rest'; this.tm=0; }
+        else if(this.shots<(this.count||1)){ this.st='aim'; this.tm=this.lock-(this.interval||0.6); }
         else this.st='done';
       }
+    }else if(this.st==='rest'){
+      // a steady rhythm on a fixed spot: warn, strike, rest, again
+      this.tm+=dt; if(this.tm>=this.period-this.strike-Math.max(0.2,(this.hold||0.14)+0.06)){ this.st='aim'; this.tm=0; if(Math.abs(P.x-this.target)<600) w.se('warn'); }
     }
   }
   hazards(){
-    if(this.st==='strike' && this.tm<0.14) return [{x:this.target-this.width/2,y:0,w:this.width,h:G}];
+    if(this.st==='strike' && this.tm<(this.hold||0.14)) return [{x:this.target-this.width/2,y:0,w:this.width,h:G}];
     return null;
   }
 }
@@ -810,7 +850,7 @@ class Crossing extends Ent{
       const bells=(this.bells||[[0,this.gateUp]]).concat(this.bellsDyn);
       this.bellOn=bells.some(b=>this.tm>=b[0]&&this.tm<b[1]);
       if(Math.floor(this.tm*2.6)!==this.ring && this.bellOn && Math.abs(w.P.x-(this.x0+this.x1)/2)<500){ this.ring=Math.floor(this.tm*2.6); w.se('warn'); }
-      const end=Math.max(...bells.map(b=>b[1]));
+      const end=Math.max(...bells.map(b=>b[1]),...this.trains.filter(t=>t.at!==undefined).map(t=>t.at+t.dur));
       if(!waiting && this.tm>=end && !this.active) this.st='done';
     }
   }
@@ -822,9 +862,19 @@ class Crossing extends Ent{
 
 // Darkness chasing from the left.
 class DarkChase extends Ent{
-  init(){ this.kind='dark'; this.x=this.startX; this.v=this.speed; this.alwaysUpdate=false; }
+  init(){ this.kind='dark'; this.x=this.startX; this.v=this.speed; this.alwaysUpdate=false; this.right=this.side==='right'; }
   update(w,dt){
-    if(this.st==='idle'){ if(this.triggered(w)){ this.st='chase'; w.se('wallmove'); } }
+    if(this.st==='idle'){ if(this.triggered(w)){ this.st='chase'; w.se('darkrise'); w.shake(3); } }
+    if(this.st==='chase'){
+      // close behind you, you can hear it
+      const gap=this.right?this.x-w.P.x:w.P.x-this.x;
+      this.pt=(this.pt||0)+dt;
+      if(!w.P.dead && gap<260 && this.pt>1.1 && !(this.right&&this.x<=this.minX)){ this.pt=0; w.se('darkpulse'); }
+    }
+    if(this.st==='chase' && this.right){
+      // darkness closing in from the far side; it stops at minX
+      this.x=Math.max(this.minX,this.x-this.speed*dt);
+    }
     else if(this.st==='chase'){
       this.v=Math.min(this.maxSpeed,this.v+this.accel*dt);
       if(this.boostX!==undefined && w.P.x>=this.boostX) this.v=Math.max(this.v,this.boostSpeed);
@@ -832,7 +882,7 @@ class DarkChase extends Ent{
       this.x=Math.max(this.x+this.v*dt,w.P.x-this.leash);
     }
   }
-  hazards(){ return this.st==='chase'?[{x:this.x-2000,y:-100,w:2000,h:800}]:null; }
+  hazards(){ if(this.st!=='chase') return null; return this.right?[{x:this.x,y:-100,w:2000,h:800}]:[{x:this.x-2000,y:-100,w:2000,h:800}]; }
 }
 
 // Sinusoidal moving platform.
@@ -869,8 +919,248 @@ class FakeDoor extends Ent{ init(){ this.kind='fakedoor'; } }
 // A lamp / light source (for dark stages) - decoration with a light radius.
 class Light extends Ent{ init(){ this.kind='light'; } }
 
+
+// ---------------------------------------------------------------------------
+// Second-lap kinds
+// ---------------------------------------------------------------------------
+// Alarm clock hopping along the floor toward the cat. It answers a jump with a
+// jump of its own, so leaping over it is the one thing that never works.
+class AlarmClock extends Ent{
+  init(w){
+    this.kind='clock';
+    this.dir=this.from==='left'?1:-1;
+    this.x=this.x0!==undefined?this.x0:(this.dir<0?w.W+40:-40);
+    this.y=this.drop?-40:G; this.ph=0; this.H=this.hopH||110; this.T=this.hopT||0.8; this.big=false;
+  }
+  update(w,dt){
+    const P=w.P;
+    if(this.st==='idle'){ if(this.triggered(w)){ this.st=this.drop?'drop':'run'; this.tm=0; w.se('warn'); } return; }
+    if(this.st==='drop'){ this.y=Math.min(G,this.y+900*dt); if(this.y>=G){ this.st='run'; w.se('land'); w.shake(2); } return; }
+    if(this.st!=='run') return;
+    this.tm+=dt; this.ring=(this.tm*14|0)%2;
+    // the cat takes off nearby: the clock takes off with it
+    if(!this.big && !P.dead && !P.ground && P.jumpT<0.06 && P.vy<-400 && Math.abs(P.x-this.x)<240){ this.big=true; this.ph=0; w.se('trap'); }
+    const H=this.big?190:this.H, T=this.big?1.0:this.T;
+    this.ph+=dt;
+    if(this.ph>=T){ this.ph-=T; if(this.big){ this.big=false; this.ph=0; } w.se('land'); }
+    this.y=G-H*Math.abs(Math.sin(Math.PI*this.ph/T));
+    this.x+=this.dir*this.speed*dt;
+    if(this.x<-120||this.x>w.W+120) this.st='done';
+  }
+  hazards(){ return this.st==='run'||this.st==='drop'?[{x:this.x,y:this.y-15,r:13}]:null; }
+}
+
+// Notification banners: little platforms that pop in one after another over a gap
+// and vanish when their time is up. The fake one gives way the moment you land.
+class Banners extends Ent{
+  init(){
+    this.kind='banners'; this.clock=-1;
+    this.items=this.items.map(b=>Object.assign({w:92,h:14,life:3,fake:false},b));
+    this.solids=this.items.map(b=>({x:b.x,y:b.y,w:b.w,h:b.h,kin:true,kind:'banner',on:false}));
+  }
+  update(w,dt){
+    if(this.clock<0){ if(this.triggered(w)){ this.clock=0; } else return; }
+    this.clock+=dt;
+    const P=w.P;
+    this.items.forEach((b,i)=>{
+      const s=this.solids[i];
+      if(b.gone){ s.on=false; return; }
+      // when it shows up: at a set time, the moment you land on another banner (onLand),
+      // or once you've stood still on one for a while (afterStill:[k,seconds])
+      if(b.shownAt===undefined){
+        if(b.at!==undefined && this.clock>=b.at) b.shownAt=b.at;
+        const on=k=>!P.dead&&P.ground&&P.ref===this.solids[k];
+        if(b.onLand!==undefined && on(b.onLand)) b.shownAt=this.clock;
+        if(b.afterStill){ const [k,t]=b.afterStill; b.st=on(k)&&Math.abs(P.vx)<20?(b.st||0)+dt:0; if(b.st>=t) b.shownAt=this.clock; }
+      }
+      if(b.shownAt===undefined){ s.on=false; return; }
+      const age=this.clock-b.shownAt;
+      if(!b.shown){ b.shown=true; w.se('warn'); }
+      if(b.fake && P.ground && P.ref===s && !b.trip){ b.trip=this.clock; w.se('trapdoor'); }
+      if(b.trip!==undefined) b.fall=(b.fall||0)+dt; // read: it drops the instant you land
+      if(!b.fake && age>=b.life){ b.gone=true; s.on=false; return; }
+      if(b.fall!==undefined){
+        // it drops out from under you: no longer something to stand on, just a thing falling
+        b.vy=(b.vy||0)+2200*dt; s.y+=b.vy*dt; s.on=false; b.falling=true;
+        if(s.y>600){ b.gone=true; } return; }
+      else { s.y=b.y-Math.max(0,1-age/0.14)*26; if(b.vx) s.x=b.x+b.vx*age; }
+      s.on=true;
+    });
+  }
+  // how far a banner is into its last blinking moments (0..1), for drawing
+  blink(i){ const b=this.items[i], age=this.clock-(b.shownAt||0); return b.fake||b.shownAt===undefined?0:Math.max(0,(age-(b.life-0.6))/0.6); }
+}
+
+// Dizziness: inside the zone left and right are swapped (the screen sways with it).
+class Dizzy extends Ent{
+  init(){ this.kind='dizzy'; this.alwaysUpdate=true; this.k=0; }
+  update(w,dt){
+    const P=w.P;
+    // once you're past the last press, your head clears for good
+    if(this.off!==undefined && !P.dead && P.x>=this.off) this.over=true;
+    const inside=!this.over && !P.dead && P.x>=this.x0 && P.x<=this.x1;
+    this.k+=((inside?1:0)-this.k)*Math.min(1,dt*4);
+    w.flags.dizzy=inside;
+    w.flags.sway=this.k;
+  }
+}
+
+// Floors that exist only while their lamp is lit. Lamps flicker before going out.
+class LightFloor extends Ent{
+  init(){
+    this.kind='lightfloor'; this.alwaysUpdate=true; this.tm=this.phase||0; this.lit=true;
+    this.s={x:this.x,y:G,w:this.w,h:40,kind:'lightfloor',on:true}; this.solids=[this.s];
+  }
+  update(w,dt){
+    this.tm+=dt;
+    const was=this.lit;
+    if(this.seq){
+      // a failing tube: an irregular rhythm [[on,off],...] that repeats
+      const tot=this.seq.reduce((a,c)=>a+c[0]+c[1],0); let p=this.tm%tot, on=false, left=0;
+      for(const [a,b] of this.seq){ if(p<a){ on=true; left=a-p; break; } p-=a; if(p<b){ on=false; break; } p-=b; }
+      this.lit=on; this.flicker=on&&left<0.4?((this.tm*16|0)%2===0):false;
+    }else{
+      const ph=this.tm%(this.onT+this.offT);
+      this.lit=ph<this.onT;
+      this.flicker=this.lit&&ph>this.onT-0.55?((ph*16|0)%2===0):false;
+    }
+    this.s.on=this.lit;
+    if(was!==this.lit && Math.abs(w.P.x-(this.x+this.w/2))<500) w.se(this.lit?'shutter':'trapdoor');
+  }
+}
+
+// An umbrella leaning against the parapet. Pick it up and you fall slowly,
+// and the wind carries you much further.
+class Umbrella extends Ent{
+  init(){ this.kind='umbrella'; this.held=false; }
+  update(w,dt){
+    const P=w.P;
+    if(!this.held && !P.dead && Math.abs(P.x-this.x)<18 && P.y>=this.y-4){ this.held=true; P.glide=true; w.se('checkpoint'); }
+    if(P.dead) P.glide=false;
+  }
+  drift(w){ const P=w.P; return this.held&&!P.ground?(w.flags.wind||0)*this.boost:0; }
+}
+
+// Rush hour: silhouettes walking toward you in a stream. They shove you back;
+// you can jump over them, or ride a head for a while.
+class Crowd extends Ent{
+  init(){
+    this.kind='crowd'; this.people=[]; this.next=0; this.n=0;
+    this.solids=[];
+  }
+  update(w,dt){
+    if(this.st==='idle'){ if(this.triggered(w)){ this.st='walk'; this.next=0; } else return; }
+    this.next-=dt;
+    if(this.next<=0 && this.n<this.count){
+      const h=this.heights[this.n%this.heights.length];
+      const s={x:this.spawnX,y:G-h,w:26,h,kin:true,kind:'person',on:true};
+      this.people.push({s,h,bob:this.n*1.7}); this.solids.push(s); this.n++;
+      this.next=this.gaps[(this.n-1)%this.gaps.length];
+    }
+    const d=this.dir||-1;
+    for(const p of this.people){ if(p.s.on) p.s.x+=d*this.speed*dt; if(d<0?p.s.x<this.endX:p.s.x+26>this.endX){ p.s.on=false; } }
+  }
+}
+
+// Your own shadow, walking the path you walked a moment ago. Stand still and it
+// catches up with you.
+class Shadow extends Ent{
+  init(w){ this.kind='shadow'; this.path=[]; this.clock=0; this.pos=null; }
+  update(w,dt){
+    const P=w.P;
+    if(this.st==='idle'){ if(this.triggered(w)){ this.st='follow'; this.clock=0; w.se('shadow'); } else return; }
+    this.clock+=dt;
+    if(this.pos && !P.dead){ this.mt=(this.mt||0)+dt; if(Math.abs(this.pos[1]-P.x)<90 && this.mt>1.6){ this.mt=0; w.se('shadowmew'); } }
+    if(!P.dead) this.path.push([this.clock,P.x,P.y,P.facing,P.frame,P.ground]);
+    const t=this.clock-this.delay;
+    while(this.path.length>1 && this.path[1][0]<=t) this.path.shift();
+    this.pos=t>=0&&this.path.length?this.path[0]:null;
+  }
+  hazards(){
+    if(!this.pos) return null;
+    const [ ,x,y]=this.pos;
+    return [{x:x-5,y:y-30,w:10,h:24}];
+  }
+}
+
+// A check-up scan: a beam sweeps across the room. While it passes over you,
+// hold still ("please don't move"); moving or jumping inside it gives a shock.
+class Scanner extends Ent{
+  init(){ this.kind='scan'; this.alwaysUpdate=false; this.tm=this.phase||0; this.bx=null; this.x0=this.x0||0; this.x1=this.x1||1000; }
+  update(w,dt){
+    if(this.st==='idle'){ if(this.triggered(w)){ this.st='cycle'; } else return; }
+    this.tm+=dt;
+    const cyc=this.warn+this.sweep+this.rest, ph=this.tm%cyc;
+    const was=this.phase_;
+    if(ph<this.warn){ this.phase_='warn'; this.bx=null; }
+    else if(ph<this.warn+this.sweep){
+      this.phase_='sweep'; const k=(ph-this.warn)/this.sweep;
+      // alternate: every other pass runs back from the right
+      this.rev=this.both&&Math.floor(this.tm/cyc)%2===1;
+      this.bx=this.rev?this.x1-(this.x1-this.x0)*k:this.x0+(this.x1-this.x0)*k; }
+    else { this.phase_='rest'; this.bx=null; }
+    if(was!==this.phase_ && this.phase_==='warn' && Math.abs(w.P.x-(this.x0+this.x1)/2)<700) w.se('warn');
+    if(was!==this.phase_ && this.phase_==='sweep') w.se('lasercharge');
+  }
+  moving(w){ const P=w.P; return !P.ground || Math.abs(P.vx)>20; }
+  hazards(w){
+    if(this.bx===null || !this.moving(w)) return null;
+    return [{x:this.bx-this.bw/2,y:0,w:this.bw,h:G}];
+  }
+}
+
+// A delivery truck backing down the alley. Its body is two solids (cargo box and cab)
+// that match what you see: it shoves you, and its roof is somewhere to stand.
+class Truck extends Ent{
+  init(w){
+    this.kind='truck'; this.x=this.startX;
+    this.bw=this.bw||200; this.bh=this.bh||150; this.cw=this.cw||72; this.ch=this.ch||112;
+    this.box={x:this.x,y:G-this.bh,w:this.bw,h:this.bh,kin:true,kind:'truck',on:false};
+    this.cab={x:this.x+this.bw,y:G-this.ch,w:this.cw,h:this.ch,kin:true,kind:'truck',on:false};
+    this.solids=[this.box,this.cab];
+  }
+  update(w,dt){
+    if(this.st==='idle'){ if(this.triggered(w)){ this.st='move'; w.se('warn'); } }
+    else if(this.st==='move'){
+      this.x=Math.max(this.minX,this.x-this.speed*dt);
+      if(Math.floor(w.t*3)!==this.beep){ this.beep=Math.floor(w.t*3); w.se('warn'); }
+      if(this.x<=this.minX){ this.st='stop'; w.se('crusher'); w.shake(5); w.flags[this.flag||'wallDone']=true; }
+    }
+    const on=this.st!=='idle';
+    this.box.on=on; this.cab.on=on;
+    this.box.x=this.x; this.cab.x=this.x+this.bw;
+  }
+}
+
+// The floor gives way behind you, tile by tile, all the way to the door.
+class Collapse extends Ent{
+  init(){
+    this.kind='collapse'; this.front=this.x0; this.tw=this.tw||40;
+    this.tiles=[];
+    for(let x=this.x0;x<this.x1;x+=this.tw){
+      const w_=Math.min(this.tw,this.x1-x);
+      this.tiles.push({s:{x,y:G,w:w_,h:WH+400-G,kind:'floor',on:true},dy:0,vy:0,rot:0,falling:false});
+    }
+    this.solids=this.tiles.map(t=>t.s);
+    this.alwaysUpdate=true;
+  }
+  update(w,dt){
+    if(this.st==='idle'){ if(this.triggered(w)){ this.st='go'; w.se('floorbreak'); w.shake(4); } else return; }
+    if(this.st==='go'){ this.front+=this.speed*dt; if(this.front>=this.x1) this.st='done'; }
+    let n=0;
+    for(const t of this.tiles){
+      if(!t.falling && t.s.x+t.s.w<=this.front){
+        t.falling=true; t.s.on=false; t.rot=(Math.random()-0.5)*0.6;
+        if((n++)%2===0 && Math.abs(w.P.x-t.s.x)<600){ w.se('floorbreak'); w.shake(2); w.emit('crumble',{x:t.s.x,y:G,w:t.s.w}); }
+      }
+      if(t.falling){ t.vy+=1800*dt; t.dy+=t.vy*dt; }
+    }
+  }
+}
+
 const K={Block,TrapFloor,ShiftPit,DropFloor,Crusher,FallBlock,Spikes,Shot,Laser,Lift,Arc,Shutter,ChaseWall,
-  Lightning,Wind,Conveyor,Bonk,Spring,Pendulum,Crossing,DarkChase,Mover,SpikeRow,Deco,FakeDoor,Light};
+  Lightning,Wind,Conveyor,Bonk,Spring,Pendulum,Crossing,DarkChase,Mover,SpikeRow,Deco,FakeDoor,Light,
+  AlarmClock,Banners,Dizzy,LightFloor,Umbrella,Crowd,Shadow,Scanner,Truck,Collapse};
 // Factory helpers: K.trapdoor({...}) etc.
 const F={};
 for(const k in K){ F[k]=o=>new K[k](o); }

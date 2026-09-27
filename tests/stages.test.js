@@ -20,21 +20,20 @@ const S6_CALM=w=>!w.ents[2].active;
 
 // Stage 10 pieces (entity order: 0 trapdoor, 1 pit, 2 laser, 3-5 presses, 6 wind, 7 arc,
 // 8 lightning, 9 pendulum, 10 spikes, 11 wall, 12 arrow)
-const CP10={spawn:{x:1330,y:420}};
+const CP10={spawn:{x:1430,y:420}};
 const windOn=w=>{ const ph=w.ents[6].tm%2.8; return ph>0.3&&ph<0.4; };
 const windCalm=w=>{ const ph=w.ents[6].tm%2.8; return ph>1.6&&ph<1.7; };
 const LT=w=>w.ents[8];
+// the alley: hop onto the backing truck's roof, ride it, then jump the roadworks plate
+const S2_OPEN=[walk(X(215)),wait(0.7),walk(X(335)),...jumpR(0.6),walk(X(600)),wait(0.05),walk(X(645))];
+const S2_RIDE=[{until:w=>w.ents[2].st==='move'&&w.ents[2].x<w.P.x+150},{j:1,p:1,t:0.5},{until:GR},{until:w=>w.ents[2].st==='stop'}];
 const S10_START=[walk(X(455)),...jumpR(0.6),walk(X(670)),{r:1,j:1,p:1,t:0.14},{l:1,j:1,until:GR},wait(0.2),
-  {r:1,until:w=>w.P.x>=w.ents[1].px-70},wait(0.3),
-  {until:w=>w.ents[2].on&&w.ents[2].tm%1.65>0.62&&w.ents[2].tm%1.65<0.66},{r:1,until:w=>w.P.x>=w.ents[1].px-14},...jumpR(0.6),walk(X(1000)),
-  {until:w=>w.ents[5].st==='rise'&&w.ents[5].y<w.ents[5].restY+60},walk(X(1300))];
-const S10_MID=[walk(X(1455)),{until:windCalm},{r:1,j:1,p:1,t:0.18},{r:1,until:X(1600)},{until:GR},{until:w=>w.ents[7].st==='done'},walk(X(1820)),
-  {r:1,until:w=>LT(w).st==='aim'&&LT(w).tm>=0.5},{until:w=>LT(w).st!=='aim'||LT(w).tm<0.3},{until:w=>LT(w).st==='aim'&&LT(w).tm>=0.5},{r:1,t:0.3},{until:w=>LT(w).st==='done'}];
-// wait just outside the blade's low arc, then jump over it as it swings away
-const S10_BLADE=[walk(X(2072)),{until:w=>{ const t=w.ents[9].tm%2.2; return t>0.5&&t<0.55; }},{r:1,j:1,p:1,t:0.6},{r:1,until:GR},walk(X(2300)),
-  {until:w=>w.ents[10].st==='idle'||w.ents[10].st==='done'}];
-const S10_END=[walk(X(2372)),...jumpR(0.6),walk(X(2696)),{until:w=>w.ents[11].st==='move'},{j:1,p:1,t:0.5},{until:GR},
-  {until:w=>w.ents[12].st==='fly'&&w.ents[12].x<w.P.x+130},{j:1,p:1,t:0.5},{until:GR},{until:w=>w.ents[11].st==='stop'},walk(X(4000)),{l:1,until:XL(3050)}];
+  {r:1,until:w=>w.P.x>=w.ents[1].px-70},wait(0.3),{r:1,until:w=>w.P.x>=w.ents[1].px-14},...jumpR(0.6),{until:GR}];
+// the lamps clear a walking cat: just walk
+const S10_LAMPS=[walk(X(1440))];
+const S10_CALM=w=>{ const ph=w.ents[4].tm%2.8; return ph>1.6&&ph<1.7; };
+const S10_MID=[walk(X(1455)),{until:S10_CALM},{r:1,j:1,p:1,t:0.18},{r:1,until:X(1600)},{until:GR},{until:w=>['landed','broken','done'].includes(w.ents[6].st)},walk(X(1880)),...jumpR(0.6)];
+const S10_END=[walk(X(4000))];
 
 // expect: 'dead' (first-time kill) or 'clear'
 const cases={
@@ -47,8 +46,9 @@ const cases={
 2:[
   ['naive walk',            'dead', [walk(X(2000))]],
   ['stop for pot, jump pit, walk','dead',[walk(X(215)),wait(0.7),walk(X(335)),...jumpR(0.6),walk(X(2000))]],
-  ['solution',              'clear',[walk(X(215)),wait(0.7),walk(X(335)),...jumpR(0.6),walk(X(600)),wait(0.05),walk(X(645)),
-                                      {r:0,j:1,p:1,t:0.08},{j:1,until:GR},wait(0.9),{r:1,j:1,p:1,t:0.6},{r:1,until:GR},walk(X(2000))]],
+  ['let the truck push you','dead', [...S2_OPEN,wait(3)]],
+  ['step down onto the plate','dead',[...S2_OPEN,...S2_RIDE,walk(X(2000))]],
+  ['solution',              'clear',[...S2_OPEN,...S2_RIDE,walk(X(725)),...jumpR(0.6),{l:1,until:XL(905)},wait(0.3)]],
 ],
 3:[
   ['naive walk',            'dead', [walk(X(2000))]],
@@ -94,20 +94,18 @@ const cases={
 ],
 9:[
   ['naive walk',            'dead', [walk(X(2000))]],
+  ['stop to look around',   'dead', [walk(X(300)),wait(2.5),walk(X(2470))]],
   ['solution',              'clear',[walk(X(405)),...jumpR(0.6),walk(X(690)),...jumpR(0.6),walk(X(985)),{until:w=>w.ents[2].s.x<1045},{r:1,j:1,p:1,t:0.3},{r:1,until:GR},walk(X(1100)),
                                      {until:w=>w.ents[2].s.x>1160},{r:1,j:1,p:1,until:X(1318)},{j:1,until:GR},{until:GR},wait(0.45),walk(X(1453)),wait(0.35),walk(X(1705)),...jumpR(0.6),walk(X(1860)),...jumpR(0.6),walk(X(2000))]],
 ],
 10:[
   ['stage1 habit jump',     'dead', [walk(X(285)),...jumpR(0.6),walk(X(4000))]],
-  ['plain jump over pit',   'dead', [walk(X(455)),...jumpR(0.6),walk(X(680)),...jumpR(0.6),walk(X(4000))]],
-  ['solution',              'clear',[...S10_START,...S10_MID,...S10_BLADE,...S10_END]],
-  // sections below start from the mercy checkpoint (x=1330)
-  ['jump into the headwind','dead', [walk(X(1455)),{until:windOn},...jumpR(0.6),walk(X(4000))],CP10],
-  ['full jump in the calm', 'dead', [walk(X(1455)),{until:windCalm},...jumpR(0.6),walk(X(4000))],CP10],
-  ['walk through lightning','dead', [...S10_MID.slice(0,7),walk(X(4000))],CP10],
-  ['walk under the blade',  'dead', [...S10_MID,walk(X(2370))],CP10],
-  ['walk into the spikes',  'dead', [...S10_MID,...S10_BLADE,walk(X(4000))],CP10],
-  ['hop down, ignore arrow','dead', [...S10_MID,...S10_BLADE,walk(X(2372)),...jumpR(0.6),walk(X(2696)),{until:w=>w.ents[11].st==='move'},{j:1,p:1,t:0.5},{until:GR},{until:w=>w.ents[11].st==='stop'},walk(X(4000)),{l:1,until:XL(3050)}],CP10],
+  ['jump under the lamps',  'dead', [...S10_START,walk(X(1180)),{until:w=>Math.abs(w.ents[2].ang)<0.05},{j:1,p:1,t:0.5},{until:GR},wait(1)]],
+  ['solution',              'clear',[...S10_START,...S10_LAMPS,...S10_MID,...S10_END]],
+  ['from the checkpoint',   'clear',[...S10_MID,...S10_END],CP10],
+  ['long jump onto the pot','dead', [walk(X(1455)),{until:S10_CALM},...jumpR(0.6),walk(X(4000))],CP10],
+  ['jump into the wind',    'dead', [walk(X(1455)),{until:w=>w.ents[4].tm%2.8<0.1},{r:1,j:1,p:1,t:0.18},{r:1,until:GR},walk(X(4000))],CP10],
+  ['stop in the dark',      'dead', [...S10_MID,walk(X(2300)),wait(3)],CP10],
 ],
 };
 let fail=0;
