@@ -7,7 +7,7 @@ const wait=t=>({t});
 const L2={loop:2,maxT:60};
 const CP10={spawn:{x:1330,y:420}};
 const S10_1=[walk(X(250)),wait(1.0),walk(w=>w.ents[0].st!=='run'||w.ents[0].x<w.P.x-30),walk(X(685))];
-const S10_2=[{r:1,j:1,p:1,t:0.2},{r:1,until:X(725)},{until:GR},{until:w=>w.ents[1].solids[2].on},walk(X(790)),{r:1,j:1,p:1,t:0.6},{r:1,until:X(860)},{until:GR},walk(X(1000)),{until:GR}];
+const S10_2=[{r:1,j:1,p:1,t:0.05},{r:1,until:X(730)},{until:GR},{until:w=>w.ents[1].solids[2].on},walk(X(790)),{r:1,j:1,p:1,t:0.6},{r:1,until:X(860)},{until:GR},walk(X(1000)),{until:GR}];
 const S10_3=[walk(X(1045)),{l:1,until:X(1168)},{l:1,j:1,p:1,t:0.25},{l:1,until:GR},{until:GR},wait(0.1),walk(X(1385))];
 // the tubes: jump when the one ahead is dark or the one underfoot starts to flicker
 const S10_TUBES={fn:(w,inp)=>{ const P=w.P, L=[w.ents[3],w.ents[4],w.ents[5]]; inp.right=true; inp.press=false;
@@ -19,10 +19,13 @@ const S10_4=[{until:w=>w.ents[3].tm%5>1.6&&w.ents[3].tm%5<1.65},S10_TUBES];
 const S10_DOOR={fn:(w,i)=>{ i.right=w.P.x<3044; i.left=w.P.x>3056; },until:w=>w.cleared};
 // the notifications: hop from one to the next, jumping up past each fake
 const hopTo=(x0,t,xl)=>[walk(X(x0)),{r:1,j:1,p:1,t},{r:1,until:X(xl)},{until:GR}];
-const S2_A=hopTo(235,0.2,300);
-const S2_B=[{until:w=>w.ents[0].solids[2].on},wait(0.5),{r:1,j:1,p:1,t:0.6},{r:1,until:X(470)},{until:GR}];
-const S2_C=[walk(X(520)),{until:w=>w.ents[0].solids[3].on},{r:1,until:w=>!w.P.ground},{r:1,until:X(610)},{until:GR}];
-const S2_D=[{until:w=>w.ents[0].solids[5].on},wait(0.2),walk(X(670)),{r:1,j:1,p:1,t:0.6},{r:1,until:X(800)},{until:GR}];
+const S2_S=w=>w.ents[0].solids;
+const S2_A=[walk(X(235)),{r:1,j:1,p:1,t:0.2},{r:1,until:X(300)},{until:GR}];
+// normal play: keep going right, hop whenever the footing ends
+const S2_BRISK={fn:(w,i)=>{ i.right=true; if(w._j>0){w._j-=1/120;i.jump=true;return;} i.jump=false; if(w.P.ground){ const r=w.P.ref; if(r&&w.P.x>r.x+r.w-14){ i.press=true;i.jump=true;w._j=0.15; } } },until:X(2000)};
+const S2_B=[{until:w=>S2_S(w)[2].on},wait(0.1),walk(X(360)),{r:1,j:1,p:1,t:0.6},{r:1,until:X(470)},{until:GR}];
+const S2_C=[walk(X(530)),{r:1,until:w=>!w.P.ground},{r:1,until:X(610)},{until:GR}];
+const S2_D=[{until:w=>S2_S(w)[5].on},wait(0.1),walk(X(620)),{r:1,j:1,p:1,t:0.6},{r:1,until:X(780)},{until:GR},walk(X(830)),{r:1,j:1,p:1,t:0.4},{r:1,until:GR}];
 // the failing tubes: jump when the tube ahead is dark or the one underfoot starts to flicker
 const S4_SMART=(w,inp)=>{ const P=w.P, B=w.ents[1], C=w.ents[2]; inp.right=true; inp.press=false;
   if(w._j>0){ w._j-=1/120; inp.jump=true; return; } inp.jump=false;
@@ -77,10 +80,10 @@ const cases={
   ['walk under its hops',   'clear',[walk(X(250)),wait(1.1),walk(w=>w.ents[0].x<w.P.x-30),walk(X(560)),wait(1.1),walk(X(2000))]],
 ],
 2:[
-  ['take the first to appear','dead',[...S2_A,{until:w=>w.ents[0].solids[1].on},...hopTo(360,0.15,440),walk(X(2000))]],
-  ['take the next one again','dead',[...S2_A,...S2_B,...S2_C,{until:w=>w.ents[0].solids[4].on},walk(X(680)),{r:1,j:1,p:1,t:0.02},{r:1,until:X(760)},{until:GR},walk(X(2000))]],
-  ['wait too long',         'dead', [...S2_A,wait(4)]],
-  ['wait a beat, go higher','clear',[...S2_A,...S2_B,...S2_C,...S2_D,{fn:(w,i)=>{ i.right=w.P.x<972; i.left=w.P.x>978; },until:w=>w.cleared}]],
+  ['keep moving (normal play)','dead',[...S2_A,S2_BRISK]],
+  ['wait the first, rush the second','dead',[...S2_A,...S2_B,...S2_C,S2_BRISK]],
+  ['wait too long',         'dead', [...S2_A,wait(8)]],
+  ['wait for the real one', 'clear',[...S2_A,...S2_B,...S2_C,...S2_D,{fn:(w,i)=>{ i.right=w.P.x<972; i.left=w.P.x>978; },until:w=>w.cleared}]],
 ],
 3:[
   ['press on at the wrong beat','dead',[walk(X(240)),wait(0.95),walk(X(252)),{l:1,until:X(588)}]],

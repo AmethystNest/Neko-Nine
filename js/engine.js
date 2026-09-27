@@ -944,8 +944,16 @@ class Banners extends Ent{
     this.items.forEach((b,i)=>{
       const s=this.solids[i];
       if(b.gone){ s.on=false; return; }
-      const age=this.clock-b.at;
-      if(age<0){ s.on=false; return; }
+      // when it shows up: at a set time, the moment you land on another banner (onLand),
+      // or once you've stood still on one for a while (afterStill:[k,seconds])
+      if(b.shownAt===undefined){
+        if(b.at!==undefined && this.clock>=b.at) b.shownAt=b.at;
+        const on=k=>!P.dead&&P.ground&&P.ref===this.solids[k];
+        if(b.onLand!==undefined && on(b.onLand)) b.shownAt=this.clock;
+        if(b.afterStill){ const [k,t]=b.afterStill; b.st=on(k)&&Math.abs(P.vx)<20?(b.st||0)+dt:0; if(b.st>=t) b.shownAt=this.clock; }
+      }
+      if(b.shownAt===undefined){ s.on=false; return; }
+      const age=this.clock-b.shownAt;
       if(!b.shown){ b.shown=true; w.se('warn'); }
       if(b.fake && P.ground && P.ref===s && !b.trip){ b.trip=this.clock; w.se('trapdoor'); }
       if(b.trip!==undefined) b.fall=(b.fall||0)+dt; // read: it drops the instant you land
@@ -959,7 +967,7 @@ class Banners extends Ent{
     });
   }
   // how far a banner is into its last blinking moments (0..1), for drawing
-  blink(i){ const b=this.items[i], age=this.clock-b.at; return b.fake?0:Math.max(0,(age-(b.life-0.6))/0.6); }
+  blink(i){ const b=this.items[i], age=this.clock-(b.shownAt||0); return b.fake||b.shownAt===undefined?0:Math.max(0,(age-(b.life-0.6))/0.6); }
 }
 
 // Dizziness: inside the zone left and right are swapped (the screen sways with it).

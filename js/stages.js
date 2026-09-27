@@ -243,15 +243,15 @@ const LOOP2={
   //    (one gap, nothing to split: no checkpoint here, only the hints)
   1:{floors:[[0,260],[960,1000]],checkpoint:null,goal:{x:975},
     ents:F=>[
-      // the next step pops up first, right where you'd go... it's already read. The real one
-      // comes a beat later, higher up. Twice.
+      // One path, one banner at a time. Land on one and the next pops up right beside you...
+      // already read: it drops. The real next one only comes if you stay put for a moment.
       F.Banners({tx:200,items:[
-        {x:290,y:G-10,at:0,life:3.2},
-        {x:420,y:G-40,at:0.25,fake:true},
-        {x:440,y:G-150,at:0.95,life:2.6,w:110},
-        {x:600,y:G-110,at:1.5,life:2.6},
-        {x:740,y:G-110,at:1.75,fake:true},
-        {x:770,y:G-210,at:2.35,life:2.8,w:110}]})
+        {x:290,y:G-10,at:0,life:6},
+        {x:410,y:G-10,onLand:0,fake:true},
+        {x:440,y:G-120,afterStill:[0,0.7],life:4},
+        {x:590,y:G-80,onLand:2,life:4},
+        {x:720,y:G-80,onLand:3,fake:true},
+        {x:740,y:G-190,afterStill:[3,0.7],life:4}]})
     ]},
   // 3: the presses, on a dizzy head: left and right trade places until the edge
   2:{ents:F=>[
@@ -344,11 +344,11 @@ const LOOP2={
     ents:F=>[
       // the alarm (stage 1)
       F.AlarmClock({from:'right',x0:690,speed:160,hopH:110,hopT:0.8,when:w=>w.P.x>=160&&w.P.x<600}),
-      // the notifications (stage 2): the one that shows up first is already read
+      // the notifications (stage 2): the one that pops up beside you is already read; wait for the real one
       F.Banners({tx:640,items:[
-        {x:712,y:G-24,at:0,life:3.2},
-        {x:822,y:G-24,at:0.35,fake:true},
-        {x:840,y:G-130,at:1.0,life:3.0}]}),
+        {x:712,y:G-24,at:0,life:6},
+        {x:822,y:G-24,onLand:0,fake:true},
+        {x:840,y:G-130,afterStill:[0,0.7],life:4}]}),
       // the dizziness (stage 3), over a small gap this time
       F.Dizzy({x0:1040,x1:1400,off:1290}),
       // the lamps (stage 4): two failing tubes out of step over the water, and one more after
