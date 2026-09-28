@@ -184,8 +184,8 @@ const AU={
     this.loadTheme();
     document.addEventListener('visibilitychange',()=>{ if(!this.ctx) return; if(document.hidden) this.ctx.suspend(); else if(this.ready && !this.held) this.ctx.resume(); });
   },
-  // Title and ending use a recorded song instead of the procedural tracks, when it can be
-  // fetched (a plain file:// open can't fetch it - the synth tracks are the fallback then).
+  // The lap-2 ending (and the title after it) use a recorded song, when it can be fetched
+  // (a plain file:// open can't fetch it - the synth 'ending' track is the fallback then).
   loadTheme(){
     if(!this.ctx) return;
     fetch('./audio/theme.mp3').then(r=>r.ok?r.arrayBuffer():Promise.reject())
@@ -248,7 +248,8 @@ const AU={
   music(name){
     name=THEME_TRACK[name]||name;
     if(!this.ctx) return;
-    if((name==='title'||name==='ending')&&this.themeBuf) return this.playTheme(name);
+    // 'dawn': the lap-2 ending and every title after it. Synth 'ending' if the song isn't loaded.
+    if(name==='dawn'){ if(this.themeBuf) return this.playTheme(name); name='ending'; }
     if(!TRACKS[name]) return;
     if(this.cur&&this.cur.name===name) return;
     this.stopMusic(1.2);
@@ -275,7 +276,7 @@ const AU={
     this.cur=st;
     this.sched(st);
   },
-  // The recorded title/ending song, looped whole. Same 0.8s fade-in the synth tracks use.
+  // The recorded dawn song, looped whole. Same 0.8s fade-in the synth tracks use.
   playTheme(name){
     if(this.cur&&this.cur.name===name) return;
     this.stopMusic(1.2);
