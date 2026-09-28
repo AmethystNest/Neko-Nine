@@ -444,7 +444,7 @@ function startEnding(){
   if(dawn) AU.setRain(0);
   END.lines=endingLines(dawn,S.deaths,Math.max(1,S.lives));
   AU.play('door');
-  AU.musicBox();
+  if(dawn) AU.music('dawn'); else AU.musicBox();
 }
 function endingStep(dt){
   const e=END; e.t+=dt;
@@ -509,7 +509,7 @@ function toTitle(){
   t.style.display='';
   t.classList.remove('play'); void t.offsetWidth;
   requestAnimationFrame(()=>{ t.classList.remove('hide'); t.classList.add('play'); });
-  if(AU.ready){ AU.music(dawnOf(sv)?'ending':'title'); AU.setRain(sv.cleared?0:0.45); }
+  if(AU.ready){ AU.music(dawnOf(sv)?'dawn':'title'); AU.setRain(sv.cleared?0:0.45); }
 }
 function beginGame(fromStage,picked,lap){
   const sv=loadSave();
@@ -621,7 +621,7 @@ $('splash').addEventListener('pointerup',e=>{
   AU.unlock();
   requestFs();
   $('splash').classList.add('hide');
-  AU.music('title'); AU.setRain(loadSave().cleared?0:0.45);
+  AU.music(dawnOf(loadSave())?'dawn':'title'); AU.setRain(loadSave().cleared?0:0.45);
   toTitle();
 });
 
