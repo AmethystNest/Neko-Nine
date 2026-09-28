@@ -191,12 +191,34 @@ const AU={
     if(this.te!==undefined) return this.te;
     if(!this.ctx || location.protocol==='file:' || !this.ctx.createMediaElementSource) return this.te=null;
     try{
-      const el=new Audio(); el.loop=true; el.preload='auto'; el.src='./audio/theme.mp3';
+      // crossOrigin: if the host serves the file from another origin, an element without it
+      // plays but Web Audio only hears silence; with it, that case becomes a load error instead
+      const el=new Audio(); el.crossOrigin='anonymous'; el.loop=true; el.preload='auto';
+      el.src=this.themeSrc||'./audio/theme.mp3';
+      const an=this.ctx.createAnalyser(); an.fftSize=2048;
       const g=this.ctx.createGain(); g.gain.value=0;
-      this.ctx.createMediaElementSource(el).connect(g); g.connect(this.musicBus);
-      el.addEventListener('error',()=>{ this.teFailed=true; });
-      return this.te={el,g};
+      this.ctx.createMediaElementSource(el).connect(an); an.connect(g); g.connect(this.musicBus);
+      el.addEventListener('error',()=>{ this.themeFail(); });
+      return this.te={el,g,an};
     }catch(_){ return this.te=null; }
+  },
+  // the song can't be heard here: switch to the synth ending for good
+  themeFail(){
+    this.teFailed=true;
+    const t=this.te;
+    if(this.cur && t && this.cur.el===t.el){ this.cur=null; t.el.pause(); this.music('ending'); }
+  },
+  // A song that plays but sends only silence (blocked by the browser) raises no error:
+  // listen to it a few seconds in, and fall back if nothing is coming through.
+  watchTheme(st,t,n){
+    setTimeout(()=>{
+      if(this.cur!==st) return;
+      if(this.ctx.state!=='running' || document.hidden){ if(n<20) this.watchTheme(st,t,n+1); return; }
+      if(t.el.currentTime<0.3){ if(n<6) this.watchTheme(st,t,n+1); else this.themeFail(); return; }
+      const d=new Float32Array(t.an.fftSize); t.an.getFloatTimeDomainData(d);
+      let s=0; for(const v of d) s+=v*v;
+      if(Math.sqrt(s/d.length)<1e-4) this.themeFail();
+    },2500);
   },
   async renderSE(){
     const OAC=root.OfflineAudioContext||root.webkitOfflineAudioContext;
@@ -305,6 +327,7 @@ const AU={
     const p=t.el.play();
     // refused (never blessed by a tap) or broken: fall back to the synth ending
     if(p) p.catch(()=>{ if(this.cur===st){ this.cur=null; this.music('ending'); } });
+    this.watchTheme(st,t,0);
   },
   stopMusic(fade){
     const st=this.cur; if(!st) return;
