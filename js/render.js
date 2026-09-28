@@ -1006,7 +1006,8 @@ const R={
     return {scale,viewW,oy:(this.H-WH*scale)/2};
   },
   buildCache(w,T,v){
-    const key=w.def.name+'|'+this.W+'x'+this.H+'|'+this.dpr;
+    // loop2 stages often reuse the lap-1 name with a different layout: key on the actual floors too
+    const key=w.def.name+'|'+JSON.stringify(w.def.floors)+'|'+this.W+'x'+this.H+'|'+this.dpr;
     if(key===this.cacheKey) return;
     this.cacheKey=key;
     const s=v.scale*this.dpr;

@@ -132,7 +132,14 @@ const KANA_NUM=['ひとつ','ふたつ','みっつ','よっつ','いつつ','む
 function clearsOf(sv){ return sv.clears||(sv.cleared?1:0); }
 // the dawn is only reached by clearing the second lap (older saves: judged by the lap last cleared)
 function dawnOf(sv){ return sv.dawnDone!==undefined?!!sv.dawnDone:(clearsOf(sv)>=2&&sv.loop===2); }
-function stageDef(i){ const d=STAGES[i]; return (S.loop===2&&d.loop2)?Object.assign({},d,d.loop2):d; }
+// Memoized per stage+loop: a fresh object every call broke reference-equality checks
+// elsewhere (e.g. the dusk reveal surviving a death) for every lap-2 stage.
+const _stageDefCache={};
+function stageDef(i){
+  const d=STAGES[i];
+  if(!(S.loop===2&&d.loop2)) return d;
+  return _stageDefCache[i]||(_stageDefCache[i]=Object.assign({},d,d.loop2));
+}
 function loadSave(){ try{ return JSON.parse(localStorage.getItem(SAVE_KEY)||'null')||{}; }catch(_){ return {}; } }
 function writeSave(o){ try{ localStorage.setItem(SAVE_KEY,JSON.stringify(Object.assign(loadSave(),o))); }catch(_){} }
 
