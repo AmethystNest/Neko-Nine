@@ -424,6 +424,7 @@ function endingLines(dawn,d,left){
     ['you','来週、病院にも行ってみる。'],
     ['cat','うん。ぼくも、ついていく。'],
     ['cat','ぼくはひとりじゃない、だから君もひとりじゃないんだよ。'],
+    ['you','……うん。ありがとう。'],
     ['you','見て、ナイン。……朝だ。',()=>{ END.sunUp=true; END.lightOn=true; END.turnTo=1; }],
     ['you','……ずっと、どこか遠くにいた気がする。'],
     // Nine said 「ただいま」 first; now it's your turn to come home
