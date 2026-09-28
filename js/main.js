@@ -695,6 +695,11 @@ function bindHold(id,key){
 if(matchMedia('(pointer:coarse)').matches) document.body.classList.add('touch');
 addEventListener('pointerdown',e=>{ if(e.pointerType==='touch' && !IS_TOUCH()){ document.body.classList.add('touch'); syncTapWords(); } },{capture:true,passive:true});
 function IS_TOUCH(){ return document.body.classList.contains('touch'); }
+// iPhone can leave the audio stopped (not unlocked by the first tap, or interrupted by a call or
+// another app): any later touch or key starts it again, unless the game is paused.
+for(const t of ['touchend','pointerdown','keydown']) addEventListener(t,()=>{
+  if(AU.ctx && !AU.held && (!AU.ready || AU.ctx.state!=='running')) AU.unlock();
+},{capture:true,passive:true});
 // iOS Safari ignores user-scalable=no: block pinch zoom and the long-press menu directly.
 for(const t of ['gesturestart','gesturechange','gestureend']) document.addEventListener(t,e=>e.preventDefault(),{passive:false});
 document.addEventListener('contextmenu',e=>e.preventDefault());

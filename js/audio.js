@@ -181,15 +181,22 @@ const AU={
     const wet=c.createGain(); wet.gain.value=0.5; this.rev.connect(wet); wet.connect(this.musicBus);
     this.dry=c.createGain(); this.dry.gain.value=0.8; this.dry.connect(this.musicBus);
     this.renderSE();
-    this.loadTheme();
     document.addEventListener('visibilitychange',()=>{ if(!this.ctx) return; if(document.hidden) this.ctx.suspend(); else if(this.ready && !this.held) this.ctx.resume(); });
   },
-  // The lap-2 ending (and the title after it) use a recorded song, when it can be fetched
-  // (a plain file:// open can't fetch it - the synth 'ending' track is the fallback then).
-  loadTheme(){
-    if(!this.ctx) return;
-    fetch('./audio/theme.mp3').then(r=>r.ok?r.arrayBuffer():Promise.reject())
-      .then(buf=>this.ctx.decodeAudioData(buf)).then(ab=>{ this.themeBuf=ab; }).catch(()=>{});
+  // The lap-2 ending (and the title after it) use a recorded song. It streams through an
+  // <audio> element: decoding the whole 3-minute file into memory (~75MB) can take Safari's
+  // audio down on iPhone. Opened as file://, the element's output is unreadable to Web Audio,
+  // so the synth 'ending' track is used instead.
+  themeEl(){
+    if(this.te!==undefined) return this.te;
+    if(!this.ctx || location.protocol==='file:' || !this.ctx.createMediaElementSource) return this.te=null;
+    try{
+      const el=new Audio(); el.loop=true; el.preload='auto'; el.src='./audio/theme.mp3';
+      const g=this.ctx.createGain(); g.gain.value=0;
+      this.ctx.createMediaElementSource(el).connect(g); g.connect(this.musicBus);
+      el.addEventListener('error',()=>{ this.teFailed=true; });
+      return this.te={el,g};
+    }catch(_){ return this.te=null; }
   },
   async renderSE(){
     const OAC=root.OfflineAudioContext||root.webkitOfflineAudioContext;
@@ -208,6 +215,14 @@ const AU={
     if(!this.ctx) return;
     try{ this.ctx.resume(); const s=this.ctx.createBufferSource(); s.buffer=this.ctx.createBuffer(1,1,22050); s.connect(this.master); s.start(0); }catch(_){}
     this.ready=true;
+    // iPhone only lets an <audio> element start on its own later (the ending begins on a timer)
+    // if it has been played once from a tap: play it silently here, then stop it.
+    const t=this.themeEl();
+    if(t && !t.blessed){
+      t.blessed=true;
+      const p=t.el.play();
+      if(p) p.then(()=>{ if(!(this.cur&&this.cur.el===t.el)) t.el.pause(); }).catch(()=>{ t.blessed=false; });
+    }
   },
   play(name,volMul){
     const c=this.ctx; if(!c) return;
@@ -248,8 +263,8 @@ const AU={
   music(name){
     name=THEME_TRACK[name]||name;
     if(!this.ctx) return;
-    // 'dawn': the lap-2 ending and every title after it. Synth 'ending' if the song isn't loaded.
-    if(name==='dawn'){ if(this.themeBuf) return this.playTheme(name); name='ending'; }
+    // 'dawn': the lap-2 ending and every title after it. Synth 'ending' if the song can't play.
+    if(name==='dawn'){ const t=this.themeEl(); if(t && !this.teFailed) return this.playTheme(name,t); name='ending'; }
     if(!TRACKS[name]) return;
     if(this.cur&&this.cur.name===name) return;
     this.stopMusic(1.2);
@@ -277,16 +292,19 @@ const AU={
     this.sched(st);
   },
   // The recorded dawn song, looped whole. Same 0.8s fade-in the synth tracks use.
-  playTheme(name){
+  playTheme(name,t){
     if(this.cur&&this.cur.name===name) return;
     this.stopMusic(1.2);
-    const c=this.ctx;
-    const node=c.createBufferSource(); node.buffer=this.themeBuf; node.loop=true;
-    const bus=c.createGain(); bus.gain.value=0.0001; bus.connect(this.musicBus);
-    bus.gain.setTargetAtTime(1,c.currentTime,0.8);
+    const c=this.ctx, g=t.g.gain;
+    g.cancelScheduledValues(c.currentTime); g.setValueAtTime(0.0001,c.currentTime);
+    g.setTargetAtTime(1,c.currentTime,0.8);
     this.musicBus.gain.setTargetAtTime(0.55*this.musicVol,c.currentTime,0.3);
-    node.start();
-    this.cur={name,node,bus};
+    try{ t.el.currentTime=0; }catch(_){}
+    const st={name,bus:t.g,el:t.el};
+    this.cur=st;
+    const p=t.el.play();
+    // refused (never blessed by a tap) or broken: fall back to the synth ending
+    if(p) p.catch(()=>{ if(this.cur===st){ this.cur=null; this.music('ending'); } });
   },
   stopMusic(fade){
     const st=this.cur; if(!st) return;
@@ -295,7 +313,11 @@ const AU={
     const c=this.ctx;
     st.bus.gain.cancelScheduledValues(c.currentTime);
     st.bus.gain.setTargetAtTime(0.0001,c.currentTime,(fade||1)/3);
-    setTimeout(()=>{ try{ st.bus.disconnect(); }catch(_){} try{ st.node&&st.node.stop(); }catch(_){} },(fade||1)*1000+2500);
+    setTimeout(()=>{
+      // the song's element and gain are reused: pause it unless it has been started again
+      if(st.el){ if(!(this.cur&&this.cur.el===st.el)) st.el.pause(); return; }
+      try{ st.bus.disconnect(); }catch(_){}
+    },(fade||1)*1000+2500);
   },
   sched(st){
     const c=this.ctx; if(!c||c.state!=='running') return;
