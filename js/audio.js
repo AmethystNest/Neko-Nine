@@ -181,7 +181,15 @@ const AU={
     const wet=c.createGain(); wet.gain.value=0.5; this.rev.connect(wet); wet.connect(this.musicBus);
     this.dry=c.createGain(); this.dry.gain.value=0.8; this.dry.connect(this.musicBus);
     this.renderSE();
+    this.loadTheme();
     document.addEventListener('visibilitychange',()=>{ if(!this.ctx) return; if(document.hidden) this.ctx.suspend(); else if(this.ready && !this.held) this.ctx.resume(); });
+  },
+  // Title and ending use a recorded song instead of the procedural tracks, when it can be
+  // fetched (a plain file:// open can't fetch it - the synth tracks are the fallback then).
+  loadTheme(){
+    if(!this.ctx) return;
+    fetch('./audio/theme.mp3').then(r=>r.ok?r.arrayBuffer():Promise.reject())
+      .then(buf=>this.ctx.decodeAudioData(buf)).then(ab=>{ this.themeBuf=ab; }).catch(()=>{});
   },
   async renderSE(){
     const OAC=root.OfflineAudioContext||root.webkitOfflineAudioContext;
@@ -239,7 +247,9 @@ const AU={
   // ---- music ----
   music(name){
     name=THEME_TRACK[name]||name;
-    if(!this.ctx||!TRACKS[name]) return;
+    if(!this.ctx) return;
+    if((name==='title'||name==='ending')&&this.themeBuf) return this.playTheme(name);
+    if(!TRACKS[name]) return;
     if(this.cur&&this.cur.name===name) return;
     this.stopMusic(1.2);
     const c=this.ctx, tr=TRACKS[name];
@@ -265,6 +275,18 @@ const AU={
     this.cur=st;
     this.sched(st);
   },
+  // The recorded title/ending song, looped whole. Same 0.8s fade-in the synth tracks use.
+  playTheme(name){
+    if(this.cur&&this.cur.name===name) return;
+    this.stopMusic(1.2);
+    const c=this.ctx;
+    const node=c.createBufferSource(); node.buffer=this.themeBuf; node.loop=true;
+    const bus=c.createGain(); bus.gain.value=0.0001; bus.connect(this.musicBus);
+    bus.gain.setTargetAtTime(1,c.currentTime,0.8);
+    this.musicBus.gain.setTargetAtTime(0.55*this.musicVol,c.currentTime,0.3);
+    node.start();
+    this.cur={name,node,bus};
+  },
   stopMusic(fade){
     const st=this.cur; if(!st) return;
     this.cur=null;
@@ -272,7 +294,7 @@ const AU={
     const c=this.ctx;
     st.bus.gain.cancelScheduledValues(c.currentTime);
     st.bus.gain.setTargetAtTime(0.0001,c.currentTime,(fade||1)/3);
-    setTimeout(()=>{ try{ st.bus.disconnect(); }catch(_){} },(fade||1)*1000+2500);
+    setTimeout(()=>{ try{ st.bus.disconnect(); }catch(_){} try{ st.node&&st.node.stop(); }catch(_){} },(fade||1)*1000+2500);
   },
   sched(st){
     const c=this.ctx; if(!c||c.state!=='running') return;
